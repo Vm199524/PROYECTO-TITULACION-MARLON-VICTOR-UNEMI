@@ -37,6 +37,7 @@
   <a href="#cómo-funciona-el-modelo">El modelo</a> ·
   <a href="#resultados">Resultados</a> ·
   <a href="#arquitectura">Arquitectura</a> ·
+  <a href="#diagramas">Diagramas</a> ·
   <a href="#inicio-rápido">Inicio rápido</a> ·
   <a href="#documentación">Documentación</a> ·
   <a href="#cómo-citar">Cómo citar</a>
@@ -90,6 +91,12 @@ Cada institución ve **solo sus datos**, garantizado en el propio motor de base 
 </table>
 
 ## Cómo funciona el modelo
+
+El proyecto sigue **CRISP-DM**, desde la comprensión del negocio hasta el despliegue en el panel y el chat:
+
+<p align="center">
+  <img src="documentacion/diagramas/av2_crisp_dm.png" alt="Ciclo CRISP-DM aplicado al proyecto" width="100%">
+</p>
 
 ```
   Historial del alumno hasta t          Modelo por institución             Salida para la autoridad
@@ -190,6 +197,28 @@ flowchart LR
 Cada decisión tiene una matriz ponderada con análisis de sensibilidad (±20 % en los pesos sin cambio de ganador) y su ADR en [`documentacion/decisiones/`](documentacion/decisiones/). La arquitectura implementada se verifica contra reglas automáticas: 0 violaciones.
 
 </details>
+
+## Diagramas
+
+Los diagramas UML y de datos del Avance 2. Haz clic en cualquiera para verlo en tamaño completo; sus fuentes Mermaid están en [`documentacion/diagramas/`](documentacion/diagramas/).
+
+<table>
+<tr>
+<td width="33%" align="center"><a href="documentacion/diagramas/av2_casos_uso.png"><img src=".github/assets/galeria/av2_casos_uso.png" alt="Casos de uso"></a><br/><sub><b>Casos de uso</b></sub></td>
+<td width="33%" align="center"><a href="documentacion/diagramas/av2_arquitectura.png"><img src=".github/assets/galeria/av2_arquitectura.png" alt="Arquitectura del sistema"></a><br/><sub><b>Arquitectura del sistema</b></sub></td>
+<td width="33%" align="center"><a href="documentacion/diagramas/av2_modelo_dimensional.png"><img src=".github/assets/galeria/av2_modelo_dimensional.png" alt="Modelo dimensional del almacén"></a><br/><sub><b>Modelo dimensional del almacén</b></sub></td>
+</tr>
+<tr>
+<td align="center"><a href="documentacion/diagramas/av2_secuencia_nl2sql.png"><img src=".github/assets/galeria/av2_secuencia_nl2sql.png" alt="Secuencia de una pregunta en lenguaje natural"></a><br/><sub><b>Secuencia: pregunta en lenguaje natural</b></sub></td>
+<td align="center"><a href="documentacion/diagramas/av2_secuencia_lotes.png"><img src=".github/assets/galeria/av2_secuencia_lotes.png" alt="Secuencia de los procesos por lotes"></a><br/><sub><b>Secuencia: procesos por lotes</b></sub></td>
+<td align="center"><a href="documentacion/diagramas/av2_colaboracion.png"><img src=".github/assets/galeria/av2_colaboracion.png" alt="Colaboración entre componentes"></a><br/><sub><b>Colaboración entre componentes</b></sub></td>
+</tr>
+<tr>
+<td align="center"><a href="documentacion/diagramas/av2_actividad_etl.png"><img src=".github/assets/galeria/av2_actividad_etl.png" alt="Actividades del ETL"></a><br/><sub><b>Actividades: ETL por institución</b></sub></td>
+<td align="center"><a href="documentacion/diagramas/av2_actividad_modelo.png"><img src=".github/assets/galeria/av2_actividad_modelo.png" alt="Actividades del modelo predictivo"></a><br/><sub><b>Actividades: modelo predictivo</b></sub></td>
+<td align="center"><a href="documentacion/diagramas/av2_estados.png"><img src=".github/assets/galeria/av2_estados.png" alt="Estados de la trayectoria de matrícula"></a><br/><sub><b>Estados: trayectoria de matrícula</b></sub></td>
+</tr>
+</table>
 
 ## Inicio rápido
 
