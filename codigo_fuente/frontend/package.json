@@ -8,7 +8,8 @@
     "dev:backend": "cd ../backend && venv/Scripts/python.exe -m uvicorn main:app --reload --port 8090",
     "build": "vite build",
     "start": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@sentry/browser": "^10.44.0",
@@ -29,15 +30,19 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
     "@tailwindcss/vite": "^4.0.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^14.3.1",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.27",
     "esbuild": "^0.24.2",
+    "jsdom": "^25.0.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.2",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^1.6.1"
   }
 }

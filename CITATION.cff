@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "Si usas este software o sus resultados, cítalo con estos metadatos."
+type: software
+title: "VicMar Data AI: modelo predictivo de abandono estudiantil mediante inteligencia de negocios y procesamiento de lenguaje natural"
+abstract: >-
+  Prototipo de inteligencia de negocios para Instituciones de Educación Superior
+  que estima, para cada alumno activo, la probabilidad de abandonar en el periodo
+  siguiente (Random Forest sobre un panel alumno-periodo, con validación cruzada
+  agrupada por alumno y prueba temporal), explica cada predicción con SHAP,
+  segmenta las carreras por riesgo y permite consultar los resultados en español
+  mediante NL2SQL de solo lectura con aislamiento por institución.
+authors:
+  - family-names: "Pérez Almachi"
+    given-names: "Marlon David"
+    affiliation: "Universidad Estatal de Milagro"
+  - family-names: "Lluilema Pisco"
+    given-names: "Víctor Manuel"
+    affiliation: "Universidad Estatal de Milagro"
+repository-code: "https://github.com/Vm199524/PROYECTO-TITULACION-MARLON-VICTOR-UNEMI"
+version: "avance-2"
+date-released: 2026-09-25
+keywords:
+  - abandono estudiantil
+  - educación superior
+  - aprendizaje automático
+  - random forest
+  - SHAP
+  - inteligencia de negocios
+  - NL2SQL
+  - CRISP-DM
