@@ -1,0 +1,179 @@
+{
+  "id": "DT-05",
+  "tipo": "tecnologia",
+  "decision": "Algoritmo del modelo predictivo de abandono",
+  "contexto": "Clasificación binaria del abandono en el periodo siguiente sobre un panel alumno-periodo con clases desbalanceadas. Las tres opciones se compararon con los mismos 5 pliegues agrupados por alumno en las dos instituciones; OULAD (datos reales) pesa más que UNEMI_PRUEBAS (sintético).",
+  "criterios": [
+    {
+      "id": "C1",
+      "nombre": "Discriminación en datos reales (ROC-AUC en OULAD)",
+      "peso": 35,
+      "origen": "OE3 y criterio de éxito (a)",
+      "descripcion": ""
+    },
+    {
+      "id": "C2",
+      "nombre": "Detección de la clase minoritaria (PR-AUC en OULAD)",
+      "peso": 15,
+      "origen": "Prioridad del recall (fase 1 de CRISP-DM)",
+      "descripcion": ""
+    },
+    {
+      "id": "C3",
+      "nombre": "Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS)",
+      "peso": 10,
+      "origen": "RNF-11 (portabilidad)",
+      "descripcion": ""
+    },
+    {
+      "id": "C4",
+      "nombre": "Explicación por alumno",
+      "peso": 15,
+      "origen": "RF-05 y HU-02",
+      "descripcion": ""
+    },
+    {
+      "id": "C5",
+      "nombre": "Evidencia en trabajos previos",
+      "peso": 15,
+      "origen": "Sección 1.3",
+      "descripcion": ""
+    },
+    {
+      "id": "C6",
+      "nombre": "Costo de entrenamiento",
+      "peso": 10,
+      "origen": "RNF-06 (procesos por lotes)",
+      "descripcion": ""
+    }
+  ],
+  "candidatas": [
+    {
+      "id": "rf",
+      "nombre": "Random Forest",
+      "version": "scikit-learn 1.9.1",
+      "puntajes": {
+        "C1": {
+          "valor": 5,
+          "justificacion": "ROC-AUC 0,758 ± 0,008, empatado con gradient boosting.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C2": {
+          "valor": 5,
+          "justificacion": "PR-AUC 0,074, el mayor de los tres.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C3": {
+          "valor": 5,
+          "justificacion": "ROC-AUC 0,996.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Explicación SHAP por alumno implementada (tres factores en lenguaje natural); SHAP con árboles también en Carballo-Mendívil et al. (2025) y Khatun et al. (2025).",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues); Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        },
+        "C5": {
+          "valor": 5,
+          "justificacion": "Es el algoritmo más usado en la revisión de 61 estudios (33), y en Romero y Liao (2025) obtuvo el mejor AUC.",
+          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
+        },
+        "C6": {
+          "valor": 4,
+          "justificacion": "En Romero y Liao (2025) entrenó en 4,14 s frente a 348,6 s de XGBoost.",
+          "fuente": "Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
+        }
+      }
+    },
+    {
+      "id": "gb",
+      "nombre": "Gradient boosting (HistGradientBoosting)",
+      "version": "scikit-learn 1.9.1",
+      "puntajes": {
+        "C1": {
+          "valor": 5,
+          "justificacion": "ROC-AUC 0,758 ± 0,008, empatado con Random Forest.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C2": {
+          "valor": 5,
+          "justificacion": "PR-AUC 0,073.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C3": {
+          "valor": 4,
+          "justificacion": "ROC-AUC 0,980, el más bajo de los tres en la segunda institución.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C4": {
+          "valor": 4,
+          "justificacion": "Explicable con SHAP para árboles, pero no implementado en el prototipo.",
+          "fuente": "Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        },
+        "C5": {
+          "valor": 3,
+          "justificacion": "Gradient boosting aparece en 9 estudios y XGBoost en 12 de la revisión; Carballo-Mendívil et al. (2025) y Khatun et al. (2025) eligen XGBoost.",
+          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        },
+        "C6": {
+          "valor": 3,
+          "justificacion": "En Romero y Liao (2025) XGBoost fue el más lento (348,6 s); HistGradientBoosting no se midió allí.",
+          "fuente": "Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
+        }
+      }
+    },
+    {
+      "id": "lr",
+      "nombre": "Regresión logística",
+      "version": "scikit-learn 1.9.1",
+      "puntajes": {
+        "C1": {
+          "valor": 3,
+          "justificacion": "ROC-AUC 0,730 ± 0,008, el menor en datos reales.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C2": {
+          "valor": 3,
+          "justificacion": "PR-AUC 0,059.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C3": {
+          "valor": 5,
+          "justificacion": "ROC-AUC 0,997; en datos sintéticos todas las opciones superan 0,98.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Sus coeficientes se interpretan directamente.",
+          "fuente": "Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
+        },
+        "C5": {
+          "valor": 4,
+          "justificacion": "Segundo algoritmo más usado (27 estudios); la mejor individual en Rabelo y Zárate (2025).",
+          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        },
+        "C6": {
+          "valor": 5,
+          "justificacion": "Es el más barato de entrenar de los tres.",
+          "fuente": "Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
+        }
+      }
+    }
+  ],
+  "desempate": "C2",
+  "eleccion": {
+    "estado": "Aceptada",
+    "fecha": "2026-10-03",
+    "razon": "Random Forest y gradient boosting empatan en datos reales; Random Forest gana por detectar mejor la clase minoritaria, por rendir igual en la segunda institución, por tener la explicación SHAP ya implementada y por ser el más respaldado en la literatura. La regresión logística queda como línea base.",
+    "consecuencias": [
+      "Se gana un modelo estable entre instituciones y explicable por alumno.",
+      "Se sacrifica la interpretabilidad global directa de la regresión logística.",
+      "Riesgo: el empate con gradient boosting debe revisarse con cada reentrenamiento; el entrenamiento lo registra como advertencia si una alternativa supera en más de 0,01 de ROC-AUC."
+    ]
+  },
+  "verificacion_codigo": {
+    "archivo": "codigo_fuente/backend/requirements.txt",
+    "paquete": "scikit-learn",
+    "version": "1.9.1"
+  }
+}

@@ -1,0 +1,16 @@
+flowchart LR
+  F1["1. Comprensión del negocio<br/><i>sección 1.2 · HU-01 a HU-10<br/>criterios de éxito a-d</i>"]
+  F2["2. Comprensión de los datos<br/><i>UNEMI_PRUEBAS (sintético)<br/>OULAD (real)</i>"]
+  F3["3. Preparación<br/><i>anonimización · ETL por perfil<br/>panel alumno-periodo · IQR</i>"]
+  F4["4. Modelado<br/><i>RF · SMOTE · logística<br/>gradient boosting · K-Means</i>"]
+  F5["5. Evaluación<br/><i>CV por alumno · temporal<br/>prospectiva · NL2SQL · seguridad</i>"]
+  F6["6. Despliegue<br/><i>almacén CHAT · vistas VIS_*<br/>API · panel · chat</i>"]
+  D[("Datos de las<br/>instituciones")]
+  F1 <--> F2
+  F2 --> F3 --> F4 --> F5
+  F4 -. "ajuste" .-> F3
+  F5 -. "defectos detectados" .-> F1
+  F5 --> F6
+  D --- F2
+  D --- F3
+  D --- F6

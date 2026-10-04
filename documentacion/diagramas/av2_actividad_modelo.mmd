@@ -1,0 +1,26 @@
+flowchart LR
+  subgraph PREP["1. Preparación"]
+    direction TB
+    A([Inicio: --empresa X]) --> B["Panel alumno-periodo:<br/>características hasta t,<br/>etiqueta = abandono en t+1"]
+    B --> C["Informe de atípicos (IQR),<br/>sin eliminar filas"]
+    C --> D["Corte temporal:<br/>75 % entrenamiento,<br/>25 % prueba reservada"]
+  end
+  subgraph MOD["2. Modelado y evaluación"]
+    direction TB
+    E["RandomizedSearchCV del RF<br/>(5 pliegues por alumno)"] --> F["Comparar con los mismos pliegues:<br/>RF+ponderación · RF+SMOTE ·<br/>Logística · Gradient Boosting"]
+    F --> G{"¿Otro modelo supera al RF<br/>por más de 0,01 de AUC?"}
+    G -- Sí --> H["Registrar advertencia"]
+    G -- No --> I["Elegir la mejor<br/>variante de RF"]
+    H --> I
+    I --> J["Umbral: recall ≥ 0,80<br/>fuera de pliegue"]
+    J --> K["Evaluar UNA vez en la<br/>prueba temporal +<br/>importancia por permutación"]
+  end
+  subgraph DESP["3. Despliegue"]
+    direction TB
+    L["Reentrenar con todas<br/>las filas etiquetadas"] --> M["Guardar modelo, umbral<br/>y métricas"]
+    M --> N["Calificar activos +<br/>3 factores SHAP"]
+    N --> O["K-Means validado<br/>por carrera"]
+    O --> P([Resultados en panel y chat])
+  end
+  PREP --> MOD
+  MOD --> DESP

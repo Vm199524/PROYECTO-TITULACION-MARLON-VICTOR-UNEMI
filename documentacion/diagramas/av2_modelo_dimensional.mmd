@@ -1,0 +1,77 @@
+erDiagram
+  dim_empresa ||--o{ fact_matriculas : "institución"
+  dim_alumno ||--o{ fact_matriculas : "alumno"
+  dim_carrera ||--o{ fact_matriculas : "carrera"
+  dim_facultad ||--o{ dim_carrera : "agrupa"
+  dim_facultad ||--o{ fact_matriculas : "facultad"
+  dim_tiempo ||--o{ fact_matriculas : "fecha"
+  dim_estado_matricula ||--o{ fact_matriculas : "estado"
+  dim_sede ||--o{ fact_matriculas : "sede"
+  dim_canal ||--o{ fact_matriculas : "modalidad"
+  dim_empresa ||--o{ dim_alumno : "pertenece"
+  fact_matriculas ||--o{ fact_prediccion_abandono : "periodo base"
+  dim_alumno ||--o{ fact_prediccion_abandono : "alumno"
+  dim_carrera ||--o{ fact_cluster_carrera : "carrera"
+  dim_empresa ||--o{ fact_evaluacion_modelo : "institución"
+  dim_institucion_externa ||--o{ fact_benchmark_externo : "referente"
+
+  fact_matriculas {
+    int fact_id PK
+    varchar empresa_codigo FK
+    int alumno_id FK
+    int carrera_id FK
+    int tiempo_id FK
+    varchar estado_codigo FK
+    tinyint semestre
+    decimal promedio
+    decimal asistencia_pct
+    decimal saldo_pendiente
+    tinyint beca_porcentaje
+    bit es_ultimo_periodo
+  }
+  dim_alumno {
+    int alumno_id PK
+    varchar empresa_codigo FK
+    varchar cedula
+    nvarchar apellidos
+    nvarchar nombres
+    char genero
+  }
+  dim_tiempo {
+    int tiempo_id PK
+    date fecha
+    smallint anio
+    tinyint mes
+    tinyint trimestre
+  }
+  fact_prediccion_abandono {
+    int prediccion_id PK
+    int fact_id_base FK
+    decimal probabilidad
+    decimal umbral_operativo
+    varchar riesgo_categoria
+    nvarchar factor_1
+    nvarchar factor_2
+    nvarchar factor_3
+  }
+  fact_cluster_carrera {
+    int fact_id PK
+    int carrera_id FK
+    nvarchar cluster_label
+    decimal tasa_abandono_hist
+    decimal riesgo_promedio
+  }
+  fact_evaluacion_modelo {
+    int evaluacion_id PK
+    varchar componente
+    varchar esquema_validacion
+    varchar metrica
+    decimal valor
+  }
+  fact_benchmark_externo {
+    int fact_id PK
+    decimal valor
+    nvarchar definicion_indicador
+    varchar nivel_comparabilidad
+    varchar doi
+  }

@@ -1,0 +1,203 @@
+{
+  "empresa": "UNEMI_PRUEBAS",
+  "modelo_version": "2026.09.25-kmeans-validado",
+  "n_unidades": 18,
+  "k": 3,
+  "barrido_k": [
+    {
+      "k": 2,
+      "silhouette": 0.5198,
+      "davies_bouldin": 0.6352,
+      "calinski_harabasz": 11.4
+    },
+    {
+      "k": 3,
+      "silhouette": 0.4153,
+      "davies_bouldin": 0.8932,
+      "calinski_harabasz": 13.46
+    },
+    {
+      "k": 4,
+      "silhouette": 0.438,
+      "davies_bouldin": 0.6002,
+      "calinski_harabasz": 15.35
+    },
+    {
+      "k": 5,
+      "silhouette": 0.3699,
+      "davies_bouldin": 0.6612,
+      "calinski_harabasz": 17.06
+    },
+    {
+      "k": 6,
+      "silhouette": 0.3411,
+      "davies_bouldin": 0.52,
+      "calinski_harabasz": 18.71
+    }
+  ],
+  "estabilidad_bootstrap": {
+    "remuestreos": 100,
+    "ari_medio": 0.6629,
+    "ari_desviacion": 0.2663
+  },
+  "comparacion_algoritmos": {
+    "KMEANS": {
+      "n_clusters": 3,
+      "ruido": 0,
+      "silhouette": 0.4153
+    },
+    "JERARQUICO_WARD": {
+      "n_clusters": 3,
+      "ruido": 0,
+      "silhouette": 0.4153
+    },
+    "HDBSCAN": {
+      "n_clusters": 4,
+      "ruido": 4,
+      "silhouette": 0.5133
+    }
+  },
+  "kruskal_wallis_tasa_abandono": {
+    "estadistico_H": 7.5049,
+    "p_valor": 0.02346
+  },
+  "coincidencia_sin_riesgo_promedio_ari": 0.3363,
+  "tamano_clusters": {
+    "Estable": 11,
+    "Atencion prioritaria": 5,
+    "Bajo riesgo / alto rendimiento": 2
+  },
+  "tasa_media_por_cluster": {
+    "Atencion prioritaria": 0.1107,
+    "Bajo riesgo / alto rendimiento": 0.0781,
+    "Estable": 0.0991
+  },
+  "asignacion": [
+    {
+      "carrera": "Pedagogia de los Idiomas Nacionales y Extranjeros",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.0999,
+      "promedio_hist": 7.5866,
+      "riesgo_promedio": 0.048
+    },
+    {
+      "carrera": "Ingenieria Industrial",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.1291,
+      "promedio_hist": 7.6096,
+      "riesgo_promedio": 0.0444
+    },
+    {
+      "carrera": "Ingenieria en Alimentos",
+      "cluster_label": "Bajo riesgo / alto rendimiento",
+      "tasa_abandono_hist": 0.0868,
+      "promedio_hist": 7.5828,
+      "riesgo_promedio": 0.0623
+    },
+    {
+      "carrera": "Enfermeria",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.0943,
+      "promedio_hist": 7.6266,
+      "riesgo_promedio": 0.0481
+    },
+    {
+      "carrera": "Terapia Respiratoria",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.1164,
+      "promedio_hist": 7.5287,
+      "riesgo_promedio": 0.0481
+    },
+    {
+      "carrera": "Turismo",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.0989,
+      "promedio_hist": 7.5955,
+      "riesgo_promedio": 0.0493
+    },
+    {
+      "carrera": "Ingenieria Agropecuaria",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.1048,
+      "promedio_hist": 7.573,
+      "riesgo_promedio": 0.0544
+    },
+    {
+      "carrera": "Medicina",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.1119,
+      "promedio_hist": 7.5085,
+      "riesgo_promedio": 0.0454
+    },
+    {
+      "carrera": "Contaduria Publica y Auditoria",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.0942,
+      "promedio_hist": 7.5232,
+      "riesgo_promedio": 0.0484
+    },
+    {
+      "carrera": "Ingenieria Comercial",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.1013,
+      "promedio_hist": 7.5815,
+      "riesgo_promedio": 0.0492
+    },
+    {
+      "carrera": "Educacion Inicial",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.1017,
+      "promedio_hist": 7.5109,
+      "riesgo_promedio": 0.0504
+    },
+    {
+      "carrera": "Ingenieria en Sistemas Computacionales",
+      "cluster_label": "Bajo riesgo / alto rendimiento",
+      "tasa_abandono_hist": 0.0694,
+      "promedio_hist": 7.658,
+      "riesgo_promedio": 0.0639
+    },
+    {
+      "carrera": "Ingenieria Civil",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.0935,
+      "promedio_hist": 7.6574,
+      "riesgo_promedio": 0.0516
+    },
+    {
+      "carrera": "Educacion Basica",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.0971,
+      "promedio_hist": 7.5861,
+      "riesgo_promedio": 0.0477
+    },
+    {
+      "carrera": "Trabajo Social",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.1014,
+      "promedio_hist": 7.5924,
+      "riesgo_promedio": 0.0495
+    },
+    {
+      "carrera": "Derecho",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.1018,
+      "promedio_hist": 7.6547,
+      "riesgo_promedio": 0.0531
+    },
+    {
+      "carrera": "Comunicacion Social",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.1011,
+      "promedio_hist": 7.5852,
+      "riesgo_promedio": 0.0485
+    },
+    {
+      "carrera": "Pedagogia de la Actividad Fisica y Deporte",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.096,
+      "promedio_hist": 7.6092,
+      "riesgo_promedio": 0.0529
+    }
+  ]
+}

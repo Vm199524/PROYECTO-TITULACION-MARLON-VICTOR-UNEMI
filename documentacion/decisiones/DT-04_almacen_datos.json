@@ -1,0 +1,135 @@
+{
+  "id": "DT-04",
+  "tipo": "tecnologia",
+  "decision": "Motor del almacén de datos",
+  "contexto": "El almacén en esquema estrella guarda la trayectoria de varias instituciones. El SQL que genera la IA debe ejecutarse con una cuenta de solo lectura y ver solo las filas de la institución activa, garantizado por el propio motor. La institución destino es pública y el costo de licencias importa.",
+  "criterios": [
+    {
+      "id": "C1",
+      "nombre": "Aislamiento por institución en el motor",
+      "peso": 35,
+      "origen": "RF-16 y RNF-01",
+      "descripcion": "Seguridad por filas o contexto de sesión nativos."
+    },
+    {
+      "id": "C2",
+      "nombre": "Costo de licencia en producción",
+      "peso": 25,
+      "origen": "Restricción: institución pública, costo cero",
+      "descripcion": ""
+    },
+    {
+      "id": "C3",
+      "nombre": "Evidencia en trabajos previos",
+      "peso": 10,
+      "origen": "Sección 1.3",
+      "descripcion": ""
+    },
+    {
+      "id": "C4",
+      "nombre": "Costo de cambio sobre el prototipo validado",
+      "peso": 30,
+      "origen": "Restricción: plazo del proyecto",
+      "descripcion": "Vistas, permisos, ETL y pruebas ya implementados."
+    }
+  ],
+  "candidatas": [
+    {
+      "id": "sqlserver",
+      "nombre": "SQL Server",
+      "version": "2022",
+      "puntajes": {
+        "C1": {
+          "valor": 5,
+          "justificacion": "SESSION_CONTEXT con valores de solo lectura y seguridad por filas en todas las ediciones; el aislamiento se comprobó con pruebas de integración.",
+          "fuente": "Microsoft Learn, «SESSION_CONTEXT (Transact-SQL)», consultado 2026-10-03; Microsoft Learn, «Editions and supported features of SQL Server 2022», consultado 2026-10-03; Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+        },
+        "C2": {
+          "valor": 3,
+          "justificacion": "La edición Express es gratuita, pero limita la base a 10 GB y a 1 socket o 4 núcleos; la Developer no se puede usar en producción.",
+          "fuente": "Microsoft Learn, «Editions and supported features of SQL Server 2022», consultado 2026-10-03"
+        },
+        "C3": {
+          "valor": 3,
+          "justificacion": "Aparece en las implementaciones de BI que reúne la revisión de Sequeira et al.; 9 de 11 trabajos no declaran motor.",
+          "fuente": "Sequeira et al. (2024), Information, 15(4), 208, pp. 7, 15, https://doi.org/10.3390/info15040208"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Es el motor implementado: vistas VIS_*, cuenta chat_reader y 22 pruebas de seguridad.",
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+        }
+      }
+    },
+    {
+      "id": "postgresql",
+      "nombre": "PostgreSQL",
+      "version": "18",
+      "puntajes": {
+        "C1": {
+          "valor": 5,
+          "justificacion": "Políticas de seguridad por fila nativas, con denegación por defecto si no hay política.",
+          "fuente": "PostgreSQL 18 Documentation, «Row Security Policies», consultado 2026-10-03"
+        },
+        "C2": {
+          "valor": 5,
+          "justificacion": "Licencia PostgreSQL, libre y sin costo, similar a BSD o MIT.",
+          "fuente": "PostgreSQL, «License» (postgresql.org/about/licence), consultado 2026-10-03"
+        },
+        "C3": {
+          "valor": 3,
+          "justificacion": "Aparece en las implementaciones de BI que reúne la revisión de Sequeira et al.",
+          "fuente": "Sequeira et al. (2024), Information, 15(4), 208, pp. 7, 15, https://doi.org/10.3390/info15040208"
+        },
+        "C4": {
+          "valor": 2,
+          "justificacion": "Habría que reescribir las vistas, los permisos y el contexto de sesión, y repetir las pruebas.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    },
+    {
+      "id": "mysql",
+      "nombre": "MySQL",
+      "version": "8.4",
+      "puntajes": {
+        "C1": {
+          "valor": 2,
+          "justificacion": "Los privilegios llegan a nivel de tabla, columna y rutina; no hay políticas por fila nativas.",
+          "fuente": "MySQL 8.4 Reference Manual, «Privileges Provided by MySQL», consultado 2026-10-03"
+        },
+        "C2": {
+          "valor": 4,
+          "justificacion": "Edición comunitaria con licencia GPLv2.",
+          "fuente": "Archivo LICENSE del repositorio oficial mysql/mysql-server (GPLv2), consultado 2026-10-03"
+        },
+        "C3": {
+          "valor": 1,
+          "justificacion": "Ningún trabajo previo leído lo declara.",
+          "fuente": "Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        },
+        "C4": {
+          "valor": 1,
+          "justificacion": "Además de la reescritura, el aislamiento tendría que hacerse en la aplicación.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    }
+  ],
+  "desempate": "C1",
+  "eleccion": {
+    "estado": "Aceptada para el prototipo",
+    "fecha": "2026-10-03",
+    "razon": "SQL Server y PostgreSQL empatan en el criterio más importante, el aislamiento por institución dentro del motor; MySQL queda descartado por no tenerlo. SQL Server gana por el costo de cambio: el aislamiento ya está implementado y probado. Si se quita ese criterio, gana PostgreSQL por su licencia, así que para un despliegue institucional sin licencias de SQL Server se recomienda migrar a PostgreSQL.",
+    "consecuencias": [
+      "Se gana un aislamiento ya verificado con 22 pruebas de integración.",
+      "Se sacrifica costo: en producción haría falta Express (límite de 10 GB) o una licencia de pago.",
+      "Riesgo: dependencia de T-SQL; la lógica está concentrada en crear_chat_academico.sql para facilitar una migración."
+    ]
+  },
+  "verificacion_codigo": {
+    "archivo": "codigo_fuente/backend/requirements.txt",
+    "paquete": "pyodbc",
+    "version": "5.3"
+  }
+}

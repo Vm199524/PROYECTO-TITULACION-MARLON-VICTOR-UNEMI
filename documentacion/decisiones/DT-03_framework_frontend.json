@@ -1,0 +1,157 @@
+{
+  "id": "DT-03",
+  "tipo": "tecnologia",
+  "decision": "Framework del frontend",
+  "contexto": "El frontend es una aplicación de una sola página con el panel de riesgo, los segmentos, los referentes y el chat; consume la API REST y no accede a la base de datos. Ningún trabajo previo leído declara un framework de frontend, por lo que la decisión se apoya en documentación oficial, repositorios de referencia y el contexto del prototipo.",
+  "criterios": [
+    {
+      "id": "C1",
+      "nombre": "Plantilla de referencia con FastAPI",
+      "peso": 20,
+      "origen": "ADR-000 (estructura del repositorio)",
+      "descripcion": ""
+    },
+    {
+      "id": "C2",
+      "nombre": "Adopción y comunidad",
+      "peso": 20,
+      "origen": "RNF-08 (mantenibilidad)",
+      "descripcion": "Tamaño de la comunidad del repositorio oficial."
+    },
+    {
+      "id": "C3",
+      "nombre": "Ciclo de soporte",
+      "peso": 20,
+      "origen": "RNF-09",
+      "descripcion": ""
+    },
+    {
+      "id": "C4",
+      "nombre": "Licencia",
+      "peso": 10,
+      "origen": "Costo cero",
+      "descripcion": ""
+    },
+    {
+      "id": "C5",
+      "nombre": "Costo de cambio sobre el prototipo validado",
+      "peso": 30,
+      "origen": "Restricción: plazo del proyecto",
+      "descripcion": ""
+    }
+  ],
+  "candidatas": [
+    {
+      "id": "react",
+      "nombre": "React",
+      "version": "18.3",
+      "puntajes": {
+        "C1": {
+          "valor": 5,
+          "justificacion": "La plantilla full-stack de FastAPI usa React con Vite.",
+          "fuente": "Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C2": {
+          "valor": 5,
+          "justificacion": "Repositorio oficial con 250.872 estrellas.",
+          "fuente": "Repositorio oficial facebook/react en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C3": {
+          "valor": 4,
+          "justificacion": "La 18.3.1 sigue documentada; la versión vigente es la 19.3 (septiembre de 2026), por lo que queda una migración pendiente.",
+          "fuente": "React, «Versions» (react.dev/versions), consultado 2026-10-03"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Licencia MIT.",
+          "fuente": "Repositorio oficial facebook/react en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C5": {
+          "valor": 5,
+          "justificacion": "Panel, chat y pruebas ya implementados.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    },
+    {
+      "id": "angular",
+      "nombre": "Angular",
+      "version": "22",
+      "puntajes": {
+        "C1": {
+          "valor": 3,
+          "justificacion": "No es el frontend de la plantilla de referencia.",
+          "fuente": "Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C2": {
+          "valor": 4,
+          "justificacion": "Repositorio oficial con 101.015 estrellas.",
+          "fuente": "Repositorio oficial angular/angular en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C3": {
+          "valor": 4,
+          "justificacion": "Una versión mayor por año con 24 meses de soporte (12 activos y 12 LTS).",
+          "fuente": "Angular, «Releases» (angular.dev/reference/releases), consultado 2026-10-03"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Licencia MIT.",
+          "fuente": "Repositorio oficial angular/angular en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C5": {
+          "valor": 1,
+          "justificacion": "Reescritura completa de la interfaz.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    },
+    {
+      "id": "vue",
+      "nombre": "Vue",
+      "version": "3.5",
+      "puntajes": {
+        "C1": {
+          "valor": 3,
+          "justificacion": "No es el frontend de la plantilla de referencia.",
+          "fuente": "Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C2": {
+          "valor": 3,
+          "justificacion": "Repositorio oficial (vuejs/core) con 54.481 estrellas.",
+          "fuente": "Repositorio oficial vuejs/core en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C3": {
+          "valor": 4,
+          "justificacion": "Vue 3 vigente; versiones menores cada 3 a 6 meses, sin calendario fijo de soporte.",
+          "fuente": "Vue.js, «Releases» (vuejs.org/about/releases), consultado 2026-10-03"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Licencia MIT.",
+          "fuente": "Repositorio oficial vuejs/core en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C5": {
+          "valor": 2,
+          "justificacion": "Reescritura de componentes, aunque con un modelo de componentes parecido.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    }
+  ],
+  "desempate": "C5",
+  "eleccion": {
+    "estado": "Aceptada",
+    "fecha": "2026-10-03",
+    "razon": "React es coherente con la plantilla de referencia elegida para la estructura (FastAPI + React + Vite), tiene la comunidad más grande y es el frontend ya implementado. Las tres opciones son técnicamente viables para este panel; la literatura del dominio no favorece a ninguna.",
+    "consecuencias": [
+      "Se gana continuidad con el prototipo y con la plantilla de referencia.",
+      "Se sacrifica la estructura más prescriptiva de Angular.",
+      "Riesgo: React 18 ya no es la versión vigente; migrar a la 19 queda como trabajo posterior."
+    ]
+  },
+  "verificacion_codigo": {
+    "archivo": "codigo_fuente/frontend/package.json",
+    "paquete": "react",
+    "version": "18.3"
+  }
+}

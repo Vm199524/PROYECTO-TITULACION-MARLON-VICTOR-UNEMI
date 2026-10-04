@@ -1,0 +1,136 @@
+"""
+crear_usuario_desarrollador.py — Alta de la cuenta protegida del desarrollador.
+
+QUÉ HACE
+--------
+1. Crea (o actualiza, si ya existe) el usuario del desarrollador en
+   `security_config.json`, que es el único almacén de usuarios del sistema —
+   aquí no hay tabla de usuarios en ninguna base de datos.
+2. Lo marca con `protected: true`, la bandera que impide que Gestión de
+   Usuarios lo elimine, lo desactive o lo edite desde otra cuenta de
+   administrador (ver `_es_usuario_protegido` en `main.py`).
+3. Lo registra como dueño de la seña de desarrollador ("soy VM") en
+   `.cache/modo_desarrollador.json`, de modo que solo esa cuenta puede
+   activar el modo desarrollador desde el chat.
+
+POR QUÉ ES UN SCRIPT Y NO EL ENDPOINT NORMAL
+--------------------------------------------
+El endpoint `POST /api/admin/users` exige contraseñas de 8 caracteres como
+mínimo, y la contraseña inicial que eligió el desarrollador tiene 7. Esa regla
+es correcta para las cuentas del día a día y no se toca; esta alta puntual se
+hace desde el servidor, con acceso al archivo, que es el único lugar desde
+donde tiene sentido crear la cuenta raíz del sistema.
+
+Ojo: cuando el desarrollador cambie su contraseña más adelante desde la
+pantalla de Mi Perfil o desde Gestión de Usuarios, la nueva SÍ tendrá que
+cumplir el mínimo de 8 caracteres.
+
+USO
+---
+    cd backend
+    python scripts/crear_usuario_desarrollador.py
+    python scripts/crear_usuario_desarrollador.py --usuario adminvm --password otra_clave
+
+Es idempotente: ejecutarlo dos veces no duplica la cuenta ni pierde el
+historial de accesos.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import BASE_DIR  # noqa: E402
+from security import get_password_hash  # noqa: E402
+
+ARCHIVO_USUARIOS = BASE_DIR / "security_config.json"
+
+USUARIO_POR_DEFECTO = "adminvm"
+CLAVE_POR_DEFECTO = "admin95"
+NOMBRE_POR_DEFECTO = "Desarrollador"
+
+
+def _cargar() -> dict:
+    with open(ARCHIVO_USUARIOS, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _guardar(config: dict) -> None:
+    # Mismo formato exacto que `_save_security_config` en main.py, para no
+    # generar un diff artificial en el archivo.
+    with open(ARCHIVO_USUARIOS, "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--usuario", default=USUARIO_POR_DEFECTO)
+    parser.add_argument("--password", default=CLAVE_POR_DEFECTO)
+    parser.add_argument("--nombre", default=NOMBRE_POR_DEFECTO)
+    parser.add_argument("--email", default="")
+    parser.add_argument("--alias", default="VM", help="Alias con el que la IA te llamará.")
+    args = parser.parse_args()
+
+    usuario = args.usuario.strip().lower()
+    if not usuario:
+        print("El nombre de usuario no puede estar vacío.")
+        return 1
+
+    config = _cargar()
+    existente = next(
+        (u for u in config.get("users", []) if str(u.get("username", "")).strip().lower() == usuario),
+        None,
+    )
+
+    if existente:
+        existente["password"] = get_password_hash(args.password)
+        existente["role"] = "ADMINISTRADOR"
+        existente["protected"] = True
+        existente["active"] = True
+        if args.nombre:
+            existente["name"] = args.nombre
+        if args.email:
+            existente["email"] = args.email
+        accion = "actualizado"
+    else:
+        config.setdefault("users", []).append({
+            "username": usuario,
+            "password": get_password_hash(args.password),
+            "name": args.nombre or usuario,
+            "role": "ADMINISTRADOR",
+            "email": args.email,
+            "active": True,
+            "protected": True,
+            "created_at": datetime.utcnow().isoformat() + "Z",
+        })
+        accion = "creado"
+
+    _guardar(config)
+    print(f"Usuario '{usuario}' {accion} con rol ADMINISTRADOR y marca protected=true.")
+
+    # Registrar la seña de desarrollador a nombre de esta cuenta, sin dejarla
+    # activada: el modo se enciende escribiendo la seña en el chat.
+    from core import modo_desarrollador as dev
+
+    with dev._LOCK:
+        datos = dev._leer()
+        datos["dueno"] = usuario
+        datos["alias"] = args.alias or "VM"
+        datos["registrado_en"] = datos.get("registrado_en") or dev._ahora()
+        dev._escribir(datos)
+
+    print(
+        f"Seña de desarrollador registrada a nombre de '{usuario}' "
+        f"(alias '{datos['alias']}') en {dev.ARCHIVO}."
+    )
+    print("Escribe la seña en el chat, desde esa cuenta, para activar el modo.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

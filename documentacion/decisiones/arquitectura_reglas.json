@@ -1,0 +1,64 @@
+{
+  "_ayuda": "Reglas verificables de la arquitectura elegida en ADR-006 (cliente-servidor desacoplado con backend en capas). Rutas relativas a codigo_fuente/. Se comprueban con verificar_reglas.py.",
+  "adr": "documentacion/decisiones/adr/ADR-006-estilo_de_arquitectura_del_sistema.md",
+  "estilo_esperado": "desacoplado",
+  "desplegables": {
+    "min": 2,
+    "max": 2
+  },
+  "sin_bd_en_frontend": true,
+  "componentes": {
+    "cliente": [
+      "frontend/src"
+    ],
+    "api": [
+      "backend/api",
+      "backend/main.py"
+    ],
+    "dominio": [
+      "backend/core",
+      "backend/ml"
+    ],
+    "datos": [
+      "backend/etl",
+      "backend/knowledge",
+      "backend/db_connector.py",
+      "backend/conexion_admin.py"
+    ]
+  },
+  "dependencias_prohibidas": [
+    [
+      "cliente",
+      "datos"
+    ],
+    [
+      "cliente",
+      "dominio"
+    ],
+    [
+      "datos",
+      "api"
+    ],
+    [
+      "dominio",
+      "api"
+    ]
+  ],
+  "patrones_prohibidos": [
+    {
+      "componente": "cliente",
+      "patrones": [
+        "(?i)\\bSELECT\\s+[\\w*,\\s]+\\s+FROM\\s+\\w",
+        "(?i)password\\s*[:=]\\s*['\"][^'\"]{4,}"
+      ],
+      "motivo": "el cliente no arma SQL ni guarda contraseñas"
+    }
+  ],
+  "excepciones": [
+    {
+      "regla": "ConnectionCard.jsx",
+      "justificacion": "ADR-006: falso positivo. El «SELECT name FROM sys.databases» es el texto de una ayuda emergente que describe la consulta que ejecuta el backend; el cliente no arma ni ejecuta SQL (solo llama a la API)."
+    }
+  ],
+  "_nota_dependencias": "langchain y openai figuran en requirements.txt y no se importan con ese nombre: el código usa langchain_core y langchain_openai, que dependen de ellos."
+}

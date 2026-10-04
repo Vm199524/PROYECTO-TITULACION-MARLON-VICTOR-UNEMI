@@ -1,0 +1,126 @@
+{
+  "empresa": "OULAD_UK",
+  "modelo_version": "2026.09.25-kmeans-validado",
+  "n_unidades": 7,
+  "k": 3,
+  "barrido_k": [
+    {
+      "k": 2,
+      "silhouette": 0.3154,
+      "davies_bouldin": 0.9806,
+      "calinski_harabasz": 4.3
+    },
+    {
+      "k": 3,
+      "silhouette": 0.2342,
+      "davies_bouldin": 0.7358,
+      "calinski_harabasz": 4.91
+    },
+    {
+      "k": 4,
+      "silhouette": 0.2119,
+      "davies_bouldin": 0.5628,
+      "calinski_harabasz": 5.47
+    },
+    {
+      "k": 5,
+      "silhouette": 0.1549,
+      "davies_bouldin": 0.2819,
+      "calinski_harabasz": 7.09
+    },
+    {
+      "k": 6,
+      "silhouette": 0.0742,
+      "davies_bouldin": 0.2388,
+      "calinski_harabasz": 12.01
+    }
+  ],
+  "estabilidad_bootstrap": {
+    "remuestreos": 100,
+    "ari_medio": 0.4668,
+    "ari_desviacion": 0.3734
+  },
+  "comparacion_algoritmos": {
+    "KMEANS": {
+      "n_clusters": 3,
+      "ruido": 0,
+      "silhouette": 0.2342
+    },
+    "JERARQUICO_WARD": {
+      "n_clusters": 3,
+      "ruido": 0,
+      "silhouette": 0.2342
+    },
+    "HDBSCAN": {
+      "n_clusters": 0,
+      "ruido": 7,
+      "silhouette": null
+    }
+  },
+  "kruskal_wallis_tasa_abandono": {
+    "estadistico_H": 3.6964,
+    "p_valor": 0.157518
+  },
+  "coincidencia_sin_riesgo_promedio_ari": 0.5161,
+  "tamano_clusters": {
+    "Atencion prioritaria": 4,
+    "Estable": 2,
+    "Bajo riesgo / alto rendimiento": 1
+  },
+  "tasa_media_por_cluster": {
+    "Atencion prioritaria": 0.3005,
+    "Bajo riesgo / alto rendimiento": 0.0963,
+    "Estable": 0.2006
+  },
+  "asignacion": [
+    {
+      "carrera": "Modulo CCC",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.3701,
+      "promedio_hist": 5.3811,
+      "riesgo_promedio": 0.4642
+    },
+    {
+      "carrera": "Modulo BBB",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.2808,
+      "promedio_hist": 5.7729,
+      "riesgo_promedio": 0.5377
+    },
+    {
+      "carrera": "Modulo FFF",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.2852,
+      "promedio_hist": 6.3272,
+      "riesgo_promedio": 0.4462
+    },
+    {
+      "carrera": "Modulo GGG",
+      "cluster_label": "Bajo riesgo / alto rendimiento",
+      "tasa_abandono_hist": 0.0963,
+      "promedio_hist": 4.1156,
+      "riesgo_promedio": 0.3962
+    },
+    {
+      "carrera": "Modulo EEE",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.2198,
+      "promedio_hist": 5.791,
+      "riesgo_promedio": 0.3659
+    },
+    {
+      "carrera": "Modulo DDD",
+      "cluster_label": "Atencion prioritaria",
+      "tasa_abandono_hist": 0.3268,
+      "promedio_hist": 5.8372,
+      "riesgo_promedio": 0.4485
+    },
+    {
+      "carrera": "Modulo AAA",
+      "cluster_label": "Estable",
+      "tasa_abandono_hist": 0.1203,
+      "promedio_hist": 6.3126,
+      "riesgo_promedio": 0.5083
+    }
+  ]
+}

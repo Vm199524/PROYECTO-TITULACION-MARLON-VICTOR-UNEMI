@@ -1,0 +1,41 @@
+flowchart LR
+  subgraph FUENTES["Bases operativas (una por institución)"]
+    U[("UNEMI_PRUEBAS<br/>historial_matriculas")]
+    O[("OULAD_PRUEBAS<br/>historial_bloques")]
+  end
+  E["ETL por perfil<br/>etl_academico.py + perfiles.py"]
+  subgraph DW["Almacén CHAT: esquema estrella"]
+    F["fact_matriculas + dim_*"]
+    P["fact_prediccion_abandono"]
+    K["fact_cluster_carrera"]
+    B["fact_benchmark_externo"]
+    M["fact_evaluacion_modelo"]
+  end
+  subgraph ML["Procesos por lotes (backend/ml)"]
+    T["Entrenamiento<br/>panel alumno-periodo + RF"]
+    S["Calificación<br/>probabilidad + SHAP"]
+    C["Segmentación<br/>K-Means validado"]
+  end
+  subgraph SEG["Tres capas de seguridad"]
+    V["Capa 2: vistas VIS_*<br/>filtro SESSION_CONTEXT"]
+    R["Capa 1: login chat_reader<br/>solo SELECT sobre VIS_*"]
+    Z["Capa 3: sql_sanitizer<br/>solo SELECT / WITH"]
+  end
+  API["API FastAPI"]
+  UI["Frontend React<br/>panel + chat"]
+  LLM[["Cascada LLM externa<br/>recibe esquema, no filas;<br/>narración con datos enmascarados"]]
+  U --> E
+  O --> E
+  E --> F
+  F --> T --> S --> P
+  P --> C --> K
+  T --> M
+  F --> V
+  P --> V
+  K --> V
+  B --> V
+  M --> V
+  V --> R --> API
+  API --> Z
+  API <--> LLM
+  API <--> UI

@@ -1,0 +1,172 @@
+{
+  "id": "DT-06",
+  "tipo": "arquitectura",
+  "decision": "Estilo de arquitectura del sistema",
+  "contexto": "Sistema con cuatro piezas (modelo, segmentación, NL2SQL y panel) sobre un almacén gobernado, operado por un equipo de 2 personas en un equipo local con Docker. Los criterios son escenarios de atributos de calidad derivados de los requerimientos.",
+  "criterios": [
+    {
+      "id": "E1",
+      "nombre": "Incorporar una institución con solo un perfil de mapeo",
+      "peso": 20,
+      "origen": "RF-14 y RNF-11 (modificabilidad)",
+      "descripcion": "Medida: cero cambios de código para una institución nueva."
+    },
+    {
+      "id": "E2",
+      "nombre": "Aislamiento de datos garantizado en el motor",
+      "peso": 20,
+      "origen": "RNF-01 (seguridad)",
+      "descripcion": "Medida: cero filas de otra institución en cualquier respuesta."
+    },
+    {
+      "id": "E3",
+      "nombre": "Panel y chat con las mismas cifras",
+      "peso": 15,
+      "origen": "HU-07 y RF-10 (consistencia)",
+      "descripcion": "Medida: ambos leen las mismas vistas gobernadas."
+    },
+    {
+      "id": "E4",
+      "nombre": "Costo de operación para 2 personas en un equipo local",
+      "peso": 25,
+      "origen": "Restricción del equipo y de la infraestructura",
+      "descripcion": "Medida: número de desplegables que hay que operar."
+    },
+    {
+      "id": "E5",
+      "nombre": "Evolución de la interfaz independiente del backend",
+      "peso": 10,
+      "origen": "RF-11 a RF-13 y variantes móviles",
+      "descripcion": ""
+    },
+    {
+      "id": "E6",
+      "nombre": "Evidencia en trabajos previos",
+      "peso": 10,
+      "origen": "Sección 1.3",
+      "descripcion": ""
+    }
+  ],
+  "candidatas": [
+    {
+      "id": "capas",
+      "nombre": "Monolito en capas (interfaz renderizada en el servidor)",
+      "puntajes": {
+        "E1": {
+          "valor": 4,
+          "justificacion": "El perfil de mapeo es posible, pero la interfaz y el ETL comparten despliegue.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "E2": {
+          "valor": 5,
+          "justificacion": "El aislamiento reside en el motor (vistas con SESSION_CONTEXT y cuenta de solo lectura), independiente del estilo.",
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+        },
+        "E3": {
+          "valor": 5,
+          "justificacion": "Una sola aplicación lee las mismas vistas.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "E4": {
+          "valor": 5,
+          "justificacion": "Un solo desplegable; los monolitos rinden mejor en una sola máquina y convienen a sistemas pequeños y medianos (Blinowski et al., 2022, citado en Hassan et al., 2025, p. 4).",
+          "fuente": "Hassan et al. (2025), Big Data and Cognitive Computing, 9(10), 253, https://doi.org/10.3390/bdcc9100253"
+        },
+        "E5": {
+          "valor": 2,
+          "justificacion": "La interfaz queda acoplada a la aplicación del servidor.",
+          "fuente": "Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "E6": {
+          "valor": 4,
+          "justificacion": "La arquitectura de BI de tres capas que sintetizan Sequeira et al. (2024) es en capas; 10 de 11 trabajos dejan el modelo aislado.",
+          "fuente": "Sequeira et al. (2024), Information, 15(4), 208, pp. 7, 15, https://doi.org/10.3390/info15040208; Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        }
+      }
+    },
+    {
+      "id": "desacoplado",
+      "nombre": "Cliente-servidor desacoplado (SPA + API REST) con backend en capas",
+      "puntajes": {
+        "E1": {
+          "valor": 5,
+          "justificacion": "OULAD_UK se incorporó solo con un perfil en etl/perfiles.py; el mismo ETL y modelo, sin cambios.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "E2": {
+          "valor": 5,
+          "justificacion": "Aislamiento en el motor comprobado: ninguna fila de otra institución en las pruebas ni en la evaluación NL2SQL.",
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+        },
+        "E3": {
+          "valor": 5,
+          "justificacion": "Panel y chat consumen la misma API, que lee las mismas vistas VIS_*.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "E4": {
+          "valor": 4,
+          "justificacion": "Dos desplegables (frontend y backend) más la base de datos en Docker.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "E5": {
+          "valor": 5,
+          "justificacion": "La SPA consume la API REST y evoluciona aparte, como en la plantilla de referencia.",
+          "fuente": "Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "E6": {
+          "valor": 4,
+          "justificacion": "Conserva las capas de BI de Sequeira et al. (2024) y separa la presentación.",
+          "fuente": "Sequeira et al. (2024), Information, 15(4), 208, pp. 7, 15, https://doi.org/10.3390/info15040208"
+        }
+      }
+    },
+    {
+      "id": "microservicios",
+      "nombre": "Microservicios (modelo, NL2SQL, ETL y panel por separado)",
+      "puntajes": {
+        "E1": {
+          "valor": 5,
+          "justificacion": "Un servicio de ETL por perfil también lo permite.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "E2": {
+          "valor": 5,
+          "justificacion": "El aislamiento seguiría en el motor.",
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+        },
+        "E3": {
+          "valor": 3,
+          "justificacion": "Los patrones de base de datos por servicio y CQRS que describe Hassan et al. (2025, p. 16) separan los datos y obligan a sincronizarlos.",
+          "fuente": "Hassan et al. (2025), Big Data and Cognitive Computing, 9(10), 253, https://doi.org/10.3390/bdcc9100253"
+        },
+        "E4": {
+          "valor": 1,
+          "justificacion": "Migrar a microservicios exige un esfuerzo de desarrollo y recursos considerables y su éxito no está garantizado (Hassan et al., 2025, p. 1); serían al menos cuatro desplegables.",
+          "fuente": "Hassan et al. (2025), Big Data and Cognitive Computing, 9(10), 253, https://doi.org/10.3390/bdcc9100253"
+        },
+        "E5": {
+          "valor": 5,
+          "justificacion": "La interfaz sería un servicio más.",
+          "fuente": "Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "E6": {
+          "valor": 1,
+          "justificacion": "Ningún trabajo previo leído usa microservicios.",
+          "fuente": "Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        }
+      }
+    }
+  ],
+  "desempate": "E4",
+  "eleccion": {
+    "estado": "Aceptada",
+    "fecha": "2026-10-03",
+    "razon": "El estilo cliente-servidor desacoplado con backend en capas cumple todos los escenarios de calidad con dos desplegables. Frente al monolito en capas gana por independizar la interfaz (panel, chat y variantes móviles) sin multiplicar la operación. Frente a los microservicios evita un costo de operación y de consistencia que no se justifica para un equipo de 2 personas y una sola institución piloto.",
+    "consecuencias": [
+      "Se gana una interfaz que evoluciona sin tocar el backend y una API documentada.",
+      "Se sacrifica escalar cada pieza por separado.",
+      "Riesgo: si la carga creciera, el backend en capas permite separar primero el entrenamiento por lotes, que ya corre fuera del ciclo de la consulta.",
+      "Reglas verificables en decisiones/arquitectura_reglas.json."
+    ]
+  }
+}

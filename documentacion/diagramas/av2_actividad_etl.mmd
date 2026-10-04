@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph TI["1. Administrador de TI"]
+    direction TB
+    A1([Inicio]) --> A2["Registrar el perfil<br/>de la institución<br/>(SELECT con alias<br/>en etl/perfiles.py)"]
+    A2 --> A3["Ejecutar<br/>etl_academico.py<br/>--perfil X"]
+  end
+  subgraph ETL["2. Proceso ETL"]
+    direction TB
+    B1["Conectar a la base<br/>operativa y extraer<br/>con el SELECT del perfil"] --> B3{"¿Produce las 20<br/>columnas del contrato?"}
+    B3 -- No --> B4(["Detener e informar<br/>columnas faltantes"])
+    B3 -- Sí --> B5["Borrar SOLO esa institución:<br/>predicciones → hechos → alumnos"]
+    B5 --> B6["Cargar dimensiones: empresa,<br/>facultad, carrera, estado,<br/>canal, sede, tiempo"]
+    B6 --> B7["Cargar dim_alumno<br/>(institución + cédula)"]
+    B7 --> B8["Carga masiva de<br/>fact_matriculas<br/>(lotes de 20.000)"]
+  end
+  subgraph DW["3. Almacén CHAT (SQL Server)"]
+    direction TB
+    C1[("dim_* y<br/>fact_matriculas")] --> C2[("Vistas VIS_* con<br/>filtro SESSION_CONTEXT")]
+    C2 --> C3(["Listo para entrenar,<br/>calificar y segmentar"])
+  end
+  TI --> ETL
+  ETL --> DW

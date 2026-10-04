@@ -1,0 +1,17 @@
+{
+  "_comentario": "Vistas de CHAT que pueden entregar datos de OTRA empresa. Dos causas distintas confirmadas: (1) ficha_trabajador y rol_pago siempre leen de la base física 'RRHH' (confirmado 14/08/2026, solo AGRINAG S.A.S. cargada ahí) — un problema de DISEÑO, permanente hasta que se agregue un filtro por empresa. (2) cabecera_factura, cabecera_compra, Ventas, Compras y VIS_ALUMNO SÍ se reapuntan correctamente por empresa vía SP_MODIFICA_VISTA_IA, pero CHAT es un namespace de vistas COMPARTIDO por todo el servidor, no aislado por sesión/usuario — confirmado el 28/08/2026: con SONG activa, Reportes BI mostró 'Ingresos por Línea de Negocio' y 'Top 5 Productos' con datos reales de MONT (pensiones de colegio en una empresa agrícola), porque CHAT seguía apuntando a la última empresa activada por OTRA petición concurrente. Es una condición de carrera, no un error de la vista en sí — por eso antes de confiar en cualquiera de estas vistas el backend consulta en vivo si su definición ACTUAL apunta a la misma base que la empresa conectada (ver core/integridad_vistas.py::vista_aislada_para_empresa). Este 'activo' sigue siendo el interruptor maestro por si hace falta forzar el bloqueo total o desactivarlo por completo sin tocar código.",
+  "activo": true,
+  "verificado_el": "2026-08-28",
+  "empresas_comprobadas": 13,
+  "vistas_no_aisladas": [
+    "ficha_trabajador",
+    "rol_pago",
+    "cabecera_factura",
+    "cabecera_compra",
+    "Ventas",
+    "Compras",
+    "VIS_ALUMNO"
+  ],
+  "vistas_correctas": [],
+  "mensaje": "⚠️ **Dato de talento humano no disponible para esta empresa.** `ficha_trabajador` y `rol_pago` leen siempre de una única base física ('RRHH'), confirmada el 14/08/2026 con solo datos de AGRINAG S.A.S. cargados — ninguna otra empresa tiene personal o nómina en este sistema todavía. No es un dato incorrecto: es que no existe para la empresa seleccionada. Para habilitarlo hace falta cargar los datos de esa empresa en RRHH y agregar un filtro por empresa a estas vistas (hoy no lo tienen) al corregir `SP_MODIFICA_VISTA_IA`. Las cifras de ventas, compras y alumnos sí son confiables para la empresa activa cuando la verificación en vivo lo confirma."
+}

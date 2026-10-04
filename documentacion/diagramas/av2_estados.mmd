@@ -1,0 +1,23 @@
+stateDiagram-v2
+  direction LR
+  state "Trayectoria de matrícula (un periodo tras otro)" as T {
+    [*] --> ACTIVO: primera matrícula
+    ACTIVO --> ACTIVO: aprueba el periodo y se matricula en el siguiente
+    ACTIVO --> RETIRADO: deja de matricularse
+    ACTIVO --> GRADUADO: culmina el plan
+    ACTIVO --> EGRESADO: culmina sin titularse
+    ACTIVO --> REPROBADO: no aprueba (OULAD)
+    RETIRADO --> [*]
+    GRADUADO --> [*]
+    EGRESADO --> [*]
+    REPROBADO --> [*]
+  }
+  state "Riesgo predicho para el próximo periodo" as R {
+    [*] --> BAJO: p < umbral / 2
+    [*] --> MEDIO: umbral / 2 ≤ p < umbral
+    [*] --> ALTO: p ≥ umbral
+    BAJO --> MEDIO: nueva calificación
+    MEDIO --> ALTO: nueva calificación
+    ALTO --> MEDIO: mejora tras intervención
+    MEDIO --> BAJO: mejora tras intervención
+  }

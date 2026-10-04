@@ -1,0 +1,28 @@
+{
+  "mappings": [
+    {
+      "human_terms": ["gente", "personal", "trabajadores", "empleados", "chicos", "nomina", "plantilla", "colaboradores"],
+      "view_template": "ficha_trabajador"
+    },
+    {
+      "human_terms": ["ventas", "facturacion", "ingresos", "vendimos", "se vendera", "facturas", "ventas del mes", "de ventas del mes", "de ventas de", "comprobantes de venta"],
+      "view_template": "cabecera_factura"
+    },
+    {
+      "human_terms": ["pagos", "sueldos", "rol", "salarios", "quincena", "pagos de nomina", "desembolsos", "roles de pago"],
+      "view_template": "rol_pago"
+    },
+    {
+      "human_terms": ["compras", "gastos", "proveedores", "compramos", "facturas de compra"],
+      "view_template": "cabecera_compra"
+    },
+    {
+      "human_terms": ["inventario", "stock", "bodega", "productos", "items", "existencias"],
+      "view_template": "Movimientos_Inventario"
+    },
+    {
+      "human_terms": ["estudiantes", "alumnos", "matriculas", "notas", "clases", "academico"],
+      "view_template": "VIS_ALUMNO"
+    }
+  ]
+}

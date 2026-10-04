@@ -1,0 +1,33 @@
+flowchart LR
+  AUT(("Autoridad académica<br/>(decano, director)"))
+  BIE(("Bienestar estudiantil"))
+  ADM(("Administrador de TI"))
+  IA(("Motor de IA<br/>(actor de sistema)"))
+
+  subgraph SIS["Sistema de inteligencia de negocios"]
+    CU1["CU-01 Ver alumnos en riesgo<br/>del próximo periodo"]
+    CU2["CU-02 Ver por qué un alumno<br/>está en riesgo (factores)"]
+    CU3["CU-03 Consultar en lenguaje natural"]
+    CU4["CU-04 Ver segmentación de carreras"]
+    CU5["CU-05 Comparar la tasa propia<br/>con referentes externos"]
+    CU6["CU-06 Consultar la confiabilidad<br/>del modelo"]
+    CU7["CU-07 Exportar reportes"]
+    CU8["CU-08 Conectar una institución<br/>(perfil de mapeo)"]
+    CU9["CU-09 Reentrenar y recalificar<br/>(procesos por lotes)"]
+    CU10["CU-10 Ejecutar SQL de solo lectura<br/>sobre vistas gobernadas"]
+  end
+
+  AUT --> CU1
+  AUT --> CU2
+  AUT --> CU3
+  AUT --> CU4
+  AUT --> CU5
+  AUT --> CU6
+  AUT --> CU7
+  BIE --> CU1
+  BIE --> CU2
+  BIE --> CU3
+  ADM --> CU8
+  ADM --> CU9
+  CU3 -. "incluye" .-> CU10
+  IA --> CU10

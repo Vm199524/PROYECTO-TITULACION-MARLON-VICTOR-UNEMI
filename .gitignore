@@ -1,0 +1,80 @@
+# ══════════════════════════════════════════════════════════════════════════
+# Proyecto de titulación — Marlon Pérez y Víctor Lluilema (UNEMI)
+# Qué NO se sube al repositorio y por qué.
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Secretos y configuración local ────────────────────────────────────────
+# Las credenciales viven solo en .env locales (ver los .env.example).
+.env
+*.env
+.env.*
+!.env.example
+!**/.env.example
+codigo_fuente/backend/security_config.json
+codigo_fuente/backend/env.yaml
+
+# ── Carpetas solo locales (no forman parte del repositorio) ───────────────
+_POR_REVISAR_ELIMINAR/
+_MATERIAL_EXTERNO_NO_SUBIR/
+ANEXO_USO_ETICO_IA/
+
+# ── Dependencias y entornos (se reinstalan) ───────────────────────────────
+node_modules/
+venv/
+venv_*/
+.venv/
+
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# ── Builds ────────────────────────────────────────────────────────────────
+dist/
+
+# ── Datos ─────────────────────────────────────────────────────────────────
+# Dataset público OULAD (CC BY 4.0, ~490 MB): se descarga aparte (ver datos/README.md).
+datos/externos/
+*.db
+*.sqlite
+
+# ── Datos de ejecución, cachés y logs del backend ─────────────────────────
+codigo_fuente/backend/.cache/
+codigo_fuente/backend/cache/*.json
+codigo_fuente/backend/knowledge/consolidated_patterns.json
+codigo_fuente/backend/debug/
+codigo_fuente/backend/security_logs/
+codigo_fuente/backend/tmp/
+codigo_fuente/backend/eval/ultima_corrida.log
+*.log
+
+# ── Material con derechos de autor o datos personales ─────────────────────
+# PDF de artículos científicos (se citan por DOI; no se redistribuyen) y exportaciones
+# crudas de Scopus (los registros seleccionados están en los .ris).
+documentacion/literatura/pdfs/
+documentacion/literatura/*_scopus.csv
+# Evidencias de tutorías con datos personales y documentos de la docente.
+documentacion/evidencias_tutorias/
+documentacion/observaciones_tutoras/Listado_Grupos_Temas_Recomendaciones.docx
+# Contraseñas de los usuarios de prueba (se entregan aparte).
+documentacion/tecnica/USUARIOS_DE_PRUEBA.md
+
+# ── Archivos pesados ──────────────────────────────────────────────────────
+*.mp4
+*.mov
+*.zip
+*.rar
+
+# ── Archivos temporales de Office y del sistema ───────────────────────────
+~$*
+*.tmp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ── IDE ───────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+
+# Contraseñas locales de los usuarios de prueba
+codigo_fuente/backend/usuarios_prueba.local.json

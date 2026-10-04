@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VicMar Data AI - Inteligencia de Negocios</title>
+    <meta name="description" content="Sistema de Inteligencia Artificial y Analítica Empresarial Multiempresa para control gerencial y toma de decisiones." />
+    <!-- Open Graph / Redes Sociales -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="VicMar Data AI - Inteligencia de Negocios" />
+    <meta property="og:description" content="Sistema de Inteligencia Artificial y Analítica Empresarial Multiempresa para control gerencial y toma de decisiones." />
+    <meta property="og:image" content="/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;300;400;600;900&display=swap" rel="stylesheet">
+    <!--
+        Fondo oscuro en línea, directo en el <head> (30/08/2026, a pedido
+        del usuario: la ventana se abre en blanco ~3s antes de verse el
+        tema real). La clase de Tailwind "bg-[#020617]" del <body> no sirve
+        para esto: Tailwind se inyecta vía JS/Vite, así que hasta que ese
+        bundle carga, el navegador pinta su blanco por defecto — la "mala
+        imagen" que reportó. Un <style> plano aquí no depende de ningún JS:
+        el navegador lo aplica al instante, en el primer pintado.
+    -->
+    <style>html,body{background:#020617;margin:0}</style>
+    <!--
+        NOTA (31/08/2026): aquí vivía una copia estática en HTML/CSS de la
+        tarjeta de login ("ACCEDER AL SISTEMA"), pensada para pintarse en el
+        primer frame mientras cargaba el bundle de React. Se eliminó a pedido
+        del usuario: era una tarjeta MUERTA — su botón era un <div> sin
+        controlador, así que durante los 2-3 s previos al montaje de React el
+        usuario veía un login que no reaccionaba a los clics. Un placeholder
+        que parece interactivo pero no lo es resulta peor que el fondo oscuro.
+        Si en el futuro se quiere volver a cubrir ese hueco, debe hacerse con
+        algo que NO simule un control accionable (por ejemplo, solo el logo).
+    -->
+</head>
+
+<body class="bg-[#020617]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

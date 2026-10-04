@@ -1,0 +1,340 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;600;700;900&display=swap');
+@import "tailwindcss";
+
+/* ============================================================
+   VICMAR DATA AI — DESIGN SYSTEM v4.0 (Grok/GitHub Dark Style)
+   ============================================================ */
+
+:root {
+    /* Paleta Principal */
+    --bg-main:    #0D1117;
+    --bg-surface: #161B22;
+    --bg-card:    #1C2128;
+    --border:     #30363D;
+    --border-muted: #21262D;
+
+    /* Acento */
+    --accent:         #3B82F6;
+    --accent-hover:   #2563EB;
+    --accent-subtle:  rgba(59, 130, 246, 0.12);
+    --accent-border:  rgba(59, 130, 246, 0.40);
+
+    /* Texto */
+    --text-primary:   #F0F6FC;
+    --text-secondary: #C9D1D9;
+    --text-muted:     #8B949E;
+    --text-faint:     #484F58;
+
+    /* Danger */
+    --danger:        #ef4444;
+    --danger-subtle: rgba(239, 68, 68, 0.12);
+    --danger-border: rgba(239, 68, 68, 0.35);
+
+    /* Fuentes */
+    --font-main: 'Inter', 'Outfit', sans-serif;
+
+    /* Radios y sombras */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+/* ─── Reset ───
+   IMPORTANTE: va dentro de @layer base. Tailwind v4 declara sus propias capas
+   (@layer theme, base, components, utilities) y una regla SIN capa le gana a
+   cualquier regla que sí esté en una capa, sin importar especificidad. Este
+   reset estaba escrito sin capa, así que * { margin:0; padding:0 } le ganaba
+   a TODAS las utilidades de Tailwind (p-*, px-*, mx-auto, etc.) en toda la
+   app, dejándolas sin efecto real aunque el código las usara bien. Puesto en
+   @layer base, queda por debajo de @layer utilities en la cascada y las
+   utilidades vuelven a poder anularlo, que es el comportamiento esperado. */
+@layer base {
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+}
+
+html { zoom: 1.0; }
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    overflow: hidden;
+    height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+#root { height: 100%; }
+
+/* ─── Componentes reutilizables ─── */
+
+.glass-panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.glass-card:hover {
+    border-color: var(--accent-border);
+    background: rgba(30, 38, 50, 0.9);
+}
+
+/* Sidebar icon button */
+.sidebar-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    transition: color 0.15s, background 0.15s;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    position: relative;
+}
+.sidebar-icon-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.06);
+}
+.sidebar-icon-btn.active {
+    color: var(--text-primary);
+}
+.sidebar-icon-btn.active::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+}
+
+/* KPI Cards */
+.kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.kpi-card:hover {
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 1px var(--accent-subtle);
+}
+
+/* Chat bubbles */
+.bubble-ai {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px 16px 16px 16px;
+    padding: 14px 18px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 75%;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.bubble-user {
+    background: var(--accent);
+    border-radius: 16px 4px 16px 16px;
+    padding: 12px 18px;
+    color: white;
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 65%;
+    margin-left: auto;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+/* Input bar */
+.chat-input-area {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+}
+
+.chat-textarea {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    font-size: 14px;
+    resize: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    line-height: 1.5;
+}
+.chat-textarea::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+.chat-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+}
+.send-btn:hover { background: var(--accent-hover); }
+.send-btn:active { transform: scale(0.92); }
+.send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Botones circulares del input de chat (adjuntar, dictado, sugerencias):
+   antes solo tenían estilo inline sin ningún estado de hover/click, así que
+   se veían "muertos" al pasar el mouse — a diferencia del botón de enviar
+   (.send-btn, arriba), que ya tenía el suyo. Reportado por el usuario
+   (29/08/2026). No se puede usar `:hover` en un `style={}` de React, por eso
+   esta clase se aplica junto al inline style existente. */
+.chat-icon-btn { transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease; }
+.chat-icon-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.22) !important; }
+.chat-icon-btn:active:not(:disabled) { transform: scale(0.92); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+.chat-scrollbar::-webkit-scrollbar { width: 4px; }
+.chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.chat-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+
+/* Selects */
+select { color-scheme: dark; }
+select option { background-color: var(--bg-card) !important; color: var(--text-primary) !important; }
+
+/* Animaciones */
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.animate-quantum { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Correction hint */
+.correction-hint {
+    font-family: var(--font-main);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Quick buttons */
+.quick-questions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.quick-btn {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-muted);
+    border-radius: 20px;
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.quick-btn:hover {
+    background: var(--accent-subtle);
+    border-color: var(--accent-border);
+    color: var(--accent);
+}
+
+/* Inputs y botones formato legacy (login, etc.) */
+.quantum-input {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.875rem 1.25rem;
+    color: white;
+    transition: all 0.2s;
+}
+.quantum-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+.quantum-button {
+    background: var(--accent);
+    padding: 0.875rem 1.75rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    color: white;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+.quantum-button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+/* Tipografías legacy */
+.font-vanguard { font-family: 'Outfit', sans-serif; font-weight: 900; }
+.font-tech     { font-family: 'Inter', sans-serif; }
+.text-aluminum { color: var(--text-muted); }
+/* ══════════════════════════════════════════════════════════════════════
+   REGLA DE SEGURIDAD VISUAL — texto y emojis NUNCA deben tocar el borde
+   de la caja que los encierra (rectangular, ovalada, redonda o de
+   cualquier otra forma). Regla explícita del usuario, repetida varias
+   veces a lo largo del proyecto porque cada vez que se corregía a mano
+   un caso puntual, el siguiente componente nuevo volvía a cometer el
+   mismo error.
+
+   Ya existía un intento anterior de esto (`.premium-safe-card`), pero
+   quedó como una clase que ningún componente real llegaba a usar — una
+   regla que no se aplica en ningún lado no evita nada. Esta la reemplaza:
+   CUALQUIER caja con borde, fondo delimitado o esquinas redondeadas que
+   contenga texto o emoji debe llevar `.safe-text-box`. No hay forma de
+   "olvidar" el padding a medias, porque la caja no tiene ninguna otra
+   fuente de espaciado propia.
+
+   No se puede convertir esto en una regla 100% automática para TODO
+   elemento con borde vía CSS puro sin romper elementos que SÍ deben ir
+   sin padding a propósito (puntos de estado, avatares circulares,
+   botones cuadrados de solo ícono) — de ahí que sea una clase a aplicar,
+   no un selector universal. ═════════════════════════════════════════ */
+.safe-text-box {
+    padding-block: 0.625rem;   /* 10px arriba/abajo */
+    padding-inline: 1rem;      /* 16px izquierda/derecha */
+    overflow: hidden;          /* nada puede visualmente "sangrar" fuera de la curva */
+}
