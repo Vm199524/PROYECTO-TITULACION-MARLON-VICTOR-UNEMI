@@ -399,10 +399,9 @@ GO
 -- usuario mapeado (y con el usuario 'guest' deshabilitado, el default de
 -- SQL Server), ese login sencillamente no puede conectarse a esas bases.
 -- Se refuerza explicitamente por si 'guest' estuviera habilitado.
-USE ALIM;
-GO
-IF EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'guest' AND authentication_type_desc <> 'NONE')
-    REVOKE CONNECT FROM guest;
+-- ALIM es una base operativa opcional: si no existe, el bloque se omite.
+IF DB_ID('ALIM') IS NOT NULL
+    EXEC('USE ALIM; IF EXISTS (SELECT 1 FROM sys.database_principals WHERE name = ''guest'' AND authentication_type_desc <> ''NONE'') REVOKE CONNECT FROM guest;');
 GO
 
 USE UNEMI_PRUEBAS;

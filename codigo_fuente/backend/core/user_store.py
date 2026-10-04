@@ -99,6 +99,13 @@ ROLES_POR_DEFECTO = {
         "scope": "OPERATIONS",
         "modules": ["OPERACIONES"],
     },
+    "ACADEMICO": {
+        "level": 3,
+        "description": "Acceso exclusivo a la gestión académica: alumnos, matrículas, riesgo de abandono, "
+                       "segmentos de carreras y referentes. No incluye datos financieros, de ventas ni de nómina.",
+        "scope": "ACADEMIC",
+        "modules": ["ACADEMICO"],
+    },
     "GUEST": {
         "level": 5,
         "description": "Solo lectura nivel demo.",

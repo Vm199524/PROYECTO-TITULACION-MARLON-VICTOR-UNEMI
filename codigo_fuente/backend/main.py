@@ -1729,6 +1729,11 @@ def execute_chat_query(connector, sql: str, db_label: str, empresa: str = "", **
     target_db=db_label)` en las rutas de /api/query.
     """
     if db_label == "CHAT":
+        from etl.perfiles import institucion_de_base
+
+        # El almacén guarda cada institución con el nombre de su perfil de ETL,
+        # no con el de su base operativa (OULAD_PRUEBAS → OULAD_UK).
+        empresa = institucion_de_base(empresa) if empresa else empresa
         reader = _get_chat_reader_connector()
         if reader is not None:
             cols, rows, err = reader.execute_query_with_context(sql, empresa=empresa, **kwargs)
@@ -1743,11 +1748,20 @@ def execute_chat_query(connector, sql: str, db_label: str, empresa: str = "", **
     return connector.execute_query(sql, target_db=db_label, **kwargs)
 
 
+def _token_con_modulo_academico(current_user: dict = Depends(get_token_data)) -> dict:
+    """Exige el módulo ACADEMICO (o el rol ADMINISTRADOR) para leer predicciones, segmentos y referentes."""
+    modulos = {str(m).strip().upper() for m in (current_user.get("modules") or [])}
+    rol = str(current_user.get("role", "")).strip().upper()
+    if rol != "ADMINISTRADOR" and "ACADEMICO" not in modulos:
+        raise HTTPException(status_code=403, detail="Tu rol no tiene acceso al módulo académico.")
+    return current_user
+
+
 @app.get("/api/ml/prediccion-abandono", tags=["Inteligencia"])
 def get_prediccion_abandono(
     target_db: str = Query(""),
     limit: int = Query(50, ge=1, le=500),
-    current_user: dict = Depends(get_token_data),
+    current_user: dict = Depends(_token_con_modulo_academico),
 ):
     """
     Panel de riesgo de abandono: alumnos ACTIVOS de la empresa conectada,
@@ -1805,7 +1819,7 @@ def get_prediccion_abandono(
 @app.get("/api/ml/evaluacion-modelo", tags=["Inteligencia"])
 def get_evaluacion_modelo(
     target_db: str = Query(""),
-    current_user: dict = Depends(get_token_data),
+    current_user: dict = Depends(_token_con_modulo_academico),
 ):
     """
     Métricas reales de validación del modelo de la institución activa (CV
@@ -1835,7 +1849,7 @@ def get_evaluacion_modelo(
 @app.get("/api/ml/clusters-carrera", tags=["Inteligencia"])
 def get_clusters_carrera(
     target_db: str = Query(""),
-    current_user: dict = Depends(get_token_data),
+    current_user: dict = Depends(_token_con_modulo_academico),
 ):
     """
     Segmentación de carreras por perfil de riesgo (K-Means sobre tasa de
@@ -1869,7 +1883,7 @@ def get_clusters_carrera(
 @app.get("/api/benchmarking/comparativo", tags=["Inteligencia"])
 def get_benchmarking_comparativo(
     target_db: str = Query(""),
-    current_user: dict = Depends(get_token_data),
+    current_user: dict = Depends(_token_con_modulo_academico),
 ):
     """
     Módulo 2 (benchmarking institucional): compara la tasa de abandono

@@ -142,6 +142,21 @@ def obtener_perfil(nombre: str) -> PerfilInstitucion:
     return perfil
 
 
+def institucion_de_base(nombre_base: str) -> str:
+    """Código de institución con que el almacén CHAT guarda los datos de una base operativa.
+
+    La interfaz identifica la institución por el nombre de la base a la que se
+    conectó (por ejemplo, OULAD_PRUEBAS), pero el ETL guarda las filas con el
+    nombre del perfil (OULAD_UK). Si ningún perfil usa esa base, el nombre se
+    devuelve tal cual.
+    """
+    base = (nombre_base or "").strip().upper()
+    for perfil in PERFILES.values():
+        if perfil.base_datos_origen.upper() == base:
+            return perfil.nombre
+    return base
+
+
 def validar_columnas(columnas_obtenidas: list[str], perfil: PerfilInstitucion) -> None:
     faltantes = set(COLUMNAS_REQUERIDAS) - set(columnas_obtenidas)
     if faltantes:

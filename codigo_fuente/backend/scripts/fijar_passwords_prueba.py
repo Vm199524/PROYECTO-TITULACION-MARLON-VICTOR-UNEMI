@@ -50,10 +50,24 @@ def _leer_claves() -> dict:
     return claves
 
 
-def main() -> int:
+def _cargar_config() -> dict:
+    """Lee el almacén de usuarios; en una instalación nueva parte de los roles por defecto."""
+    if not ARCHIVO.exists():
+        from core.user_store import ROLES_POR_DEFECTO
+
+        print(f"{ARCHIVO.name} no existe: se crea con los roles por defecto.")
+        return {"roles": dict(ROLES_POR_DEFECTO), "users": []}
     with open(ARCHIVO, "r", encoding="utf-8") as f:
         config = json.load(f)
+    if "ACADEMICO" not in config.setdefault("roles", {}):
+        from core.user_store import ROLES_POR_DEFECTO
 
+        config["roles"]["ACADEMICO"] = dict(ROLES_POR_DEFECTO["ACADEMICO"])
+    return config
+
+
+def main() -> int:
+    config = _cargar_config()
     usuarios = config.setdefault("users", [])
     por_username = {str(u.get("username", "")).strip().lower(): u for u in usuarios}
 

@@ -15,21 +15,18 @@ QUÉ HACE
 
 POR QUÉ ES UN SCRIPT Y NO EL ENDPOINT NORMAL
 --------------------------------------------
-El endpoint `POST /api/admin/users` exige contraseñas de 8 caracteres como
-mínimo, y la contraseña inicial que eligió el desarrollador tiene 7. Esa regla
-es correcta para las cuentas del día a día y no se toca; esta alta puntual se
-hace desde el servidor, con acceso al archivo, que es el único lugar desde
-donde tiene sentido crear la cuenta raíz del sistema.
+La cuenta raíz del sistema se crea desde el servidor, con acceso directo al
+almacén de usuarios, porque ninguna cuenta de la interfaz debe poder crearla.
 
-Ojo: cuando el desarrollador cambie su contraseña más adelante desde la
-pantalla de Mi Perfil o desde Gestión de Usuarios, la nueva SÍ tendrá que
-cumplir el mínimo de 8 caracteres.
+La contraseña nunca está en el código: se pasa con --password o con la
+variable de entorno TRIPLEA_BOOTSTRAP_ADMIN_PASSWORD, y debe tener al menos 8
+caracteres, la misma regla que aplica Gestión de Usuarios.
 
 USO
 ---
     cd backend
-    python scripts/crear_usuario_desarrollador.py
-    python scripts/crear_usuario_desarrollador.py --usuario adminvm --password otra_clave
+    python scripts/crear_usuario_desarrollador.py --password "<clave de 8 o más caracteres>"
+    python scripts/crear_usuario_desarrollador.py --usuario adminvm --password "<clave>"
 
 Es idempotente: ejecutarlo dos veces no duplica la cuenta ni pierde el
 historial de accesos.
@@ -51,11 +48,16 @@ from security import get_password_hash  # noqa: E402
 ARCHIVO_USUARIOS = BASE_DIR / "security_config.json"
 
 USUARIO_POR_DEFECTO = "adminvm"
-CLAVE_POR_DEFECTO = "admin95"
+LONGITUD_MINIMA_CLAVE = 8
 NOMBRE_POR_DEFECTO = "Desarrollador"
 
 
 def _cargar() -> dict:
+    """Lee el almacén de usuarios; en una instalación nueva parte de los roles por defecto."""
+    if not ARCHIVO_USUARIOS.exists():
+        from core.user_store import ROLES_POR_DEFECTO
+
+        return {"roles": dict(ROLES_POR_DEFECTO), "users": []}
     with open(ARCHIVO_USUARIOS, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -70,7 +72,8 @@ def _guardar(config: dict) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--usuario", default=USUARIO_POR_DEFECTO)
-    parser.add_argument("--password", default=CLAVE_POR_DEFECTO)
+    parser.add_argument("--password", default=os.getenv("TRIPLEA_BOOTSTRAP_ADMIN_PASSWORD", ""),
+                        help="Clave de la cuenta (o variable TRIPLEA_BOOTSTRAP_ADMIN_PASSWORD).")
     parser.add_argument("--nombre", default=NOMBRE_POR_DEFECTO)
     parser.add_argument("--email", default="")
     parser.add_argument("--alias", default="VM", help="Alias con el que la IA te llamará.")
@@ -79,6 +82,10 @@ def main() -> int:
     usuario = args.usuario.strip().lower()
     if not usuario:
         print("El nombre de usuario no puede estar vacío.")
+        return 1
+    if len(args.password) < LONGITUD_MINIMA_CLAVE:
+        print(f"Indica una contraseña de al menos {LONGITUD_MINIMA_CLAVE} caracteres con --password "
+              "o con la variable TRIPLEA_BOOTSTRAP_ADMIN_PASSWORD.")
         return 1
 
     config = _cargar()
