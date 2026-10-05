@@ -179,8 +179,8 @@ export function DesktopHeader({
                             onClick={toggleSelector}
                             aria-haspopup="dialog"
                             aria-expanded={selectorOpen}
-                            aria-label="Cambiar empresa activa"
-                            title="Cambiar empresa"
+                            aria-label="Cambiar institución activa"
+                            title="Cambiar institución"
                             className="flex items-center gap-3 transition-colors hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50"
                             style={{
                                 padding: '6px 14px 6px 18px',
@@ -195,7 +195,7 @@ export function DesktopHeader({
                             <Building2 size={14} className="text-cyan-400" aria-hidden="true" />
                             <div className="flex flex-col items-start">
                                 <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(34, 211, 238, 0.6)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 1 }}>
-                                    Empresa Activa
+                                    Institución activa
                                 </span>
                                 {/* Solo el nombre comercial de la empresa, nunca el código
                                     interno de la base (p. ej. «SONG»), que es un

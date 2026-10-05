@@ -220,7 +220,7 @@ export function DashboardMobile({
                                 )}
 
                                 <div className="mb-6">
-                                    <p className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Empresa activa</p>
+                                    <p className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Institución activa</p>
                                     <ContextNodes
                                         availableDBs={availableDBs}
                                         connInfo={connInfo}

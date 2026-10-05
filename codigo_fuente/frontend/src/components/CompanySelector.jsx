@@ -134,7 +134,7 @@ export function CompanySelector({
 
     const etiquetaActual = empresaActiva
         ? `${empresaActiva.database} — ${empresaActiva.business_name || empresaActiva.database}`
-        : (activo || 'Selecciona una empresa');
+        : (activo || 'Selecciona una institución');
 
     const panel = (
         <div
@@ -152,7 +152,7 @@ export function CompanySelector({
                             onChange={(e) => { setBusqueda(e.target.value); setIndiceResaltado(0); }}
                             onKeyDown={alPresionarTecla}
                             placeholder="Buscar por código o nombre…"
-                            aria-label="Buscar empresa"
+                            aria-label="Buscar institución"
                             aria-controls="lista-empresas"
                             className="w-full bg-transparent text-[14px] text-white outline-none placeholder:text-white/25"
                         />
@@ -165,7 +165,7 @@ export function CompanySelector({
                         ref={listaRef}
                         id="lista-empresas"
                         role="listbox"
-                        aria-label="Empresas disponibles"
+                        aria-label="Instituciones disponibles"
                         className="max-h-[320px] overflow-y-auto py-1 custom-scrollbar"
                     >
                         {filtradas.length === 0 && (
@@ -234,7 +234,7 @@ export function CompanySelector({
                 role="combobox"
                 aria-expanded={abierto}
                 aria-haspopup="listbox"
-                aria-label="Seleccionar empresa"
+                aria-label="Seleccionar institución"
                 className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-5 py-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 ${
                     abierto
                         ? 'border-cyan-500/40 bg-cyan-500/[0.06]'
@@ -245,7 +245,7 @@ export function CompanySelector({
                     <Building2 size={17} className="shrink-0 text-cyan-400" aria-hidden="true" />
                     <span className="min-w-0">
                         <span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-white/35">
-                            Empresa activa
+                            Institución activa
                         </span>
                         <span className="block truncate text-[15px] font-bold text-white">
                             {etiquetaActual}

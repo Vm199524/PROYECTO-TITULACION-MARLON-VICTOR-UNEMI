@@ -439,7 +439,7 @@ export function DataChannels({
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm leading-relaxed text-white/65">
-                        Selecciona una empresa para activar su contexto de trabajo. VicMar Data AI adapta consultas, módulos y
+                        Selecciona una institución para activar su contexto de trabajo. VicMar Data AI adapta consultas, módulos y
                         respuestas según la estructura de datos detectada en la base elegida.
                     </div>
                 </div>
