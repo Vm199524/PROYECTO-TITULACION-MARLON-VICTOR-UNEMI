@@ -272,7 +272,7 @@ export function ChatArea({
                             style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', zIndex: 2 }}
                         >
                             <p className="mb-2 px-1 text-[11px] font-bold uppercase tracking-wide text-white/35">
-                                Sugerencias para {shortName || 'esta empresa'}
+                                Sugerencias para {shortName || 'esta institución'}
                             </p>
                             <div className="flex flex-col gap-1">
                                 {suggestedQuestions.map((question, i) => (

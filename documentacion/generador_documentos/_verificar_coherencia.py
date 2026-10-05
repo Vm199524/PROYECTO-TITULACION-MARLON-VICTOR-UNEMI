@@ -8,7 +8,9 @@ Revisa Avance_2_VicMar_Data_AI.docx y su PDF, y termina con código 1 si:
      (metrics.json, metricas_clustering.json, resultados_nl2sql_*.json), o el
      Resumen supera 150 palabras.
   3. Un apartado no alcanza el mínimo de páginas de la plantilla UNEMI.
-  4. «Referencias» o «Anexos» llevan número, que el formato oficial no admite.
+  4. Los capítulos finales no siguen la numeración del formato oficial
+     (4. Conclusiones y recomendaciones, 5. Referencias, 6. Anexos,
+     7. Anexo de información académica) o usan numeración automática.
 
 Uso (después de _build_avance2.py y _docx_a_pdf.ps1):
     python _verificar_coherencia.py
@@ -104,7 +106,7 @@ if len(resumen.split()) > 150:
 
 # ── 3. Páginas mínimas por apartado ───────────────────────────────────────
 pdf = pymupdf.open(str(PDF))
-marcas = ['2. Análisis del caso', '3. Diseño y desarrollo', '3.1 Metodología', '3.2 Diseño', '3.3 Desarrollo', 'Referencias']
+marcas = ['2. Análisis del caso', '3. Diseño y desarrollo', '3.1 Metodología', '3.2 Diseño', '3.3 Desarrollo', '4. Conclusiones']
 pos = {}
 for i, pag in enumerate(pdf):
     if i < 8:
@@ -115,7 +117,7 @@ for i, pag in enumerate(pdf):
             if s.startswith(m) and m not in pos and len(s) < len(m) + 25:
                 pos[m] = i + 1
 minimos = {'2. Análisis del caso': ('3. Diseño y desarrollo', 3), '3.1 Metodología': ('3.2 Diseño', 3),
-           '3.2 Diseño': ('3.3 Desarrollo', 6), '3.3 Desarrollo': ('Referencias', 6)}
+           '3.2 Diseño': ('3.3 Desarrollo', 6), '3.3 Desarrollo': ('4. Conclusiones', 6)}
 for inicio, (fin, minimo) in minimos.items():
     if inicio in pos and fin in pos:
         paginas = pos[fin] - pos[inicio]
@@ -126,15 +128,16 @@ for inicio, (fin, minimo) in minimos.items():
     else:
         errores.append(f'No se encontró el apartado {inicio} o {fin} en el PDF')
 
-# ── 4. Numeración de Referencias y Anexos (el formato oficial no las numera) ──
-for p in doc.paragraphs:
-    if p.style.name.startswith('Heading 1'):
-        titulo = p.text.strip()
-        if re.match(r'^\d+\.?\s*(Referencias|Anexos)', titulo):
-            errores.append(f'Título numerado fuera del formato: «{titulo}»')
-        pPr = p._p.pPr
-        if titulo.startswith(('Referencias', 'Anexos')) and pPr is not None and pPr.numPr is not None:
-            errores.append(f'Título con numeración automática fuera del formato: «{titulo}»')
+# ── 4. Numeración de los capítulos finales según el formato oficial ──────
+ESPERADOS = ['4. Conclusiones y recomendaciones', '5. Referencias', '6. Anexos', '7. Anexo de información académica']
+titulos1 = [p for p in doc.paragraphs if p.style.name.startswith('Heading 1') and p.text.strip()]
+for esperado in ESPERADOS:
+    if not any(p.text.strip().startswith(esperado) for p in titulos1):
+        errores.append(f'Falta el capítulo «{esperado}» con la numeración del formato oficial')
+for p in titulos1:
+    pPr = p._p.pPr
+    if pPr is not None and pPr.numPr is not None and re.search(r'Referencias|Anexo', p.text):
+        errores.append(f'Título con numeración automática: «{p.text.strip()}»')
 
 print(f'Referencias: {len(refs)}  |  Cifras verificadas: {len(esperadas)}  |  Páginas del PDF: {len(pdf)}')
 if errores:

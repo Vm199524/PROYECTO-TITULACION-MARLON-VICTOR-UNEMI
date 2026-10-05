@@ -457,7 +457,7 @@ function FormularioUsuario({ roles, usuario = null, onGuardado, onCancelar }) {
                         />
                     </Campo>
                     <Campo label="Correo electrónico">
-                        <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="juan@empresa.com" className="campo-input" />
+                        <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="usuario@unemi.edu.ec" className="campo-input" />
                     </Campo>
                     <Campo label="Rol">
                         <div className="flex flex-wrap gap-2">

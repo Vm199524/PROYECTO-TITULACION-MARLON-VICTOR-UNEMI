@@ -73,7 +73,7 @@ export function exportExecutivePdf({
   doc.setTextColor(...darkTextColor);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text(companyName || 'Empresa Certificada', 14, 44);
+  doc.text(companyName || 'Institución', 14, 44);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
@@ -173,7 +173,7 @@ export function exportExecutivePdf({
     doc.setFontSize(7.5);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `Generado por VicMar Data AI BI Quantum Core  •  Usuario: ${generatedBy}  •  Página ${i} de ${pageCount}`,
+      `Generado por VicMar Data AI  •  Usuario: ${generatedBy}  •  Página ${i} de ${pageCount}`,
       14,
       288
     );
@@ -183,9 +183,9 @@ export function exportExecutivePdf({
   // Descarga: el nombre del archivo usa el nombre real de la empresa y no el
   // código interno de la base (p. ej. "SONG"), que es solo un identificador
   // técnico.
-  const slug = String(companyName || companyCode || 'Empresa')
+  const slug = String(companyName || companyCode || 'Institucion')
     .normalize('NFD').replace(/\p{Diacritic}/gu, '')
-    .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'Empresa';
+    .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'Institucion';
   const filename = `Reporte_Ejecutivo_${slug}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(filename);
 }

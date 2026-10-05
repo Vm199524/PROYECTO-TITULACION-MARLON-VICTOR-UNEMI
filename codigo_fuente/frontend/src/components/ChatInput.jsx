@@ -415,8 +415,8 @@ export const ChatInput = ({
                                 onClick={alternarSugerencias}
                                 disabled={loading}
                                 aria-expanded={mostrarSugerencias}
-                                aria-label="Ver preguntas sugeridas para esta empresa"
-                                title="Sugerencias para esta empresa"
+                                aria-label="Ver preguntas sugeridas para esta institución"
+                                title="Sugerencias para esta institución"
                                 className="chat-icon-btn"
                                 style={{
                                     width: 42, height: 42, borderRadius: '50%',

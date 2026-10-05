@@ -168,6 +168,56 @@ assert len(RESUMEN.split()) <= 150, f'Resumen con {len(RESUMEN.split())} palabra
 reemplazar_texto(buscar('Se desarrolló un prototipo'), RESUMEN)
 reemplazar_texto(buscar('A business intelligence prototype'), ABSTRACT)
 
+# ── Título oficial, ficha de registro, «1.1 Descripción» y Anexo académico ──
+TITULO_VIEJO = ('Desarrollo de un modelo predictivo de abandono estudiantil mediante inteligencia de negocios y '
+                'procesamiento de lenguaje natural')
+TITULO = ('Prototipo de un sistema web para predecir el abandono en estudiantes universitarios mediante aprendizaje '
+          'automático y consulta conversacional')
+
+
+def todos_parrafos(contenedor):
+    """Párrafos del cuerpo y de las tablas (incluidas las anidadas), en orden."""
+    for p in contenedor.paragraphs:
+        yield p
+    for t in contenedor.tables:
+        for fila in t.rows:
+            for celda in fila.cells:
+                yield from todos_parrafos(celda)
+
+
+for p in todos_parrafos(doc):
+    if TITULO_VIEJO in p.text:
+        reemplazar_texto(p, p.text.replace(TITULO_VIEJO, TITULO))
+
+# La ficha de registro (tabla) conservaba el resumen del Avance 1 con el ROC-AUC de 0,9999.
+for p in todos_parrafos(doc):
+    if p.text.startswith('Se desarrolló un prototipo de sistema de inteligencia'):
+        reemplazar_texto(p, RESUMEN)
+    elif p.text.startswith('A business intelligence prototype featuring'):
+        reemplazar_texto(p, ABSTRACT)
+
+reemplazar_texto(buscar('Descripción', 'Heading 2'), '1.1 Descripción')
+
+# El Anexo de información académica heredó del formato base filas de otro proyecto.
+ANEXO = {
+    'Sustenta el diseño del esquema entidad-relación (vehicles':
+        'Sustenta el almacén en esquema estrella de Kimball en SQL Server 2022 (hechos del panel alumno-periodo y '
+        'dimensiones de alumno, carrera, periodo e institución), las vistas gobernadas por institución y la cuenta de '
+        'solo lectura del motor conversacional.',
+    'Fundamenta la decisión de una arquitectura de microservicios ligera':
+        'Fundamenta el entrenamiento del Random Forest con validación cruzada agrupada por alumno y validación '
+        'temporal, su comparación con SMOTE, regresión logística y gradient boosting, la explicación de cada '
+        'predicción con SHAP y la segmentación de carreras con K-Means.',
+    'Justifica la adopción del modelo en cascada':
+        'Justifica la arquitectura cliente-servidor desacoplada con backend en capas (FastAPI y React), la API REST '
+        'documentada con OpenAPI, la organización del trabajo por fases de CRISP-DM y las pruebas automáticas en '
+        'integración continua.',
+}
+for p in todos_parrafos(doc):
+    for inicio, texto in ANEXO.items():
+        if p.text.strip().startswith(inicio):
+            reemplazar_texto(p, texto)
+
 p = buscar('Alcance funcional.')
 reemplazar_texto(p, p.text.replace(
     'ya que el prototipo se valida sobre datos de prueba de una institución ecuatoriana.',
@@ -191,10 +241,12 @@ reemplazar_texto(p, re.sub(
     'Seguridad Informática e Inteligencia de Negocios, esta última la que da nombre directo al presente trabajo.',
     p.text))
 
-# Numeración manual coherente: 2 y 3 se escriben en el título, igual que "1. Introducción";
-# Referencias y Anexos van sin número automático.
-for pref in ('Referencias', 'Anexos', 'Anexo de información académica'):
-    quitar_numeracion(buscar(pref, 'Heading 1'))
+# Numeración manual según el formato oficial de titulación: 1 a 4 en los capítulos,
+# 5. Referencias, 6. Anexos y 7. Anexo de información académica (sin numeración automática).
+for pref, num in (('Referencias', '5.'), ('Anexos', '6.'), ('Anexo de información académica', '7.')):
+    h = buscar(pref, 'Heading 1')
+    quitar_numeracion(h)
+    reemplazar_texto(h, f'{num} {h.text.strip()}')
 
 # Ancla: último párrafo de 1.3, antes de "Referencias".
 ancla = buscar('En cuanto a si ayudará a resolver')
@@ -816,15 +868,75 @@ a = ins.parrafo(a, 'Las pruebas de integración se ejecutan contra el SQL Server
                    'cédula ni nombre.')
 
 a = ins.subtitulo(a, 'Demostración del prototipo')
-capturas = sorted(FIG.glob('demo_*.png'))
-for c in capturas:
-    a = ins.figura(a, c, c.stem.replace('demo_', '').replace('_', ' ').capitalize(), ancho_pulgadas=6.0)
 a = ins.parrafo(a, 'La demostración completa se reproduce con un solo comando (scripts/demo_tesis.ps1), que reconstruye '
                    'las bases, carga las dos instituciones, entrena, califica, segmenta, carga los referentes externos y '
                    'ejecuta las pruebas, antes de levantar el backend y el frontend. El recorrido: ingresar con el usuario '
                    'académico, conectar UNEMI_PRUEBAS, revisar el riesgo con sus factores y la confiabilidad del modelo, '
                    'revisar los segmentos y los referentes, hacer tres preguntas en el chat, comprobar que una pregunta '
-                   'maliciosa se bloquea y cambiar a OULAD_UK para verificar que cada institución solo ve sus datos.')
+                   'maliciosa se bloquea y cambiar a OULAD_UK para verificar que cada institución solo ve sus datos. Las figuras siguientes '
+                   'muestran ese recorrido en el prototipo en funcionamiento.')
+CAPTURAS = [
+    ('01_inicio_de_sesion.png', 'Inicio de sesión con usuario y rol'),
+    ('04_indicadores.png', 'Indicadores de la institución y riesgo de abandono por alumno con sus factores'),
+    ('06_inteligencia_institucional.png', 'Segmentación de carreras y referentes externos de abandono'),
+    ('07_chat_respuesta.png', 'Respuesta del chat a una pregunta en lenguaje natural'),
+    ('08_peticion_de_borrado_rechazada.png', 'Pregunta maliciosa de borrado bloqueada por el sistema'),
+    ('10_gestion_de_usuarios.png', 'Gestión de usuarios y roles'),
+    ('11_auditoria.png', 'Registro de auditoría de acciones sensibles'),
+    ('13_movil_riesgo.png', 'Panel de riesgo en la vista móvil'),
+]
+for archivo, leyenda in CAPTURAS:
+    if (DOC / 'capturas' / archivo).exists():
+        a = ins.figura(a, DOC / 'capturas' / archivo, leyenda, fuente='Captura del prototipo en funcionamiento.',
+                       ancho_pulgadas=3.0 if archivo.startswith('13_') else 6.0)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4. CONCLUSIONES Y RECOMENDACIONES (preliminares)
+# ═══════════════════════════════════════════════════════════════════════════
+N_HU, N_RF, N_RNF = 10, 16, 11
+a = ins.titulo(a, '4. Conclusiones y recomendaciones', 1, salto_pagina=True)
+a = ins.parrafo(a, 'Las conclusiones de este avance son preliminares: se derivan de los requerimientos, del análisis y '
+                   'de los resultados de validación obtenidos hasta ahora, y se cerrarán con la prueba con usuarios del '
+                   'siguiente avance.')
+a = ins.subtitulo(a, 'Conclusiones')
+a = ins.bloque(a, f"""
+**Sobre el análisis del caso (objetivo específico 1).** El levantamiento de requerimientos mostró que la autoridad académica no necesita otro reporte, sino saber a quién atender primero y por qué. Las {N_HU} historias de usuario se escribieron desde ese perfil sin formación técnica, y de ellas se derivaron {N_RF} requerimientos funcionales repartidos entre las cuatro piezas del sistema: modelo, segmentación, consulta conversacional y panel. Los {N_RNF} requerimientos no funcionales pesan tanto como los funcionales, porque en una institución ecuatoriana la protección de los datos del estudiante es una obligación legal y no un atributo opcional. La matriz de trazabilidad deja ver que cada objetivo específico tiene al menos una historia, un requerimiento y una evidencia verificable que lo respaldan.
+
+**Sobre el modelo predictivo integrado (objetivo específico 2).** El prototipo funciona de extremo a extremo con dos instituciones de naturaleza distinta. Con el mismo código, el sistema carga los datos, construye el panel alumno-periodo, entrena, califica por lotes, segmenta y expone el resultado en el panel y en el chat. Cada institución ve solo sus datos, y la cuenta de solo lectura del motor conversacional no puede leer las bases operativas ni escribir en ellas. La integración propuesta es, por tanto, viable sin reescribir el motor para cada institución: basta con un perfil de mapeo nuevo.
+
+**Sobre la evaluación del modelo (objetivo específico 3).** Los resultados de las dos instituciones se leen por separado. En los datos sintéticos de UNEMI_PRUEBAS el ROC-AUC temporal fue de {n(TU['roc_auc'])}, una cifra que solo demuestra que la arquitectura funciona, porque el generador sintético hace caer la asistencia justo antes del abandono. Con los datos reales de OULAD el ROC-AUC fue de {n(TO['roc_auc'])} en la validación temporal y de {n(PROS['y_proximo']['roc_auc'])} en la prospectiva, por debajo de la meta de 0,90 del criterio de éxito (a). El rendimiento académico fue la variable más importante, y el modelo prioriza no dejar pasar abandonos aunque eso genere falsas alarmas. El resultado sirve para ordenar la atención de bienestar estudiantil, no para tomar decisiones automáticas sobre un estudiante concreto.
+
+**Sobre la segmentación.** En UNEMI_PRUEBAS los tres segmentos de carreras difieren de forma significativa en su tasa de abandono (p = {n(KW_U['p_valor'])}), con lo que se cumple el criterio de éxito (b). Su estabilidad moderada aconseja usarlos como orden de prioridad y no como etiquetas fijas. En OULAD la diferencia no fue significativa (p = {n(KW_O['p_valor'])}), porque {CO['n_unidades']} módulos son muy pocas unidades para agrupar.
+
+**Sobre la consulta conversacional.** El motor de lenguaje natural a SQL respondió bien {round(EX * R['preguntas'])} de {R['preguntas']} preguntas de referencia y contuvo {R['adversariales_superadas']} de {R['adversariales']} preguntas maliciosas, sin modificar la base ni mostrar filas de otra institución. La evaluación destapó defectos que las pruebas unitarias no habían detectado, como conteos de filas en lugar de personas, cifras inventadas en la explicación y respuestas vacías del proveedor. En un sistema con modelos de lenguaje, la evaluación con preguntas reales forma parte del desarrollo y no puede dejarse para el final. Queda pendiente la prueba con tres a cinco autoridades sin perfil técnico, que cerrará el criterio de éxito (d).
+
+**Conclusión general.** El caso demuestra que la predicción, la segmentación, el panel y la consulta conversacional pueden convivir sobre una misma fuente de datos gobernada, con el aislamiento verificado en el motor de base de datos. Lo que el prototipo todavía no demuestra es un desempeño predictivo de 0,90 con datos reales; alcanzarlo dependerá de contar con la trayectoria real de una institución ecuatoriana, con variables financieras y de asistencia que OULAD no registra.
+""")
+a = ins.subtitulo(a, 'Análisis de innovación')
+a = ins.parrafo(a, 'La novedad del trabajo no está en el algoritmo. Random Forest, K-Means y la traducción de lenguaje '
+                   'natural a SQL son técnicas conocidas, y la sección 1.3 muestra que los trabajos previos las resuelven '
+                   'por separado. El aporte está en la integración y en la forma de gobernarla:')
+a = ins.viñetas(a, [
+    '**Una sola fuente para el panel y el chat.** Ambos leen las mismas vistas, de modo que la autoridad nunca ve una '
+    'cifra en el panel y otra distinta en la conversación.',
+    '**Aislamiento probado, no declarado.** La separación entre instituciones se comprueba con pruebas automáticas '
+    'contra el motor de base de datos real, incluida una pregunta que intenta leer datos de otra institución.',
+    '**Predicción explicada para un usuario no técnico.** Cada alerta muestra sus tres factores principales y una '
+    'insignia con la confiabilidad medida en la validación temporal.',
+    '**Reproducible y extensible.** Un solo comando reconstruye las bases, entrena, califica y ejecuta las pruebas, y '
+    'una segunda institución se incorpora con un perfil de mapeo, como se hizo con OULAD.',
+])
+a = ins.subtitulo(a, 'Recomendaciones')
+a = ins.viñetas(a, [
+    '**Para el siguiente avance:** ejecutar la prueba con tres a cinco autoridades académicas sin perfil técnico, con '
+    'el protocolo de la sección 2.1, y reportar éxito, tiempo y dificultad por tarea.',
+    '**Para mejorar el modelo con datos reales:** incorporar variables que la institución ya registra (créditos '
+    'aprobados, entregas atrasadas, situación financiera) y fijar el umbral de alerta según la capacidad real de '
+    'intervención de bienestar estudiantil.',
+    '**Para un despliegue institucional:** contratar un proveedor de modelos de lenguaje con cuota garantizada, cambiar '
+    'todas las credenciales de prueba y validar el sistema con la trayectoria anonimizada de una institución '
+    'ecuatoriana antes de usarlo en decisiones reales.',
+])
 
 # ── Referencias nuevas (orden alfabético) ────────────────────────────────
 refs = [p for p in doc.paragraphs if p.style.name == 'Bibliography']

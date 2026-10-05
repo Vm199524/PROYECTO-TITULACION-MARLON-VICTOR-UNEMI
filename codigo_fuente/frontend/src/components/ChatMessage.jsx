@@ -496,7 +496,7 @@ export const ChatMessage = ({
 
                     {/* Pie del mensaje */}
                     <div className="mt-0.5 flex items-center gap-4 px-1 opacity-20 hover:opacity-100 transition-opacity">
-                        <span className="text-[12px] font-bold text-white/20 uppercase tracking-widest">VicMar Data AI V4.1</span>
+                        <span className="text-[12px] font-bold text-white/20 uppercase tracking-widest">VicMar Data AI</span>
                     </div>
                 </div>
             </div>

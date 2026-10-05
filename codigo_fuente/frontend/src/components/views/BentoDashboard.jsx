@@ -278,7 +278,7 @@ export function BentoDashboard({ connInfo = {}, biPulse = null, onDrillDown = nu
             if (!hasTargetDb) {
                 setPulseData(null);
                 setLoading(false);
-                setError('Selecciona una empresa/base operativa para activar Indicadores.');
+                setError('Selecciona una institución para activar los indicadores.');
                 return;
             }
 
@@ -792,12 +792,6 @@ export function BentoDashboard({ connInfo = {}, biPulse = null, onDrillDown = nu
                     </section>
                 )}
 
-                {/* Comparación por período: pide dos rangos de fecha y compara
-                    ventas y compras entre ambos. Es independiente del filtro global
-                    de mes y año de arriba (ese filtra las tarjetas; esto es una
-                    consulta aparte, a demanda). */}
-                {hasTargetDb && moduleAllowed('VENTAS', true) && <ComparacionPorPeriodo targetDb={targetDb} />}
-
                 {/* Riesgo de abandono estudiantil (IA predictiva): solo con el
                     módulo ACADEMICO habilitado. Se oculta en silencio si la base aún
                     no tiene predicciones calculadas (ver backend/ml/). */}
@@ -1148,168 +1142,6 @@ function TableCard({ table, delay = 0 }) {
                 <p className="mt-4 text-[12px] leading-relaxed text-white/30 italic">{table.hint}</p>
             )}
         </motion.div>
-    );
-}
-
-/**
- * Comparación por período: dos rangos de fecha lado a lado, cada uno con su
- * total de ventas, compras y facturas, y la variación porcentual de A sobre B
- * cuando ambos están llenos. Llama a /api/bi/compare-periods, independiente del
- * filtro global de mes y año (ese repinta las tarjetas de arriba; esto es una
- * consulta puntual, a demanda del usuario).
- */
-function ComparacionPorPeriodo({ targetDb }) {
-    const hoy = new Date().toISOString().slice(0, 10);
-    const primerDiaMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
-    const mesAnteriorInicio = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 10);
-    const mesAnteriorFin = new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().slice(0, 10);
-
-    const [abierto, setAbierto] = useState(false);
-    const [desdeA, setDesdeA] = useState(primerDiaMes);
-    const [hastaA, setHastaA] = useState(hoy);
-    const [desdeB, setDesdeB] = useState(mesAnteriorInicio);
-    const [hastaB, setHastaB] = useState(mesAnteriorFin);
-    const [resultado, setResultado] = useState(null);
-    const [cargando, setCargando] = useState(false);
-    const [errorMsg, setErrorMsg] = useState('');
-
-    const comparar = async () => {
-        setCargando(true);
-        setErrorMsg('');
-        try {
-            const params = new URLSearchParams({ target_db: targetDb, desde_a: desdeA, hasta_a: hastaA });
-            if (desdeB && hastaB) {
-                params.set('desde_b', desdeB);
-                params.set('hasta_b', hastaB);
-            }
-            const res = await apiGet(`/bi/compare-periods?${params.toString()}`);
-            if (res.data?.status === 'ok') {
-                setResultado(res.data);
-            } else {
-                setErrorMsg(res.data?.message || 'No se pudo comparar los períodos.');
-                setResultado(null);
-            }
-        } catch (_err) {
-            setErrorMsg('No se pudo conectar con el motor BI.');
-            setResultado(null);
-        } finally {
-            setCargando(false);
-        }
-    };
-
-    const limpiar = () => {
-        setDesdeA(primerDiaMes); setHastaA(hoy);
-        setDesdeB(mesAnteriorInicio); setHastaB(mesAnteriorFin);
-        setResultado(null); setErrorMsg('');
-    };
-
-    const inputClass = "w-full rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-[13px] text-white/80 focus:border-cyan-500/40 focus:outline-none [color-scheme:dark]";
-    // Sin `color-scheme: dark` (incluido en inputClass), el ícono nativo del
-    // calendario queda casi invisible sobre fondo oscuro, y el navegador solo
-    // abre el selector con un clic justo sobre ese ícono diminuto.
-    // `showPicker()` lo abre con un clic en cualquier parte del campo; no todos
-    // los navegadores lo soportan, por eso el try/catch: si falla, el clic en el
-    // ícono sigue funcionando.
-    const abrirCalendario = (e) => {
-        try { e.currentTarget.showPicker?.(); } catch (_err) { /* navegador sin soporte: no pasa nada */ }
-    };
-
-    return (
-        <section className="rounded-[32px] border border-white/10 p-6 shadow-2xl" style={{ background: 'rgba(255,255,255,0.02)' }}>
-            <button
-                onClick={() => setAbierto((v) => !v)}
-                className="flex w-full items-center justify-between text-left"
-                aria-expanded={abierto}
-            >
-                <div>
-                    <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-white/40">Ventas</h3>
-                    <div className="text-[15px] font-bold text-white">Comparación por Período</div>
-                </div>
-                <ChevronDown size={18} className={`text-white/40 transition-transform ${abierto ? 'rotate-180' : ''}`} />
-            </button>
-
-            {abierto && (
-                <div className="mt-5 flex flex-col gap-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
-                            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide text-rose-300">
-                                <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Período A
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[11px] font-bold uppercase text-white/40">Desde
-                                    <input type="date" value={desdeA} onChange={(e) => setDesdeA(e.target.value)} onClick={abrirCalendario} className={inputClass} />
-                                </label>
-                                <label className="text-[11px] font-bold uppercase text-white/40">Hasta
-                                    <input type="date" value={hastaA} onChange={(e) => setHastaA(e.target.value)} onClick={abrirCalendario} className={inputClass} />
-                                </label>
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-                            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide text-amber-300">
-                                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Período B (opcional)
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[11px] font-bold uppercase text-white/40">Desde
-                                    <input type="date" value={desdeB} onChange={(e) => setDesdeB(e.target.value)} onClick={abrirCalendario} className={inputClass} />
-                                </label>
-                                <label className="text-[11px] font-bold uppercase text-white/40">Hasta
-                                    <input type="date" value={hastaB} onChange={(e) => setHastaB(e.target.value)} onClick={abrirCalendario} className={inputClass} />
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={comparar}
-                            disabled={cargando || !desdeA || !hastaA}
-                            className="rounded-lg bg-rose-500/90 px-4 py-2 text-[12px] font-black uppercase tracking-wide text-white hover:bg-rose-500 disabled:opacity-40"
-                        >
-                            {cargando ? 'Comparando…' : 'Comparar'}
-                        </button>
-                        <button
-                            onClick={limpiar}
-                            className="rounded-lg border border-white/10 px-4 py-2 text-[12px] font-black uppercase tracking-wide text-white/60 hover:bg-white/5"
-                        >
-                            Limpiar
-                        </button>
-                    </div>
-
-                    {errorMsg && <p className="text-[12px] text-rose-300">{errorMsg}</p>}
-
-                    {resultado && (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {['ventas', 'compras', 'facturas'].map((campo) => {
-                                const etiqueta = { ventas: 'Ventas', compras: 'Compras', facturas: 'Facturas' }[campo];
-                                const esMoneda = campo !== 'facturas';
-                                const valorA = resultado.periodo_a?.[campo] ?? 0;
-                                const valorB = resultado.periodo_b?.[campo];
-                                const delta = resultado.delta?.[campo];
-                                return (
-                                    <div key={campo} className="rounded-xl border border-white/10 bg-black/30 p-4">
-                                        <div className="text-[11px] font-black uppercase tracking-wide text-white/40">{etiqueta}</div>
-                                        <div className="mt-1 text-2xl font-black text-white">
-                                            {esMoneda ? formatCardValue(valorA, '$') : formatCardValue(valorA, '')}
-                                        </div>
-                                        {resultado.periodo_b && (
-                                            <div className="mt-1 flex items-center gap-2 text-[12px] text-white/50">
-                                                <span>vs {esMoneda ? formatCardValue(valorB, '$') : formatCardValue(valorB, '')}</span>
-                                                {typeof delta === 'number' && (
-                                                    <span className={`flex items-center gap-0.5 font-black ${delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                        {delta >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                                                        {Math.abs(delta)}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            )}
-        </section>
     );
 }
 

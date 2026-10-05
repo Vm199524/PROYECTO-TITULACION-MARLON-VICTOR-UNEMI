@@ -42,6 +42,20 @@ respecto de ese documento, para que los autores lo revisen antes de entregarlo.
   (`documentacion/decisiones/DT-01` a `DT-05` y sus ADR en `decisiones/adr/`).
 - **Verificador:** `_verificar_coherencia.py` falla ahora si «Referencias» o «Anexos» llevan número.
 
+## Cambios del 5 de octubre de 2026 (instrucciones del Avance 2)
+
+| Dónde | Cambio | Por qué |
+|---|---|---|
+| Portada, ficha, certificados y Anexo | Título oficial: «Prototipo de un sistema web para predecir el abandono en estudiantes universitarios mediante aprendizaje automático y consulta conversacional» | Es el título que figura en las instrucciones del Avance 2 |
+| Ficha de registro | El resumen y el abstract de la ficha son ahora los mismos del documento (antes conservaba el ROC-AUC de 0,9999 del Avance 1) | Coherencia de cifras |
+| 1.1 Descripción | Se numera el título | Formato oficial |
+| 4. Conclusiones y recomendaciones | Sección nueva: una conclusión por objetivo específico, una general, análisis de innovación y recomendaciones; cifras leídas de los artefactos del sistema | Las instrucciones piden conclusiones preliminares con análisis de innovación |
+| 5. Referencias, 6. Anexos, 7. Anexo de información académica | Numeración del formato oficial de titulación (el verificador la exige) | Observación de la tutora sobre la numeración |
+| Anexo de información académica | Se reemplazan tres filas que el formato base traía de otro proyecto (flota de vehículos, PostgreSQL, microservicios, modelo en cascada) por el aporte real de cada asignatura | Solo debe figurar el trabajo de los autores |
+| 3.3 Demostración del prototipo | Se insertan ocho capturas de `documentacion/capturas/` | Demo funcionando |
+
+Pendiente: el PDF se regenera con `_docx_a_pdf.ps1` (Word en Windows), que además actualiza la tabla de contenido. Después se ejecuta `_verificar_coherencia.py`.
+
 ## Atención a las observaciones de las tutoras
 
 | Observación | Dónde se atiende | Estado |
@@ -56,7 +70,7 @@ respecto de ese documento, para que los autores lo revisen antes de entregarlo.
 | Esquema estrella con diccionario de datos | 3.2: modelo dimensional y diccionario generado del esquema real | Atendida |
 | UML: secuencia de la consulta en lenguaje natural y actividades del ETL | 3.2: siete diagramas | Atendida |
 | Código del modelo y del backend con resultados reales de validación cruzada y temporal | 3.3: fragmentos extraídos del código y tablas de resultados | Atendida |
-| Demo funcionando | 3.3: el recorrido de la demo está descrito; faltan las capturas de pantalla y el video | **Pendiente** (requiere iniciar sesión en la demo) |
+| Demo funcionando | 3.3: recorrido descrito y ocho capturas del prototipo; falta el video | **Parcial** (falta el video) |
 
 ## Pendientes para los autores
 
