@@ -1,14 +1,12 @@
 /**
- * Archivo: loginClickUnico.test.jsx
- * Rol: proteger el comportamiento "un solo clic entra al sistema".
- *
- * Defecto detectado en pruebas (30/08/2026): "hay que dar click como 3 veces
- * al boton de ingresar para poder ingresar al sistema, y ya estaba arreglado
- * que con un solo click de una ingresaba". Esta prueba deja fijado que UN
- * clic sobre "Ingresar al sistema" dispara exactamente UNA vez el handler de
- * autenticacion, para que ninguna reorganizacion del formulario (paddings,
- * capas de hover, overlays absolutos) vuelva a tragarse el primer clic sin
- * que nadie lo note.
+ * @file Pruebas del botón «Ingresar al sistema» de `LoginView`. Verifican que
+ * un solo clic dispare exactamente una vez el manejador de autenticación, que
+ * el botón esté habilitado con usuario y contraseña escritos y que ninguna
+ * capa decorativa (brillo de hover, overlays absolutos) intercepte el clic,
+ * para que una reorganización del formulario no vuelva a tragarse el primer
+ * clic.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
@@ -62,17 +60,17 @@ describe('Login — un solo clic para ingresar', () => {
     });
 
     it('ninguna capa decorativa del boton intercepta el clic (pointer-events)', () => {
-        // La capa de brillo del hover es un <div absolute inset-0> DENTRO del
-        // boton. Si algun dia se la saca del boton o se le da un z-index que la
-        // ponga por encima sin pointer-events-none, el clic dejaria de llegar.
+        // La capa de brillo del hover es un <div absolute inset-0> dentro del
+        // botón. Si se la saca del botón o se le da un z-index que la ponga
+        // por encima sin pointer-events-none, el clic deja de llegar.
         const handleAuthLogin = vi.fn((e) => e?.preventDefault?.());
         render(<LoginView {...propsBase({ handleAuthLogin })} />);
 
         const boton = screen.getByRole('button', { name: /ingresar al sistema/i });
         const capas = boton.querySelectorAll('div.absolute');
         capas.forEach((capa) => {
-            // Debe seguir siendo descendiente del boton: asi el clic burbujea
-            // hasta el y el submit ocurre igual.
+            // Debe seguir siendo descendiente del botón: así el clic burbujea
+            // hasta él y el submit ocurre igual.
             expect(boton.contains(capa)).toBe(true);
         });
 

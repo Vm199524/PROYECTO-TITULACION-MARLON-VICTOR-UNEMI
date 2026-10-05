@@ -1,23 +1,16 @@
 """
-tests/test_quick_questions_por_giro.py — Sugerencias de "Prueba preguntando"
-alineadas con el giro de negocio real de la empresa activa.
+Pruebas de las sugerencias "Prueba preguntando" según el giro de la empresa.
 
-CONTEXTO (bug real, 28/08/2026)
------------------------------------------------------------
-Con MONT (Unidad Educativa Montessori) como empresa activa, el chat sugería
-preguntas de "10 proveedores con más facturas" y "compras por mes" — temas
-ajenos por completo a una institución académica. Causa: la sonda de
-disponibilidad del dominio "finanzas" en `get_capability_snapshot`
-(core/mirror_manager.py) solo comprobaba "¿existe al menos 1 fila en
-cabecera_compra?" — y cualquier colegio que alguna vez compró útiles de
-oficina cumplía esa condición, sin importar que proveedores/compras no sea en
-absoluto su negocio (alumnos, pensiones, matrículas sí lo es).
+Las sugerencias deben corresponder SIEMPRE a la lógica de negocio de la empresa
+activa. Un colegio que alguna vez compró útiles de oficina tiene filas en
+cabecera_compra, pero proveedores y compras no son su negocio (sí lo son
+alumnos, pensiones y matrículas). Por eso `get_capability_snapshot`
+(core/mirror_manager.py) excluye el dominio "finanzas" cuando el dominio
+"academico" está activo, igual que excluye "operaciones" en colegios sin
+inventario real, y adapta al colegio el texto del dominio "ventas".
 
-El usuario lo dijo de forma explícita: "Prueba preguntando" debe corresponder
-SIEMPRE a la lógica de negocio de la empresa activa. La corrección excluye el
-dominio "finanzas" de las sugerencias para cualquier empresa donde el dominio
-"academico" esté activo (mismo patrón ya usado para excluir "operaciones" en
-colegios sin infraestructura real de inventario).
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import sys
 from pathlib import Path
@@ -53,9 +46,9 @@ class FakeConnectorConSonda:
 def _schema_colegio_con_alguna_compra():
     """
     Esquema físico de un colegio típico: tablas académicas reales, más
-    edu_alumno/tb_cabmov1 (facturación) — y un puñado de compras registradas
-    (tb_cabmov1/tb_detmov1 existen), que es justo el caso que antes activaba
-    "finanzas" por error.
+    edu_alumno/tb_cabmov1 (facturación) y un puñado de compras registradas
+    (tb_cabmov1/tb_detmov1 existen), que es justo el caso que no debe activar
+    las sugerencias de "finanzas".
     """
     tablas = [
         "edu_alumno", "vis_alumno", "tb_cabmov", "cabecera_factura",
@@ -66,8 +59,8 @@ def _schema_colegio_con_alguna_compra():
 
 def test_finanzas_no_aparece_en_sugerencias_de_un_colegio():
     schema = _schema_colegio_con_alguna_compra()
-    # "finanzas" SÍ tiene datos (una compra de utiles) — antes eso bastaba
-    # para sugerir proveedores/compras. "academico" y "ventas" tambien listas.
+    # "finanzas" SÍ tiene datos (una compra de útiles), pero eso no basta para
+    # sugerir proveedores/compras. "academico" y "ventas" también tienen datos.
     conn = FakeConnectorConSonda({"finanzas", "academico", "ventas"})
     mm = MirrorManager(conn)
 
@@ -97,11 +90,10 @@ def test_ventas_y_academico_si_aparecen_en_un_colegio():
 
 
 def test_ventas_usa_lenguaje_de_colegio_no_de_retail():
-    """Defecto detectado en pruebas (29/08/2026): el dominio "ventas"
-    seguía sugiriendo "10 productos mas vendidos" y "ranking de vendedores"
-    para un colegio, porque solo se ocultaba "finanzas" y no se adaptaba el
-    texto de "ventas" (que sí debe seguir activo: un colegio factura
-    pensiones y matrículas)."""
+    """En un colegio el dominio "ventas" sigue activo (factura pensiones y
+    matrículas), pero no debe sugerir "10 productos más vendidos" ni "ranking
+    de vendedores": ocultar "finanzas" no basta, el texto de "ventas" también
+    se adapta al giro académico."""
     schema = _schema_colegio_con_alguna_compra()
     conn = FakeConnectorConSonda({"finanzas", "academico", "ventas"})
     mm = MirrorManager(conn)

@@ -1,7 +1,13 @@
 """
-core/question_bank.py - Banco estrategico de preguntas VicMar Data AI.
-Centraliza identidad, seguridad y atajos gerenciales de alto uso.
-Permite respuestas instantaneas o refuerzo de prompt para NL2SQL.
+Banco estratégico de preguntas de VicMar Data AI.
+
+Resuelve antes del motor NL2SQL las preguntas de alto uso: atajos con SQL ya
+resuelto (nómina, ventas anuales, resumen ejecutivo), respuestas fijas de
+seguridad e identidad, y preguntas gerenciales cotidianas que se reescriben
+con un «prompt boost» para orientar a la IA sobre cualquier esquema activo.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -11,9 +17,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from difflib import SequenceMatcher
 
+# Similitud mínima para aceptar una intención cotidiana del banco.
 SIMILARITY_THRESHOLD = 0.64
 
 
+# Atajos que entregan un SQL ya resuelto (sql_hint) con pass_to_ai=False
+# cuando la pregunta contiene alguna de sus frases clave.
 DIRECT_SQL_SHORTCUTS: tuple[dict, ...] = (
     {
         "id": "payroll_total_with_contributions",
@@ -157,8 +166,15 @@ MONTH_NUM_TO_NAME: dict[int, str] = {
 
 
 def _extract_year(prompt_norm: str, current_year: int) -> tuple[int, bool]:
-    # Priorizamos anio explicito; en su ausencia se usa anio actual.
-    # Tambien interpretamos expresiones relativas comunes del negocio.
+    """Extrae el año pedido y si fue explícito.
+
+    Prioriza un año escrito (20xx); si no lo hay, interpreta expresiones
+    relativas comunes ("año pasado", "este año", "año actual") y, en su
+    ausencia, usa el año actual.
+
+    Returns:
+        Tupla (año, es_explícito).
+    """
     year_match = re.search(r"\b(20\d{2})\b", prompt_norm)
     if year_match:
         return int(year_match.group(1)), True
@@ -170,8 +186,11 @@ def _extract_year(prompt_norm: str, current_year: int) -> tuple[int, bool]:
 
 
 def _extract_month(prompt_norm: str) -> tuple[int | None, bool]:
-    # Detecta mes por nombre o por numero.
-    # Si no aparece, la consulta debe caer al ultimo mes del anio objetivo.
+    """Extrae el mes pedido (por número o por nombre) y si fue explícito.
+
+    Si no aparece, devuelve (None, False) y la consulta cae al último mes con
+    datos del año objetivo.
+    """
     numeric_match = re.search(r"\bmes\s*(?:de\s*)?(0?[1-9]|1[0-2])\b", prompt_norm)
     if numeric_match:
         return int(numeric_match.group(1)), True
@@ -184,6 +203,7 @@ def _extract_month(prompt_norm: str) -> tuple[int | None, bool]:
 
 
 def _month_case_sql(column_ref: str = "rp.[Mes]") -> str:
+    """Genera un CASE SQL que convierte la columna de mes (número o nombre en español) a 1-12."""
     clean = f"UPPER(LTRIM(RTRIM(CAST({column_ref} AS NVARCHAR(30)))))"
     return (
         "CASE "
@@ -205,6 +225,7 @@ def _month_case_sql(column_ref: str = "rp.[Mes]") -> str:
 
 
 def _month_name_sql(column_ref: str = "mes_num") -> str:
+    """Genera un CASE SQL que convierte un número de mes 1-12 en su nombre en español."""
     return (
         "CASE "
         f"WHEN {column_ref} = 1 THEN 'Enero' "
@@ -224,6 +245,12 @@ def _month_name_sql(column_ref: str = "mes_num") -> str:
 
 
 def _build_payroll_extreme_shortcut(prompt_norm: str) -> dict | None:
+    """Construye el atajo del rol de pago del trabajador con mayor o menor sueldo.
+
+    Se activa cuando la pregunta habla de rol/nómina/pago y de sueldo/salario
+    junto con "mayor"/"menor" (o sinónimos). Respeta el año y el mes pedidos;
+    sin mes, toma el último mes con datos del año. Devuelve None si no aplica.
+    """
     payroll_scope = any(token in prompt_norm for token in ("rol", "nomina", "pago", "payslip", "ficha"))
     salary_scope = any(token in prompt_norm for token in ("sueldo", "salario", "remuneracion"))
     if not payroll_scope or not salary_scope:
@@ -302,8 +329,10 @@ def _build_payroll_extreme_shortcut(prompt_norm: str) -> dict | None:
 
 
 def _normalize(text: str) -> str:
-    # Normalizamos para comparar frases sin ruido de acentos o puntuacion.
-    # Esto reduce falsos negativos en preguntas cortas del dia a dia.
+    """Pasa a minúsculas y quita tildes y puntuación para comparar frases sin ruido.
+
+    Reduce falsos negativos en preguntas cortas del día a día.
+    """
     text = (text or "").strip().lower()
     text = unicodedata.normalize("NFD", text)
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
@@ -313,16 +342,20 @@ def _normalize(text: str) -> str:
 
 
 def _ratio(a: str, b: str) -> float:
+    """Calcula la similitud entre dos textos (0 a 1) con SequenceMatcher."""
     return SequenceMatcher(None, a, b).ratio()
 
 
 def _contains_any(prompt: str, keywords: set[str]) -> str | None:
+    """Devuelve la primera palabra clave contenida en el texto, o None."""
     for keyword in keywords:
         if keyword in prompt:
             return keyword
     return None
 
 
+# Pedidos de credenciales o de volcados de la base: se responden con el escudo
+# de seguridad, sin generar SQL.
 SECURITY_BLOCK_KEYWORDS = {
     "contrasena",
     "contrasenas",
@@ -339,8 +372,9 @@ SECURITY_BLOCK_KEYWORDS = {
     "tabla de usuarios",
 }
 
-OFF_TOPIC_KEYWORDS = set() # IA LIBRE: Permitir cualquier tema
+OFF_TOPIC_KEYWORDS = set() # Vacío: los temas ajenos al negocio los filtra core/alcance.py
 
+# Preguntas de identidad con respuesta fija.
 WHAT_CAN_YOU_DO_PATTERNS = {
     "que sabes hacer",
     "que nomas te puedo preguntar",
@@ -359,6 +393,15 @@ WHO_CREATED_YOU_PATTERNS = {
 
 @dataclass(frozen=True)
 class PromptIntent:
+    """Pregunta gerencial cotidiana del banco y su instrucción de refuerzo.
+
+    Attributes:
+        intent_id: identificador único (por ejemplo, "ventas_001").
+        module: módulo de negocio al que pertenece.
+        question: pregunta modelo con la que se compara la del usuario.
+        keywords: frases clave que, si aparecen, elevan la coincidencia.
+        boost: instrucción analítica que se agrega al prompt de la IA.
+    """
     intent_id: str
     module: str
     question: str
@@ -644,7 +687,7 @@ DAY_TO_DAY_INTENTS: tuple[PromptIntent, ...] = (
         "Objetivo: medir impacto de NC sobre facturacion bruta.",
     ),
 
-    # Registro academico
+    # Registro académico
     PromptIntent(
         "acad_001",
         "ACADEMICO",
@@ -716,7 +759,7 @@ DAY_TO_DAY_INTENTS: tuple[PromptIntent, ...] = (
         "Objetivo: alumnos bloqueados. REGLA: Mostrar nombres y motivo de bloqueo.",
     ),
 
-    # CEO / bunker ejecutivo
+    # CEO / tablero ejecutivo
     PromptIntent(
         "ceo_001",
         "FINANZAS",
@@ -825,6 +868,11 @@ DAY_TO_DAY_INTENTS: tuple[PromptIntent, ...] = (
 
 
 def _intent_score(prompt_norm: str, intent: PromptIntent) -> float:
+    """Puntúa qué tan parecida es la pregunta a una intención del banco.
+
+    Toma la mayor similitud contra la pregunta modelo y contra cada frase
+    clave; una frase clave contenida literalmente vale al menos 0.9.
+    """
     score = _ratio(prompt_norm, _normalize(intent.question))
     for keyword in intent.keywords:
         keyword_norm = _normalize(keyword)
@@ -835,8 +883,12 @@ def _intent_score(prompt_norm: str, intent: PromptIntent) -> float:
 
 
 def _build_boosted_prompt(user_prompt: str, intent: PromptIntent) -> str:
-    # El boost transforma preguntas cortas en instruccion analitica precisa.
-    # Asi el motor IA responde mejor sobre bases grandes o pequenas sin hardcodear tablas.
+    """Reescribe la pregunta con la intención detectada y su instrucción de refuerzo.
+
+    Convierte preguntas cortas en una instrucción analítica precisa, para que
+    el motor responda mejor sobre bases grandes o pequeñas sin fijar tablas en
+    el código.
+    """
     return (
         f"Consulta original del gerente: {user_prompt}\n"
         f"Intencion detectada ({intent.module}): {intent.question}\n"
@@ -847,10 +899,17 @@ def _build_boosted_prompt(user_prompt: str, intent: PromptIntent) -> str:
 
 def buscar_en_banco(user_prompt: str) -> dict | None:
     """
-    Retorna:
-    - Respuesta directa para identidad/seguridad/off-topic.
-    - Prompt reforzado para consultas cotidianas de gerencia.
-    - None si no hay match y debe continuar el flujo normal.
+    Busca la pregunta en el banco y devuelve la respuesta que corresponda.
+
+    Orden de evaluación: atajo de rol de pago por sueldo, atajos SQL directos
+    (ventas anuales, resumen ejecutivo y DIRECT_SQL_SHORTCUTS), escudo de
+    seguridad, preguntas de identidad, temas fuera de alcance y, por último,
+    la intención cotidiana más parecida (si supera SIMILARITY_THRESHOLD).
+
+    Returns:
+        Un dict con respuesta o SQL directo (pass_to_ai=False), un dict con el
+        prompt reforzado para la IA (pass_to_ai=True), o None si no hay
+        coincidencia y debe continuar el flujo normal.
     """
     prompt_norm = _normalize(user_prompt)
     if not prompt_norm:
@@ -1067,8 +1126,12 @@ def buscar_en_banco(user_prompt: str) -> dict | None:
 
 
 def listar_preguntas_por_modulo(modulo: str | None = None) -> list[str]:
-    # Esta lista alimenta catálogos de ejemplos en frontend o soporte interno.
-    # No ejecuta SQL ni altera el flujo productivo.
+    """Lista las preguntas cotidianas del banco, filtradas por módulo si se indica.
+
+    Alimenta catálogos de ejemplos para el frontend o el soporte interno; no
+    ejecuta SQL ni altera el flujo de consultas. Sin módulo, cada pregunta va
+    precedida de su módulo entre corchetes.
+    """
     if modulo:
         module_norm = (modulo or "").strip().upper()
         return [
@@ -1080,8 +1143,10 @@ def listar_preguntas_por_modulo(modulo: str | None = None) -> list[str]:
 
 
 def total_preguntas() -> int:
+    """Devuelve el número de preguntas cotidianas del banco."""
     return len(DAY_TO_DAY_INTENTS)
 
 
 def modulos_disponibles() -> list[str]:
+    """Devuelve, en orden alfabético, los módulos que tienen preguntas en el banco."""
     return sorted({intent.module for intent in DAY_TO_DAY_INTENTS})

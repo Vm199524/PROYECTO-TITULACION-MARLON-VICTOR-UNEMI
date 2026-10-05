@@ -1,37 +1,14 @@
 """
-core/excel_exporter.py — Exportación a Excel estructurado y multi-hoja.
+Exportación de reportes a Excel estructurado y multihoja.
 
-ORIGEN
-------
-Portado desde el proyecto hermano `TripleA_VentasIA` (app/reports/routes.py,
-app/erp/queries.py, app/erp/educativo.py) el 28/08/2026, tomando como
-referencia ese exportador (5 hojas con formato real: Facturas, Detalle
-Items, Productos, Clientes, Cartera) para reemplazar el CSV plano y ambiguo
-de Reportes BI por algo equivalente aquí.
+Genera el libro de Reportes BI (Facturas, Detalle Items, Productos, Clientes y,
+en empresas educativas, Cartera) consultando la base FÍSICA de la empresa
+(tb_cabmov, tb_detmov, tb_client, tb_item, tb_linea), nunca las vistas de CHAT,
+que son un espacio compartido por todo el servidor y pueden mezclar empresas.
+También exporta a .xlsx cualquier tabla de una respuesta del chat.
 
-Ese proyecto había llegado, de forma independiente, a las MISMAS correcciones
-que este backend aplicó el 28/08/2026: consultar la base FÍSICA de la
-empresa directamente (nunca las vistas de CHAT, que son un espejo compartido
-por todo el servidor y pueden mezclar empresas — la propia razón por la que
-`TripleA_VentasIA` dejó de usarlas: "la vista original cruzaba facturas de
-SONG contra clientes de MONT"), y convertir `mov_fecha` con
-`CAST(... AS date)` en vez de comparar el string crudo ('AAAA/MM/DD' no es
-comparable como texto con '-' como separador). Ambos hallazgos ya estaban
-aplicados en este backend antes de leer el otro proyecto — coincidencia que
-confirma que el diagnóstico de esta sesión fue correcto.
-
-QUÉ EXPORTA
------------
-  1. Facturas       — cabecera con cliente, línea de negocio y totales.
-  2. Detalle Items  — cada línea de cada factura (producto, cantidad, precio).
-  3. Productos      — ranking de productos con precio máx/mín e ingresos.
-  4. Clientes       — historial acumulado por cliente.
-  5. Cartera        — SOLO si la empresa es educativa (tb_cabmovT existe):
-                       facturado/cobrado/saldo por tipo de rubro (pensión,
-                       matrícula, admisión...), igual que en TripleA_VentasIA.
-
-TODO se consulta contra la base física de la empresa (tb_cabmov, tb_detmov,
-tb_client, tb_item, tb_linea — el ERP genérico), nunca contra CHAT.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -46,6 +23,11 @@ _NOMBRE_DB_VALIDO = re.compile(r"^[A-Za-z0-9_]+$")
 
 
 def _validar_db(nombre: str) -> str:
+    """Valida que el nombre de la base sea un identificador seguro y lo devuelve en mayúsculas.
+
+    Raises:
+        ValueError: si el nombre está vacío o tiene caracteres no permitidos.
+    """
     safe = str(nombre or "").strip().upper()
     if not safe or not _NOMBRE_DB_VALIDO.match(safe):
         raise ValueError(f"Nombre de base de datos inválido: {nombre!r}")
@@ -53,6 +35,7 @@ def _validar_db(nombre: str) -> str:
 
 
 def _f(valor, default: float = 0.0) -> float:
+    """Convierte a float redondeado a 2 decimales; devuelve `default` si no es numérico."""
     try:
         return round(float(valor), 2)
     except (TypeError, ValueError):
@@ -60,6 +43,7 @@ def _f(valor, default: float = 0.0) -> float:
 
 
 def _fecha_str(v) -> str:
+    """Formatea una fecha como dd/mm/aaaa; cualquier otro valor se devuelve como texto."""
     if not v:
         return ""
     if isinstance(v, (datetime, date)):
@@ -68,6 +52,7 @@ def _fecha_str(v) -> str:
 
 
 def _existe_objeto(connector, safe_db: str, nombre_objeto: str) -> bool:
+    """Indica si existe una tabla o vista con ese nombre en la base de la empresa."""
     try:
         _cols, rows, err = connector.execute_query(
             f"SELECT COUNT(*) FROM [{safe_db}].sys.objects "
@@ -79,6 +64,10 @@ def _existe_objeto(connector, safe_db: str, nombre_objeto: str) -> bool:
 
 
 def _rango_fecha_sql(alias_fecha: str, start, end) -> tuple[str, list[str]]:
+    """Arma el filtro de rango de fechas (inclusivo) que se anexa al WHERE.
+
+    Devuelve el fragmento SQL (vacío si no hay fechas) y una lista vacía.
+    """
     clauses = []
     if start:
         clauses.append(f"{alias_fecha} >= '{start}'")
@@ -89,11 +78,15 @@ def _rango_fecha_sql(alias_fecha: str, start, end) -> tuple[str, list[str]]:
 
 # ─── Consultas contra la base física de la empresa ──────────────────────────
 
+# mov_fecha es texto con formato 'AAAA/MM/DD': se convierte con CAST(... AS date)
+# porque como texto no se compara bien con fechas que usan '-' como separador.
 _FECHA = "CAST(m.mov_fecha AS date)"
+# Solo facturas (FA) no anuladas.
 _VIGENTE = "m.mov_tipo = 'FA' AND m.mov_estado <> 'AN'"
 
 
 def _consultar_facturas(connector, safe_db: str, start, end, limite: int = 5000) -> list[dict]:
+    """Consulta la cabecera de cada factura con cliente, línea de negocio y totales."""
     filtro_fecha, _ = _rango_fecha_sql(_FECHA, start, end)
     sql = (
         f"SELECT TOP {int(limite)} LTRIM(RTRIM(m.mov_numdoc)) AS factura, {_FECHA} AS fecha, "
@@ -125,6 +118,7 @@ def _consultar_facturas(connector, safe_db: str, start, end, limite: int = 5000)
 
 
 def _consultar_detalle_items(connector, safe_db: str, start, end, limite: int = 20000) -> list[dict]:
+    """Consulta cada línea de cada factura (producto, cantidad, precio y total)."""
     filtro_fecha, _ = _rango_fecha_sql(_FECHA, start, end)
     sql = (
         f"SELECT TOP {int(limite)} LTRIM(RTRIM(m.mov_numdoc)) AS factura, {_FECHA} AS fecha, "
@@ -155,6 +149,7 @@ def _consultar_detalle_items(connector, safe_db: str, start, end, limite: int = 
 
 
 def _consultar_productos(connector, safe_db: str, start, end, limite: int = 2000) -> list[dict]:
+    """Consulta el ranking de productos por ingresos, con precio máximo y mínimo."""
     filtro_fecha, _ = _rango_fecha_sql(_FECHA, start, end)
     sql = (
         f"SELECT TOP {int(limite)} LTRIM(RTRIM(d.det_nomart)) AS producto, "
@@ -185,6 +180,7 @@ def _consultar_productos(connector, safe_db: str, start, end, limite: int = 2000
 
 
 def _consultar_clientes(connector, safe_db: str, start, end, limite: int = 3000) -> list[dict]:
+    """Consulta el historial acumulado por cliente, con su ticket promedio."""
     filtro_fecha, _ = _rango_fecha_sql(_FECHA, start, end)
     sql = (
         f"SELECT TOP {int(limite)} LTRIM(RTRIM(c.cli_ruccli)) AS cedula, "
@@ -213,8 +209,8 @@ def _consultar_clientes(connector, safe_db: str, start, end, limite: int = 3000)
     return resultado
 
 
-# Nombres legibles de los tipos de rubro que factura un ERP educativo — mismo
-# catálogo que TripleA_VentasIA (app/erp/educativo.py::RUBROS).
+# Nombres legibles de los tipos de rubro (campo mov_viaent) que factura un ERP
+# educativo.
 _RUBROS_EDUCATIVOS = {
     "PEN": "Pensiones", "MAT": "Matrículas", "ADM": "Admisiones",
     "RES": "Reserva de matrícula", "VAR": "Varios", "VAR2": "Varios 2",
@@ -222,16 +218,17 @@ _RUBROS_EDUCATIVOS = {
 
 
 def _es_educativa(connector, safe_db: str) -> bool:
-    """Ídem TripleA_VentasIA::educativo.disponible — requiere AMBAS tablas."""
+    """Indica si la empresa es educativa: requiere AMBAS tablas, edu_alumno y tb_cabmovT."""
     return _existe_objeto(connector, safe_db, "edu_alumno") and _existe_objeto(connector, safe_db, "tb_cabmovT")
 
 
 def _consultar_cartera_por_rubro(connector, safe_db: str) -> list[dict]:
     """
-    Facturado/cobrado/saldo por rubro, del período lectivo con más volumen
-    (el vigente). Requiere tb_cabmovT + edu_alumno + edu_period; VIS_COBALU es
-    opcional — sin ella se informa el facturado con cobrado en 0 (igual que
-    TripleA_VentasIA cuando "cobro_disponible" es False).
+    Consulta facturado, cobrado y saldo por rubro del período lectivo vigente.
+
+    El período vigente es el de mayor facturación. Requiere tb_cabmovT,
+    edu_alumno y edu_period; VIS_COBALU es opcional: sin ella se informa el
+    facturado con cobrado en 0.
     """
     hay_cobro = _existe_objeto(connector, safe_db, "VIS_COBALU")
     join_cobro = (
@@ -292,8 +289,8 @@ _COL_MONEDA = {
 }
 # Límite de seguridad por hoja: si una consulta devolviera más filas de las
 # que una hoja de Excel puede manejar cómodamente, el libro trunca de forma
-# segura en vez de agotar memoria (OPT #4). Por lo general nunca se alcanza
-# porque las consultas ya llevan su propio TOP.
+# segura en vez de agotar memoria. Por lo general nunca se alcanza porque las
+# consultas ya llevan su propio TOP.
 _MAX_FILAS_HOJA = 50_000
 
 
@@ -305,29 +302,31 @@ def _norm_encabezado(v) -> str:
 
 def generar_reporte_excel(connector, source_db: str, start=None, end=None) -> tuple[io.BytesIO, str]:
     """
-    Genera el libro de Excel completo para `source_db` y devuelve
-    (buffer_bytesio, nombre_de_archivo_sugerido).
+    Genera el libro de Excel completo de Reportes BI para `source_db`.
+
+    Hojas: Facturas (cabecera con cliente, línea de negocio y totales),
+    Detalle Items (cada línea de cada factura), Productos (ranking con precio
+    máximo/mínimo e ingresos), Clientes (historial acumulado) y Cartera (solo
+    si la empresa es educativa: facturado/cobrado/saldo por tipo de rubro).
 
     `start`/`end`: strings 'YYYY-MM-DD' o None (sin acotar por fecha).
-    Afectan Facturas, Detalle Items, Productos y Clientes — las 4 hojas que
-    se arman a partir de movimientos con fecha. Cartera es la única
-    excepción: se calcula sobre el "período lectivo vigente" (un concepto
-    académico, no un rango de fechas de calendario — un período lectivo
-    puede abarcar varios meses), así que sigue siendo siempre el período
-    lectivo con más facturación, igual que en TripleA_VentasIA.
-    Defecto detectado en pruebas (28/08/2026): Productos y Clientes se
-    dejaron sin filtro al portar este módulo, así que el Excel mezclaba el
-    detalle acotado al período elegido con rankings de TODO el histórico en
-    esas dos hojas — además de ser mucho más lento, porque esas consultas
-    agregaban sobre la tabla completa sin importar qué período se pidiera.
+    Afectan Facturas, Detalle Items, Productos y Clientes, las 4 hojas que se
+    arman a partir de movimientos con fecha; aplicarlas a todas evita mezclar
+    el detalle del período con rankings de TODO el histórico y agregar sobre
+    la tabla completa. Cartera es la única excepción: se calcula sobre el
+    "período lectivo vigente" (un concepto académico, no un rango de
+    calendario; un período lectivo puede abarcar varios meses), que es
+    siempre el período lectivo con más facturación.
 
-    Rendimiento (08/09/2026, OPT #4 y #7): el libro se arma con openpyxl en
-    modo write_only=True (streaming, sin materializar cientos de miles de
-    objetos de celda en RAM) y el formato de cada celda se aplica AL ESCRIBIRLA,
-    no en una pasada posterior sobre todas las celdas. Cada hoja trunca de
-    forma segura a _MAX_FILAS_HOJA filas. El resultado visual es idéntico al
-    anterior (5 hojas, cabecera verde, filas alternadas, auto-filtro, fila de
-    TOTALES, formato de moneda, bordes, freeze de la primera fila).
+    Rendimiento: el libro se arma con openpyxl en modo write_only=True
+    (streaming, sin materializar cientos de miles de objetos de celda en RAM)
+    y el formato de cada celda se aplica AL ESCRIBIRLA, no en una pasada
+    posterior. Cada hoja trunca de forma segura a _MAX_FILAS_HOJA filas.
+    Formato: cabecera verde, filas alternadas, auto-filtro, fila de TOTALES,
+    formato de moneda, bordes y primera fila congelada.
+
+    Returns:
+        Tupla (buffer BytesIO, nombre de archivo sugerido).
     """
     import openpyxl
     from openpyxl.cell import WriteOnlyCell
@@ -343,9 +342,9 @@ def generar_reporte_excel(connector, source_db: str, start=None, end=None) -> tu
     rubros = _consultar_cartera_por_rubro(connector, safe_db) if _es_educativa(connector, safe_db) else []
 
     # write_only=True: el libro se escribe en streaming y NUNCA se materializan
-    # los cientos de miles de objetos de celda de un libro normal (la causa del
-    # fallo por memória con 20k+ items). El formato de cada celda se aplica al
-    # escribirla (WriteOnlyCell), no en una pasada posterior (OPT #4 + #7).
+    # los cientos de miles de objetos de celda de un libro normal, que agotan
+    # la memoria con más de 20 000 ítems. El formato de cada celda se aplica al
+    # escribirla (WriteOnlyCell), no en una pasada posterior.
     wb = openpyxl.Workbook(write_only=True)
 
     hdr_fill = PatternFill("solid", fgColor="0E7A4A")
@@ -368,9 +367,9 @@ def generar_reporte_excel(connector, source_db: str, start=None, end=None) -> tu
         y la fila de TOTALES + auto-filtro. `filas` es un iterable de listas de
         tuplas (valor, es_moneda, centrado).
 
-        Los totales se acumulan sobre los valores ya tipados de cada fila con
-        las mismas reglas que antes (_totales_hoja): las cabeceras excluidas de
-        _COL_NO_TOTAL y las columnas con algún valor no numérico no se totalizan.
+        Los totales se acumulan sobre los valores ya tipados de cada fila. No se
+        totalizan la primera columna (lleva la etiqueta "TOTAL"), las cabeceras
+        de _COL_NO_TOTAL ni las columnas con algún valor no numérico.
         """
         ws = wb.create_sheet(title=title)
         ws.freeze_panes = "A2"
@@ -530,13 +529,12 @@ def generar_reporte_excel(connector, source_db: str, start=None, end=None) -> tu
 
 def exportar_tabla_excel(columns, rows, titulo: str = "datos") -> tuple[io.BytesIO, str]:
     """
-    Exporta una tabla GENÉRICA (columnas + filas, tal como llega en una
-    respuesta del chat) a un libro .xlsx de UNA hoja con el mismo formato
-    profesional que generar_reporte_excel (cabecera verde esmeralda con letra
-    blanca, bordes, filas alternadas, congelado de cabecera y auto-filtro).
+    Exporta una tabla genérica del chat a un libro .xlsx de una sola hoja.
 
-    Requisito (29/08/2026): el botón "CSV" de las tarjetas de
-    respuesta del chat pasa a "Excel" y usa este formato en vez del CSV plano.
+    Recibe columnas y filas tal como llegan en una respuesta del chat y aplica
+    el mismo formato que generar_reporte_excel (cabecera verde esmeralda con
+    letra blanca, bordes, filas alternadas, cabecera congelada y auto-filtro).
+    Lo usa la exportación a Excel de las tarjetas de respuesta del chat.
 
     `columns`: lista de etiquetas de columna YA en el orden final (también se
         aceptan dicts con clave "label"/"key", por compatibilidad con el
@@ -582,6 +580,7 @@ def exportar_tabla_excel(columns, rows, titulo: str = "datos") -> tuple[io.Bytes
     brd = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     def _ancho_estimado(v, base: int) -> int:
+        """Estima el ancho de columna según el texto, entre `base` y 60 caracteres."""
         s = str(v) if v is not None else ""
         return min(60, max(base, len(s) + 2))
 

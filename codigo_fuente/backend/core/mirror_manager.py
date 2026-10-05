@@ -1,9 +1,14 @@
 """
-core/mirror_manager.py - Gestor del ADN Maestro Dinámico (v4.5)
-================================================================
-ARQUITECTURA CLAVE: Las vistas usan {DB} como marcador dinámico.
-Cuando el usuario selecciona ACUA, SONG, AGRINAG o cualquier empresa,
-{DB} se reemplaza automáticamente. El mismo código funciona para TODOS.
+Gestor del ADN virtual del negocio y del Pulso BI.
+
+Define las vistas maestras del negocio (ventas, compras, RRHH, nómina,
+académico) como plantillas con el marcador {DB}, que se reemplaza por la base
+de la empresa seleccionada, para que el mismo código sirva a todas. Con ellas
+detecta qué dominios tienen datos, arma el esquema que ve la IA, inyecta las
+vistas como CTE en el SQL y calcula el Pulso BI filtrado por el rol.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -21,6 +26,11 @@ _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_]+$")
 
 
 def _validate_identifier(value: str, label: str) -> str:
+    """Valida que el valor sea un identificador SQL seguro (letras, números y guion bajo).
+
+    Raises:
+        ValueError: si está vacío o tiene caracteres no permitidos.
+    """
     candidate = (value or "").strip()
     if not candidate or not _IDENTIFIER_RE.fullmatch(candidate):
         raise ValueError(f"Identificador invalido para {label}: '{candidate}'")
@@ -273,6 +283,8 @@ _VIEW_TEMPLATES: dict[str, str] = {
 }
 
 
+# Tabla física principal de cada vista: si no está en el esquema de la
+# empresa, la vista no cuenta como soportada.
 _VIEW_DEPENDENCIES = {
     "cabecera_factura": "tb_cabmov",
     "cabecera_compra": "tb_cabmov1",
@@ -288,6 +300,8 @@ _VIEW_DEPENDENCIES = {
     "V_Registro_Academico": "edu_alumno"
 }
 
+# Tablas físicas que usa cada plantilla y vistas de las que dependen las vistas
+# resumen (referencia de dependencias).
 _VIEW_REQUIRED_TABLES: dict[str, set[str]] = {
     "cabecera_factura": {"tb_cabmov", "tb_client", "tb_detmov", "tb_vended", "tb_subcos"},
     "cabecera_compra": {"tb_cabmov1", "tb_provee", "tb_detmov1", "tb_item"},
@@ -332,6 +346,8 @@ _VIEW_REQUIRED_VIEWS: dict[str, set[str]] = {
 }
 
 
+# Dominios de negocio que se anuncian al usuario: vistas que los respaldan,
+# preguntas sugeridas y prioridad para deducir el giro principal.
 _CAPABILITY_DOMAINS = (
     {
         "id": "rrhh",
@@ -399,7 +415,7 @@ _CAPABILITY_DOMAINS = (
         "id": "academico",
         "name": "Académico",
         "module": "ACADEMICO",
-        "priority": 100, # Prioridad maxima para el rol de negocio
+        "priority": 100, # Prioridad máxima para deducir el giro de negocio
         "description": "Alumnos, matrículas, cursos, niveles y analítica educativa.",
         "views": ("VIS_ALUMNO", "V_Registro_Academico"),
         "quick_questions": (
@@ -410,12 +426,12 @@ _CAPABILITY_DOMAINS = (
     },
 )
 
-# Mapeo de tablas nucleares para verificacion de existencia de DATOS (no solo esquema)
+# Mapeo de tablas nucleares para verificar que existan DATOS (no solo esquema)
 _DOMAIN_CORE_PROBES = {
     "rrhh": "tb_trabaj",
     "nomina": "tb_cabrol",
     "finanzas": "tb_cabmov1", # Compras/Gastos
-    "ventas": "tb_cabmov",    # Facturacion
+    "ventas": "tb_cabmov",    # Facturación
     "operaciones": "tb_detmov1", # Movimientos de Inventario (Realidad operativa)
     "academico": "edu_alumno"
 }
@@ -425,10 +441,10 @@ def filtrar_pulso_por_modulos(pulse: dict, allowed_modules: list) -> dict:
     """
     Acota un pulso BI a los módulos habilitados del rol (JWT → allowed_modules).
 
-    Extraído del bloque final de `get_bi_pulse` para poder aplicarlo TAMBIÉN
-    cuando se sirve un snapshot precacheados (Capa 2): el snapshot de una
-    empresa se guarda SIN filtrar (un solo snapshot sirve a cualquier rol) y
-    aquí se filtra por rol en el momento de servir. Los ítems sin módulo o
+    Es una función de módulo para aplicarla TAMBIÉN al servir un snapshot
+    precalculado (core/bi_snapshot_store.py): el snapshot de una empresa se
+    guarda SIN filtrar (un solo snapshot sirve a cualquier rol) y aquí se
+    filtra por rol en el momento de servir. Los ítems sin módulo o
     "GENERAL" (métricas transversales) se conservan siempre.
 
     Devuelve el mismo dict mutado, para encadenar.
@@ -470,8 +486,10 @@ def filtrar_pulso_por_modulos(pulse: dict, allowed_modules: list) -> dict:
 
 class MirrorManager:
     """
-    Gestiona el ADN Virtual (Sin Estado).
-    Ya no usa una BD física, inyecta CTEs en la consulta en tiempo real.
+    Gestiona el ADN virtual del negocio y el Pulso BI de una empresa.
+
+    No guarda estado ni crea objetos en la base: las vistas maestras se
+    inyectan como CTE en cada consulta en tiempo real.
     """
 
     def __init__(self, connector):
@@ -480,6 +498,11 @@ class MirrorManager:
 
     @staticmethod
     def compose_sql_with_virtual_dna(dna_block: str, sql: str) -> str:
+        """Antepone el bloque CTE del ADN virtual a la consulta.
+
+        Si la consulta ya empieza con WITH, fusiona ambas listas de CTE en un
+        único WITH, porque SQL Server no admite dos cláusulas WITH seguidas.
+        """
         dna = str(dna_block or "").strip()
         query = str(sql or "").strip()
         if not dna:
@@ -495,14 +518,23 @@ class MirrorManager:
 
     def _available_virtual_views(self, schema_dict: dict | None = None, source_db: str | None = None) -> set[str]:
         """
-        Siguiendo el mandato gerencial: Las vistas virtuales (ADN del Negocio) 
-        están alojadas en la base de datos CHAT y deben estar disponibles 
-        INDEPENDIENTEMENTE de la base de datos cruda conectada, ya que la base 
-        CHAT abstrae y unifica toda la estructura.
+        Devuelve las vistas virtuales disponibles: siempre todas las plantillas.
+
+        Las vistas del negocio viven en la base CHAT, que abstrae y unifica la
+        estructura, así que están disponibles INDEPENDIENTEMENTE de la base
+        cruda conectada. Los parámetros no se usan.
         """
         return set(_VIEW_TEMPLATES.keys())
 
     def get_capability_snapshot(self, source_db: str, schema_dict: dict | None = None) -> dict:
+        """
+        Detecta qué dominios de negocio están listos en la base y arma su perfil.
+
+        Un dominio queda listo si alguna de sus vistas tiene su tabla física
+        principal en el esquema y la sonda confirma al menos un registro.
+        Devuelve resumen, detalles, módulos, áreas (ready/locked), hasta 6
+        preguntas sugeridas y métricas del esquema.
+        """
         db_label = str(source_db or "").strip() or "ACTIVA"
         available_views = self._available_virtual_views(schema_dict, source_db=source_db)
         raw_tables = {str(name or "").strip().lower() for name in (schema_dict or {}).keys()}
@@ -512,8 +544,8 @@ class MirrorManager:
         quick_questions = []
         ready_domain_names = []
 
-        # 0. Sonda de Datos (Data Probe)
-        # Verificamos si las tablas nucleares o vistas equivalentes tienen al menos 1 registro
+        # 0. Sonda de datos: comprueba si las tablas nucleares o vistas
+        # equivalentes tienen al menos un registro.
         data_presence = {}
         _PROBE_MAP = {
             "rrhh": ("tb_trabaj", "ficha_trabajador"),
@@ -524,7 +556,7 @@ class MirrorManager:
             "academico": ("edu_alumno", "vis_alumno")
         }
         
-        # Para bases académicas conocidas (ej. MONT), forzar presencia académica
+        # En bases académicas conocidas (ej. MONT) se fuerza la presencia académica
         if any(w in db_label.lower() for w in ("mont", "daun", "edu", "colegio", "escuela", "instituto", "unidad")):
             data_presence["academico"] = True
 
@@ -549,7 +581,7 @@ class MirrorManager:
                 if not p_err and p_rows:
                     p_row = p_rows[0]
                     for idx, key in enumerate(probe_keys):
-                        # p_row[idx] sera 1 si hay datos, None si esta vacia
+                        # p_row[idx] vale 1 si hay datos y None si la tabla está vacía
                         data_presence[key] = (p_row[idx] == 1)
                 elif p_err:
                     logger.error("[MIRROR] Error ejecución sonda en %s: %s", db_label, p_err)
@@ -561,7 +593,8 @@ class MirrorManager:
             domain_views = domain.get("views", ())
             extra_dep = str(domain.get("extra_dependency", "")).strip().lower()
 
-            # REGLA DE DETECCION REALISTA:
+            # Regla de detección: alguna vista del dominio debe tener su tabla
+            # física en el esquema y, si hay sonda, datos confirmados.
             ready = False
             for v_name in domain_views:
                 if v_name in available_views:
@@ -571,21 +604,21 @@ class MirrorManager:
                         if extra_dep and extra_dep not in raw_tables:
                             continue 
                         
-                        # VERIFICACION DE DATOS OBLIGATORIA
+                        # VERIFICACIÓN DE DATOS OBLIGATORIA
                         # Si el dominio tiene sonda definida, DEBE haber devuelto True
                         if domain_id in _DOMAIN_CORE_PROBES:
                             if not data_presence.get(domain_id, False):
-                                continue # No hay datos en la tabla nuclear, area no lista
+                                continue # No hay datos en la tabla nuclear, área no lista
 
                         ready = True
                         break
 
-            # Fallback por tokens (solo si no se detecto por vistas)
+            # Respaldo por nombres de tabla (solo si no se detectó por vistas)
             if not ready:
                 raw_tokens = domain.get("raw_tokens", ())
                 has_tables = any(token.lower() in raw_tables for token in raw_tokens)
                 if has_tables:
-                    # En fallback tambien exigimos que haya datos si hay sonda definida
+                    # En el respaldo también se exigen datos si hay sonda definida
                     if domain_id in _DOMAIN_CORE_PROBES:
                         if not data_presence.get(domain_id, False):
                             ready = False
@@ -608,36 +641,27 @@ class MirrorManager:
                 }
             )
 
-        # REGLA DE EXCLUSION: Si es un colegio (Academico), desactivamos Operaciones
-        # a menos que existan tablas explicitas de bodega/stock (tb_bodega, tb_stock).
-        # Esto evita que una escuela con tb_item active el dominio de inventario.
+        # REGLA DE EXCLUSIÓN: en un colegio (Académico) se oculta Operaciones a
+        # menos que existan tablas explícitas de bodega/stock (tb_bodega,
+        # tb_stock, tb_inventario). Así una escuela con tb_item no activa el
+        # dominio de inventario.
         is_school = "ACADEMICO" in modules
         has_real_stock_tables = any(t in raw_tables for t in ("tb_bodega", "tb_stock", "tb_inventario"))
 
-        # Bug real (28/08/2026): la sonda de "finanzas"
-        # solo comprueba "existe al menos 1 fila en cabecera_compra" — un colegio
-        # que alguna vez compró útiles de oficina activaba TODO el bloque de
-        # preguntas sugeridas de "proveedores"/"compras por mes", aunque esa no
-        # sea en absoluto su giro de negocio (Montessori: alumnos, pensiones,
-        # matrículas). El usuario lo dijo explícito: "Prueba preguntando" debe
-        # corresponder SIEMPRE a la lógica de negocio real de la empresa activa.
-        # A diferencia de "operaciones" (que sí tiene tablas exclusivas de stock
-        # para distinguir "compra real" de "compra ocasional"), no existe una
-        # señal de tabla equivalente para compras — cualquier colegio con AL
-        # MENOS una compra registrada ya cumplía la sonda existente. Por eso
-        # aquí se excluye sin condición: para una institución académica,
-        # proveedores/compras no es un tema que deba sugerirse proactivamente,
-        # sin importar cuántos registros sueltos existan.
-        # Preguntas de "ventas" reescritas para una institución académica: la
-        # exclusión de "finanzas" (arriba) ya reconoce que un colegio no vive
-        # de comprar a proveedores, pero el dominio "ventas" SÍ debe seguir
-        # activo (un colegio factura pensiones y matrículas) — lo que estaba
-        # mal era el TEXTO de sus preguntas sugeridas, heredado tal cual de un
-        # negocio retail ("10 productos más vendidos", "ranking de
-        # vendedores"), que no tiene sentido para un colegio (no vende
-        # productos ni tiene vendedores). Defecto detectado en pruebas
-        # 29/08/2026: "Prueba preguntando" debe reflejar SIEMPRE el giro real
-        # de la empresa activa, no solo esconder lo que no aplica.
+        # En una institución académica también se oculta "finanzas"
+        # (proveedores/compras) sin condición. Su sonda solo comprueba que haya
+        # al menos una fila en cabecera_compra, y un colegio que alguna vez
+        # compró útiles de oficina activaría todas las preguntas sugeridas de
+        # proveedores aunque ese no sea su giro (alumnos, pensiones,
+        # matrículas). A diferencia de "operaciones", no existe una tabla
+        # exclusiva que distinga una compra real de una ocasional.
+        # "Prueba preguntando" debe corresponder SIEMPRE al giro real de la
+        # empresa activa.
+        #
+        # El dominio "ventas" sí sigue activo en un colegio (factura pensiones
+        # y matrículas), pero sus preguntas sugeridas de retail ("10 productos
+        # más vendidos", "ranking de vendedores") no tienen sentido allí (no
+        # vende productos ni tiene vendedores), así que se reemplazan por estas:
         _VENTAS_PREGUNTAS_COLEGIO = (
             "Muestra el total facturado por mes",
             "Dame un listado de pagos de pensión o matrícula del período más reciente",
@@ -650,7 +674,7 @@ class MirrorManager:
             if a["id"] == "operaciones" and is_school and not has_real_stock_tables:
                 continue # Ocultar operaciones en colegios sin stock real
             if a["id"] == "finanzas" and is_school:
-                continue # Ocultar compras/proveedores en instituciones academicas
+                continue # Ocultar compras/proveedores en instituciones académicas
             final_areas.append(a)
             if a["status"] == "ready":
                 # Recuperar preguntas solo de áreas que quedaron
@@ -673,16 +697,16 @@ class MirrorManager:
             1 for v_name in available_views
             if _VIEW_DEPENDENCIES.get(v_name, "").lower() in raw_tables
         )
-        # Si por alguna razón ninguna coincide pero hay vistas, mostrar al menos 1 para no dejar en 0 si hay áreas
+        # Si ninguna vista coincide pero hay dominios listos, se usa su número para no mostrar 0
         if supported_views_count == 0 and ready_domain_names:
             supported_views_count = len(ready_domain_names)
             
         virtual_view_count = supported_views_count
 
         if ready_domain_names:
-            # Determinar rol principal basado en prioridad definida en el dominio
+            # El giro principal sale del dominio listo con mayor prioridad
             primary_domain = max(_CAPABILITY_DOMAINS, key=lambda d: d.get("priority", 0) if d["name"] in ready_domain_names else -1)
-            business_role = "Entidad Comercial" # Default
+            business_role = "Entidad Comercial" # Valor por defecto
             
             if primary_domain.get("id") == "academico":
                 business_role = "Institución Educativa"
@@ -691,7 +715,7 @@ class MirrorManager:
             elif "tb_paciente" in raw_tables:
                 business_role = "Centro de Salud / Hospital"
 
-            # Resumen Ejecutivo más honesto
+            # Resumen ejecutivo con el giro detectado y los dominios listos
             summary = (
                 f"La base {db_label} opera como {business_role} y está conectada exitosamente. "
                 f"VicMar Data AI ha identificado soporte para: "
@@ -736,7 +760,7 @@ class MirrorManager:
         }
 
     def _load_db_insights(self) -> dict:
-        """Carga mapeos personalizados desde db_insights.json."""
+        """Carga los mapeos personalizados de data/db_insights.json; dict vacío si no existe o falla."""
         try:
             from pathlib import Path
             import json
@@ -750,8 +774,10 @@ class MirrorManager:
 
     def get_virtual_dna_block(self, source_db: str, schema_dict: dict = None, sql_query: str = "") -> str:
         """
-        Genera el bloque CTE de ADN Virtual con soporte para mapeos dinámicos.
-        Si se provee sql_query, filtra y retorna SOLAMENTE las vistas virtuales necesarias.
+        Genera el bloque CTE (WITH ...) del ADN virtual para la base indicada.
+
+        Reemplaza {DB} en cada plantilla por la base de la empresa. Si se pasa
+        sql_query, incluye SOLAMENTE las vistas que esa consulta menciona.
         """
         database = (source_db or "").strip().upper()
         if not database:
@@ -764,14 +790,14 @@ class MirrorManager:
         dna_blocks = []
         valid_templates = self._available_virtual_views(schema_dict, source_db=database)
 
-        # Usar mayúsculas para la búsqueda sin case sensitivity
+        # Mayúsculas para buscar sin distinguir mayúsculas de minúsculas
         sql_upper = (sql_query or "").upper()
 
         for view_name, template in _VIEW_TEMPLATES.items():
             if view_name not in valid_templates:
                 continue
                 
-            # OPTIMIZACION: Si tenemos el query, solo inyectamos las vistas mencionadas
+            # Optimización: si hay consulta, solo se inyectan las vistas que menciona
             if sql_upper:
                 view_upper = view_name.upper()
                 if f"[{view_upper}]" not in sql_upper and f" {view_upper}" not in sql_upper:
@@ -792,7 +818,8 @@ class MirrorManager:
 
     def get_chat_schema(self, schema_dict: dict = None, source_db: str | None = None) -> str:
         """
-        Genera el esquema de texto de las Vistas Virtuales para que la IA sepa qué consultar.
+        Genera el esquema en texto (CREATE VIEW con sus columnas) de las vistas
+        virtuales para que la IA sepa qué consultar.
         """
         header = '''
 -- ========================================================
@@ -841,6 +868,7 @@ class MirrorManager:
 
     @staticmethod
     def _bi_period_label(year_value, month_value) -> str:
+        """Devuelve la etiqueta del período ("Ene 2026", solo el año o "Actual")."""
         month_names = {1:"Ene", 2:"Feb", 3:"Mar", 4:"Abr", 5:"May", 6:"Jun", 7:"Jul", 8:"Ago", 9:"Sep", 10:"Oct", 11:"Nov", 12:"Dic"}
         year_num = MirrorManager._bi_int(year_value)
         month_num = MirrorManager._bi_int(month_value)
@@ -873,18 +901,17 @@ class MirrorManager:
 
     def _vista_confiable_para(self, vista: str, safe_db: str) -> bool:
         """
-        Verificación EN VIVO antes de confiar en una vista de CHAT para esta
-        empresa (Reportes BI — regla fija: solo datos de la empresa activa).
+        Verifica EN VIVO si una vista de CHAT es confiable para esta empresa.
 
-        Bug real (28/08/2026): con SONG activa, "Ingresos por Línea de
-        Negocio" y "Top 5 Productos" mostraron datos reales de MONT (pensiones
-        de colegio en una empresa agrícola). Causa: CHAT es un namespace de
-        vistas COMPARTIDO por todo el servidor (no por sesión) — otra petición
-        concurrente había re-apuntado sus vistas a MONT justo antes de que
-        este pulso corriera para SONG. Las tarjetas que leen CHAT directamente
-        (Balance Comercial, académico, estas dos tablas) construyen su propio
-        SQL a mano y por eso NO pasaban por la verificación que sí protege a
-        las métricas del catálogo genérico — este método cierra ese hueco.
+        Reportes BI tiene una regla fija: solo datos de la empresa activa. CHAT
+        es un namespace de vistas COMPARTIDO por todo el servidor (no por
+        sesión), y otra petición concurrente puede reapuntar sus vistas a otra
+        empresa justo antes de que corra este pulso (por ejemplo, pensiones de
+        MONT con SONG activa). Las tarjetas que leen CHAT directamente
+        (Balance Comercial, académico, Ingresos por Línea de Negocio y Top 5
+        Productos) construyen su propio SQL y no pasan por la verificación que
+        protege a las métricas del catálogo genérico; este método cubre ese
+        hueco.
 
         Devuelve False (no confiar) ante cualquier duda, igual que
         `vista_aislada_para_empresa`, de la que es un atajo.
@@ -910,8 +937,7 @@ class MirrorManager:
         gráficos, tablas, alertas y áreas cuyo módulo NO esté en la lista se
         omiten del resultado (ej. un rol CONTABILIDAD no recibe tarjetas de
         ACADEMICO). Si viene vacío/None (ADMIN sin restricción, GUEST demo o
-        token sin módulos) NO se filtra nada y se mantiene el comportamiento
-        actual completo.
+        token sin módulos) NO se filtra nada.
 
         `anio`: si se pasa (ej. desde el selector de año del dashboard), las
         métricas del catálogo que usan {year} (ventas/compras por factura y
@@ -921,13 +947,10 @@ class MirrorManager:
         son cálculos de "estado actual", no de un año específico.
 
         `mes`: acota ADEMÁS a un mes concreto de ese año. Solo lo respetan las
-        tarjetas escritas a mano en este archivo que dicen explícitamente
-        "admite mes" en su comentario (Balance Comercial, Ingresos por Línea
-        de Negocio, Top 5 Productos) — las métricas del catálogo genérico
-        (`metricas_dashboard`) siguen siendo de año completo, ya que extender
-        las ~30 métricas existentes a granularidad de mes es un cambio propio
-        y no se hizo en este pase para no tocar SQL certificado que ya
-        funciona en producción.
+        tarjetas escritas a mano en este archivo (Balance Comercial, Este Mes,
+        Cobrado en el Período, Ingresos por Línea de Negocio y Top 5
+        Productos); las métricas del catálogo genérico (`metricas_dashboard`)
+        siguen siendo de año completo para no tocar su SQL certificado.
         """
         try:
             safe_db = _validate_identifier(source_db, "source_db")
@@ -964,8 +987,8 @@ class MirrorManager:
         try:
             with self.engine.connect() as connection:
                 # ── DETECCIÓN DINÁMICA DE VISTAS CHAT ──────────────────────────────
-                # Comprobamos si la base de datos CHAT y sus vistas inteligentes existen
-                # y son accesibles en el servidor actual, Y si el SP se ejecutó con éxito.
+                # Se comprueba si la base CHAT y sus vistas inteligentes existen y
+                # son accesibles en el servidor actual, Y si el SP se ejecutó con éxito.
                 use_chat_views = False
                 if str(sp_status or "").strip().upper() == "OK":
                     try:
@@ -977,17 +1000,13 @@ class MirrorManager:
                 else:
                     logger.warning("[BI_PULSE] SP_MODIFICA_VISTA_IA falló o no se ejecutó previamente (Status: %s). Forzando fallback seguro a tablas físicas del ERP.", sp_status)
 
-                # Bug real (28/08/2026): la tarjeta academica usaba este MISMO
-                # `use_chat_views`, que se calcula probando [CHAT].[cabecera_factura]
-                # — una vista de VENTAS, sin ninguna relacion con VIS_ALUMNO. Para
-                # MONT, la vista de ventas en CHAT esta desplegada con OTRO nombre
-                # ("Ventas", no "cabecera_factura" — ver hallazgo del 28/08/2026),
-                # asi que esa prueba fallaba y la tarjeta de alumnos caia SIEMPRE al
-                # fallback de tabla fisica sin filtro de periodo (969 alumnos con
-                # alu_estado='MA' de TODOS los periodos a la vez), nunca a VIS_ALUMNO
-                # con el filtro correcto (882). Se prueba VIS_ALUMNO de forma
-                # independiente, no se asume que "ventas funciona" implica "alumnos
-                # funciona".
+                # VIS_ALUMNO se prueba de forma independiente: `use_chat_views`
+                # solo prueba [CHAT].[cabecera_factura], una vista de VENTAS sin
+                # relación con VIS_ALUMNO. En MONT la vista de ventas de CHAT se
+                # despliega con OTRO nombre ("Ventas"), así que esa prueba falla
+                # y la tarjeta de alumnos caería siempre al respaldo de tabla
+                # física, que no filtra por período. Que "ventas funcione" no
+                # implica que "alumnos funcione".
                 academic_chat_ready = False
                 if str(sp_status or "").strip().upper() == "OK":
                     try:
@@ -995,8 +1014,8 @@ class MirrorManager:
                         # Regla fija: Reportes BI solo muestra datos de la empresa
                         # activa. Igual que cabecera_factura, VIS_ALUMNO se reapunta
                         # bien por empresa pero vive en el namespace COMPARTIDO de
-                        # CHAT — sin esta verificacion en vivo, una activacion
-                        # concurrente de otra empresa academica puede dejarla
+                        # CHAT: sin esta verificación en vivo, una activación
+                        # concurrente de otra empresa académica puede dejarla
                         # apuntando a otra base justo cuando este pulso corre.
                         academic_chat_ready = self._vista_confiable_para("VIS_ALUMNO", safe_db)
                         if not academic_chat_ready:
@@ -1020,17 +1039,18 @@ class MirrorManager:
                     # 1. Determinar el período más reciente con datos (Ventas o Compras)
                     now = datetime.now()
                     last_yr, last_mo = now.year, now.month
-                    # Si el usuario eligio mes+año explicitos en el filtro global del
-                    # dashboard, van directo — se salta la autodeteccion de abajo (que
-                    # solo tiene sentido para "el periodo mas reciente con datos").
+                    # Si el usuario eligió mes y año explícitos en el filtro global
+                    # del dashboard, se usan directo y se salta la autodetección de
+                    # abajo (que solo tiene sentido para "el período más reciente
+                    # con datos").
                     periodo_forzado = bool(anio and mes)
                     if periodo_forzado:
                         last_yr, last_mo = int(anio), int(mes)
 
                     # Regla fija: Reportes BI solo muestra datos de la empresa
                     # activa. cabecera_factura/cabecera_compra SE reapuntan bien
-                    # por empresa, pero CHAT es compartido por todo el servidor
-                    # — sin esta verificacion en vivo, una activacion concurrente
+                    # por empresa, pero CHAT es compartido por todo el servidor:
+                    # sin esta verificación en vivo, una activación concurrente
                     # de OTRA empresa puede dejarlas apuntando a otra base justo
                     # cuando este pulso corre (ver _vista_confiable_para).
                     ventas_chat_confiable = use_chat_views and self._vista_confiable_para("cabecera_factura", safe_db)
@@ -1084,7 +1104,7 @@ class MirrorManager:
                         except Exception:
                             pass
                     else:
-                        # Fallback a tablas físicas directas
+                        # Respaldo: tablas físicas directas
                         if not periodo_forzado:
                             try:
                                 # Buscar último movimiento en V1
@@ -1141,23 +1161,20 @@ class MirrorManager:
                         hint=f"Datos del período {period_label_ccial}. Corresponde al total acumulado de facturación y adquisiciones ingresadas físicamente en el sistema ERP (criterio transaccional de caja)."
                     )
 
-                # ── PANEL FINANCIERO GRANULAR (28/08/2026) ──
-                # Ventas Hoy / Este Mes / Acumulado del año / Cartera por Cobrar /
-                # Clientes / Productos / Cobrado en el Período — reorganiza Reportes
-                # BI con la estructura que el usuario mostró como referencia.
+                # ── PANEL FINANCIERO GRANULAR ──
+                # Ventas Hoy / Este Mes / Acumulado del año / Clientes / Productos
+                # (y, más abajo, Cartera por Cobrar y Cobrado en el Período).
                 #
-                # Deliberadamente NO usa CHAT: van todas contra las tablas físicas
-                # de `safe_db` (tb_cabmov/tb_detmov/CLIDOCU), el mismo patrón ya
-                # usado por RRHH ("van directo a las tablas físicas de la empresa
-                # activa"). Es más simple Y más seguro — el bug de fuga entre
-                # empresas del 28/08/2026 fue justo por depender de CHAT (un
-                # namespace compartido); las tablas físicas de `safe_db` no tienen
-                # ese riesgo en absoluto, cada empresa vive en su propia base.
+                # Deliberadamente NO usa CHAT: todas las consultas van contra las
+                # tablas físicas de `safe_db` (tb_cabmov/tb_detmov/CLIDOCU), igual
+                # que RRHH. Es más simple Y más seguro: CHAT es un namespace
+                # compartido que puede mezclar empresas, mientras que en las
+                # tablas físicas cada empresa vive en su propia base.
                 #
-                # `mov_fecha` y `CLIDOCU.Fecha` son CHAR con formato 'YYYY/MM/DD'
-                # (confirmado en vivo, 28/08/2026), no un tipo DATE real — todas las
-                # comparaciones usan CAST(... AS date) en vez de comparar el string
-                # crudo, que con separadores distintos ('-' vs '/') compara mal.
+                # `mov_fecha` y `CLIDOCU.Fecha` son CHAR con formato 'YYYY/MM/DD',
+                # no un tipo DATE real: todas las comparaciones usan
+                # CAST(... AS date) en vez de comparar el texto crudo, que con
+                # separadores distintos ('-' vs '/') compara mal.
                 if has_v1:
                     hoy = datetime.now()
                     _anio_panel = int(anio) if anio else hoy.year
@@ -1256,11 +1273,11 @@ class MirrorManager:
                     except Exception as e:
                         logger.info("[BI_PULSE] Tarjeta 'Productos' omitida: %s", e)
 
-                # ── CARTERA POR COBRAR Y COBRADO EN EL PERÍODO (28/08/2026) ──
+                # ── CARTERA POR COBRAR Y COBRADO EN EL PERÍODO ──
                 # Fuente: CLIDOCU, el libro auxiliar de cuentas por cobrar (tabla
-                # física de `safe_db`, confirmada real en SONG y MONT). DEBCRED=1
+                # física de `safe_db`, presente en SONG y MONT). DEBCRED=1
                 # es cargo (factura, aumenta lo adeudado), DEBCRED=2 es abono
-                # (cobro, lo reduce) — mismo criterio que usa la vista nativa
+                # (cobro, lo reduce): mismo criterio que usa la vista nativa
                 # CLIDOCUSALDO del propio ERP para calcular saldos pendientes.
                 if "clidocu" in schema_tables_lower:
                     try:
@@ -1311,13 +1328,12 @@ class MirrorManager:
                     except Exception as e:
                         logger.info("[BI_PULSE] Tarjeta 'Cobrado en el Período' omitida: %s", e)
 
-                # ACADÉMICO (Diferenciación Crítica DAUN vs MONT)
-                # Auditoría 09/09/2026 (#6): "unemi_pruebas" no matcheaba
-                # ningún alias de la lista, y `schema_tables_lower` es el
-                # esquema de la base OPERATIVA (tiene "alumnos_prueba", no
-                # "vis_alumno" — esa vive en CHAT). Se agrega "unemi" al
-                # heurístico de nombre y una detección genérica por
-                # substring "alumno" en cualquier tabla del esquema.
+                # ACADÉMICO
+                # Se detecta por el nombre de la base (incluido "unemi") o por
+                # cualquier tabla cuyo nombre contenga "alumno".
+                # `schema_tables_lower` es el esquema de la base OPERATIVA (por
+                # ejemplo, tiene "alumnos_prueba"), no el de CHAT, donde vive
+                # vis_alumno.
                 is_academic_db = any(w in safe_db.lower() for w in ("mont", "daun", "edu", "colegio", "escuela", "instituto", "unidad", "unemi"))
                 has_academic = (
                     is_academic_db
@@ -1326,43 +1342,35 @@ class MirrorManager:
                     or any("alumno" in t for t in schema_tables_lower)
                 )
                 if has_academic:
-                    # Auditoría 09/09/2026: VIS_ALUMNO ahora filtra por
-                    # SESSION_CONTEXT('empresa_activa') en vez de por un ALTER
-                    # VIEW global (ver auditoría interna del 09/09/2026 #2). Esta
-                    # `connection` es la de administrador (no la de chat_reader
-                    # con aislamiento del lado del motor de IA), así que aquí
-                    # hay que fijar el contexto a mano antes de consultar la
-                    # vista, o siempre devolvería 0 filas.
+                    # VIS_ALUMNO filtra por SESSION_CONTEXT('empresa_activa') en
+                    # lugar de reapuntarse con un ALTER VIEW global. Esta
+                    # `connection` es la de administrador (no la de chat_reader,
+                    # que aplica el aislamiento del lado del motor de IA), así
+                    # que el contexto se fija a mano antes de consultar la vista;
+                    # sin él devolvería 0 filas.
                     try:
                         connection.execute(text(
                             "EXEC sp_set_session_context @key = N'empresa_activa', @value = :empresa"
                         ), {"empresa": safe_db})
                     except Exception as e:
                         logger.warning("[BI_PULSE] No se pudo fijar SESSION_CONTEXT para %s: %s", safe_db, e)
-                    # Bug real (28/08/2026): esta tarjeta tenia su PROPIO filtro,
-                    # duplicado y desincronizado del de knowledge/metric_catalog.json.
-                    # Filtraba por codigos ('AN','RE','PR','PRE') que VIS_ALUMNO ya no
-                    # devuelve — la vista entrega el estado en texto largo via
-                    # VIS_ESTALU (MATRICULADO, GRADUADO, RETIRADO...) — asi que el
-                    # filtro no excluia nada, y ademas sumaba TODOS los periodos
-                    # lectivos de la vista a la vez (2023-2024 a 2027-2028). Verificado
-                    # contra la base real de MONT: "matriculados" (ESTADO='MATRICULADO'
-                    # del periodo vigente) son 882; sumando tambien a los que estan
-                    # graduados/en admision/en tramite de ese mismo periodo da 941;
-                    # sumando ademas todos los periodos historicos da 1.038. Son tres
-                    # cifras reales y distintas, no un error de redondeo, asi que la
-                    # tarjeta ahora muestra las dos primeras (la que un director
-                    # espera ver como matricula) y deja la tercera para quien pida
-                    # explicitamente el historico completo.
+                    # Hay tres cifras reales y distintas, no un error de redondeo:
+                    # matriculados (matrícula activa del período vigente),
+                    # registrados (todos los estados de ese mismo período) e
+                    # histórico (todos los períodos lectivos). La tarjeta muestra
+                    # las dos primeras, que es lo que un director espera ver como
+                    # matrícula; el histórico queda para quien lo pida
+                    # explícitamente. El período vigente es el más poblado de la
+                    # vista, para no sumar todos los períodos a la vez.
                     matriculados = 0
                     registrados = 0
                     periodo_vigente = ""
                     try:
                         if academic_chat_ready:
-                            # Auditoría 09/09/2026: adaptado al esquema nuevo de
-                            # VIS_ALUMNO (anio/estado_matricula en vez del
-                            # PERIODO/ESTADO del esquema de colegios K-12
-                            # original — ver auditoría interna del 09/09/2026 #6).
+                            # Esquema universitario de VIS_ALUMNO: el período es
+                            # `anio` y la matrícula activa es
+                            # estado_matricula = 'ACTIVO' (el esquema de colegios
+                            # K-12 usaba PERIODO/ESTADO).
                             periodo_vigente = str(self._scalar(
                                 connection,
                                 "SELECT TOP 1 CAST(anio AS VARCHAR(4)) FROM [CHAT].[dbo].[VIS_ALUMNO] "
@@ -1385,8 +1393,8 @@ class MirrorManager:
                             matriculados = registrados
 
                         if matriculados == 0 and registrados == 0:
-                            # Fallback a la tabla fisica: alu_estado usa codigos cortos
-                            # ('MA' = matriculado), no el texto largo de VIS_ESTALU.
+                            # Respaldo con la tabla física: alu_estado usa códigos
+                            # cortos ('MA' = matriculado), no el texto largo de VIS_ESTALU.
                             matriculados = self._bi_int(self._scalar(connection, f"SELECT COUNT(*) FROM [{safe_db}].[dbo].[edu_alumno] WHERE RTRIM(alu_estado) = 'MA'"))
                             registrados = matriculados or self._bi_int(self._scalar(connection, f"SELECT COUNT(*) FROM [{safe_db}].[dbo].[edu_alumno]"))
 
@@ -1399,10 +1407,9 @@ class MirrorManager:
                     try:
                         if academic_chat_ready and periodo_vigente:
                             safe_periodo = periodo_vigente.replace("'", "''")
-                            # "Cursos" en el esquema original (K-12) equivale aquí a
-                            # "carreras" (educación universitaria) — no hay un
-                            # concepto de curso/paralelo en el dataset académico
-                            # actual, ver auditoría interna del 09/09/2026 #6.
+                            # "Cursos" del esquema K-12 equivale aquí a "carreras"
+                            # (educación universitaria): el dataset académico no
+                            # tiene el concepto de curso/paralelo.
                             total_cursos = self._bi_int(self._scalar(
                                 connection,
                                 "SELECT COUNT(DISTINCT carrera) FROM [CHAT].[dbo].[VIS_ALUMNO] "
@@ -1451,10 +1458,9 @@ class MirrorManager:
                         )
                     )
 
-                    # 2. Tarjeta dedicada: Carreras Ofertadas (antes "Cursos
-                    # Ofertados" — el esquema original era de colegios K-12 con
-                    # paralelos/cursos; este dataset es universitario, la
-                    # dimensión equivalente es la carrera).
+                    # 2. Tarjeta dedicada: Carreras Ofertadas (en este dataset
+                    # universitario, la dimensión equivalente al curso/paralelo
+                    # de un colegio K-12 es la carrera).
                     if total_cursos > 0:
                         self._append_bi_card(
                             results["cards"],
@@ -1482,37 +1488,33 @@ class MirrorManager:
                             hint="Niveles de enseñanza detectados (Inicial, E.G.B., Bachillerato)."
                         )
 
-                # ── INGRESOS POR LÍNEA DE NEGOCIO Y TOP 5 PRODUCTOS (28/08/2026) ──
-                # dos tarjetas de TABLA (no de valor único) para
-                # Reportes BI. Ambas admiten mes+año del filtro global del dashboard.
+                # ── INGRESOS POR LÍNEA DE NEGOCIO Y TOP 5 PRODUCTOS ──
+                # Dos tarjetas de TABLA (no de valor único) para Reportes BI.
+                # Ambas admiten mes y año del filtro global del dashboard.
                 #
-                # Hallazgo real al construirlas: la vista de ventas de CHAT NO se llama
-                # igual en todas las empresas. El resto de este archivo asume
-                # "cabecera_factura" (el nombre del template en _MIRROR_TEMPLATES), pero
-                # para MONT el SP_MODIFICA_VISTA_IA desplegado en el servidor la crea
-                # como "Ventas" — con una columna extra "Linea" (línea de negocio) que
-                # "cabecera_factura" no tiene. Por eso estas dos tarjetas detectan en
-                # vivo cuál de los dos nombres responde, en vez de asumir uno fijo.
-                # "Ingresos por Línea de Negocio" requiere ademas que la vista tenga la
-                # columna Linea: si no la tiene (empresas que sí usan el template
-                # genérico), la tarjeta se omite en vez de mostrar un error o un dato
-                # inventado — no hay clasificación de línea de negocio que mostrar ahí.
-                # "Ventas" va primero: es la que trae la columna Linea (necesaria
-                # para la tarjeta de linea de negocio); "cabecera_factura" es el
-                # nombre generico y no siempre la tiene. Si ambas existen para la
-                # misma empresa, se prefiere la mas completa.
+                # La vista de ventas de CHAT NO se llama igual en todas las
+                # empresas. El resto de este archivo asume "cabecera_factura" (el
+                # nombre de la plantilla en _VIEW_TEMPLATES), pero para MONT el
+                # SP_MODIFICA_VISTA_IA del servidor la crea como "Ventas", con una
+                # columna extra "Linea" (línea de negocio) que "cabecera_factura"
+                # no tiene. Por eso estas tarjetas detectan en vivo cuál de los dos
+                # nombres responde, en vez de asumir uno fijo.
+                # "Ingresos por Línea de Negocio" requiere además la columna Linea:
+                # si la vista no la tiene (empresas con la plantilla genérica), la
+                # tarjeta se omite en vez de mostrar un error o un dato inventado.
+                # "Ventas" va primero en los candidatos porque es la que trae la
+                # columna Linea; si ambas existen para la misma empresa, se
+                # prefiere la más completa.
                 from core.vista_resolver import CANDIDATOS_VENTAS, detectar_vista_sqlalchemy
 
                 vista_ventas_detectada = detectar_vista_sqlalchemy(connection, CANDIDATOS_VENTAS, target_db="CHAT")
 
                 # Regla fija: Reportes BI solo muestra datos de la empresa activa.
-                # Bug real (28/08/2026): con SONG activa, estas dos tarjetas
-                # mostraron datos reales de MONT (pensiones de colegio en una
-                # empresa agrícola) — CHAT es un namespace de vistas compartido
-                # por todo el servidor, y otra petición concurrente lo había
-                # re-apuntado a MONT justo antes de que este pulso corriera para
-                # SONG. Sin esta verificación en vivo, detectar que la vista
-                # EXISTE no dice nada sobre a qué empresa apunta AHORA MISMO.
+                # CHAT es un namespace de vistas compartido por todo el servidor
+                # y otra petición concurrente puede reapuntarlo a otra empresa
+                # justo antes de que corra este pulso. Detectar que la vista
+                # EXISTE no dice nada sobre a qué empresa apunta AHORA MISMO; por
+                # eso se verifica en vivo.
                 if vista_ventas_detectada and not self._vista_confiable_para(vista_ventas_detectada, safe_db):
                     logger.warning(
                         "[BI_PULSE] %s no aislada para %s ahora mismo; se omiten "
@@ -1589,14 +1591,13 @@ class MirrorManager:
                         logger.info("[BI_PULSE] Tabla 'Top 5 Productos' omitida: %s", e)
 
                 # RRHH
-                # NOTA (Fase 3 — C1): [CHAT].[dbo].[ficha_trabajador] y
-                # [CHAT].[dbo].[rol_pago] NO se reapuntan al cambiar de empresa
-                # (verificado sobre 13 empresas reales, ver
-                # core/integridad_vistas.py) — a diferencia de las vistas
-                # comerciales, esto pasa SIEMPRE, sin importar si el SP tuvo
-                # éxito (use_chat_views). Por eso estas dos tarjetas ya NO
-                # intentan CHAT primero: van directo a las tablas físicas de
-                # la empresa activa, que sí son confiables.
+                # [CHAT].[dbo].[ficha_trabajador] y [CHAT].[dbo].[rol_pago] NO se
+                # reapuntan al cambiar de empresa (verificado sobre 13 empresas
+                # reales, ver core/integridad_vistas.py). A diferencia de las
+                # vistas comerciales, esto pasa SIEMPRE, sin importar si el SP
+                # tuvo éxito (use_chat_views). Por eso estas tarjetas no usan
+                # CHAT: van directo a las tablas físicas de la empresa activa,
+                # que sí son confiables.
                 if "tb_trabaj" in schema_tables_lower:
                     active = 0
                     try:
@@ -1632,9 +1633,8 @@ class MirrorManager:
                             pl = self._bi_period_label(py, pm)
                             cost = 0.0
 
-                            # Directo al ERP físico de esta empresa — CHAT.rol_pago
-                            # nunca aísla correctamente, así que no vale la pena
-                            # intentarlo primero (ver nota arriba).
+                            # Directo al ERP físico de esta empresa: CHAT.rol_pago
+                            # nunca aísla correctamente (ver nota arriba).
                             try:
                                 sql_light = (
                                     f"SELECT SUM(CASE r.rub_tipo WHEN 'I' THEN d.rol_valor WHEN 'E' THEN d.rol_valor * -1 ELSE 0 END) "
@@ -1653,10 +1653,10 @@ class MirrorManager:
                                 self._append_bi_card(results["cards"], id="hr_payroll_cost", title="Costo nómina", value=cost, unit="$", module="FINANZAS", period_label=pl, accent="emerald", wide=True)
                                 self._append_focus_area(results["focus_areas"], area_id="nomina", module="FINANZAS", title="Corte de nómina listo", description=f"Último periodo: {pl}.", recommendation="Consulta cargos y sueldos.")
 
-                # ── TARJETAS DEL CATÁLOGO DE MÉTRICAS CERTIFICADAS (Fase 2 — dashboards vivos) ──
+                # ── TARJETAS DEL CATÁLOGO DE MÉTRICAS CERTIFICADAS ──
                 # A diferencia de los bloques anteriores (SQL fijo por tabla detectada), estas
-                # tarjetas vienen de knowledge/metric_catalog.json ("dashboard_card": true).
-                # Marlon puede sumar o quitar tarjetas del dashboard editando el JSON, sin tocar
+                # tarjetas vienen de knowledge/metric_catalog.json ("dashboard_card": true):
+                # se pueden sumar o quitar tarjetas del dashboard editando el JSON, sin tocar
                 # este archivo. Solo se agregan si CHAT está activo (mismas vistas que usa el chat).
                 if use_chat_views:
                     from core.metric_catalog import metricas_dashboard, series_dashboard
@@ -1671,19 +1671,19 @@ class MirrorManager:
                     # en api/routes_query.py. Sin este USE, todas las consultas fallan con
                     # "objeto no válido" (silenciosamente, por el try/except de abajo).
                     try:
-                        # NO re-ejecutar SP_MODIFICA_VISTA_IA aquí. El SP recrea vistas (DDL) y
+                        # NO se re-ejecuta SP_MODIFICA_VISTA_IA aquí. El SP recrea vistas (DDL) y
                         # toma bloqueos de esquema sobre CHAT: mientras corre, TODA otra consulta
-                        # contra esas vistas espera — incluido el chat. Se probó llamarlo aquí
-                        # como defensa contra datos mezclados entre empresas y el costo fue
-                        # inaceptable: dos DDL por carga de dashboard + uno por cada pregunta del
-                        # chat = contención generalizada y lentitud en todo el sistema.
+                        # contra esas vistas espera, incluido el chat. Llamarlo como defensa
+                        # contra datos mezclados entre empresas costaría dos DDL por carga de
+                        # dashboard más uno por cada pregunta del chat: contención generalizada
+                        # y lentitud en todo el sistema.
                         # El endpoint ya activó CHAT una vez antes de llegar aquí; con eso basta.
-                        # La protección contra mezcla vive ahora en el frontend (no se lanzan dos
+                        # La protección contra mezcla vive en el frontend (no se lanzan dos
                         # peticiones de /bi/pulse a la vez) y en la caché del endpoint.
                         connection.execute(text("USE [CHAT]"))
-                        # Espera máxima por bloqueos. Son ~16 consultas seguidas: con 4s cada una
-                        # el peor caso eran 64s de espera. 1.5s falla rápido y la tarjeta
-                        # problemática simplemente se omite en vez de frenar toda la página.
+                        # Espera máxima por bloqueos: son ~16 consultas seguidas y con 4 s cada
+                        # una el peor caso serían 64 s. Con 1,5 s se falla rápido y la tarjeta
+                        # problemática se omite en vez de frenar toda la página.
                         connection.execute(text("SET LOCK_TIMEOUT 1500"))
                     except Exception as e:
                         logger.warning("[BI_PULSE] No se pudo cambiar a la base CHAT para tarjetas de catálogo: %s", e)
@@ -1698,14 +1698,12 @@ class MirrorManager:
                             vista_aislada_para_empresa(self.connector, v, safe_db, target_db="CHAT")
                             for v in _vistas_riesgo
                         ):
-                            # Fase 3 — C1/dinámico: antes esto se mostraba igual, solo con
-                            # una bandera "integrity_warning" que el frontend nunca llegó
-                            # a leer ni mostrar — en la práctica, un número que puede
-                            # pertenecer a OTRA empresa se veía como si fuera normal.
-                            # Mejor omitir la tarjeta que arriesgar una decisión mal
-                            # tomada. Se verifica en vivo (ver core/integridad_vistas.py):
-                            # se reactiva sola en cuanto la vista quede aislada para esta
-                            # empresa, sin tocar código.
+                            # Una tarjeta con un número que puede pertenecer a OTRA
+                            # empresa se omite: es mejor no mostrarla que arriesgar
+                            # una decisión mal tomada. Se verifica en vivo (ver
+                            # core/integridad_vistas.py), así que se reactiva sola en
+                            # cuanto la vista quede aislada para esta empresa, sin
+                            # tocar código.
                             logger.info(
                                 "[BI_PULSE] Tarjeta '%s' omitida: usa vista no aislada por empresa.",
                                 metrica.get("id"),
@@ -1744,9 +1742,8 @@ class MirrorManager:
                             vista_aislada_para_empresa(self.connector, v, safe_db, target_db="CHAT")
                             for v in _vistas_riesgo_serie
                         ):
-                            # Fase 3 — C1/dinámico: mismo criterio que las tarjetas de
-                            # arriba — un gráfico con datos que pueden ser de otra
-                            # empresa no se muestra, aunque sea "solo un gráfico".
+                            # Mismo criterio que las tarjetas de arriba: un gráfico
+                            # con datos que pueden ser de otra empresa no se muestra.
                             logger.info(
                                 "[BI_PULSE] Gráfico '%s' omitido: usa vista no aislada por empresa.",
                                 serie.get("id"),
@@ -1766,13 +1763,11 @@ class MirrorManager:
                                     # la etiqueta ya es el texto real, no un número de mes.
                                     labels.append(str(etiqueta or "Sin dato"))
                                 else:
-                                    # Las series de mes ahora devuelven el texto ya formado
-                                    # ("Ene 2026") para que el eje muestre mes Y año — antes
-                                    # devolvian solo el numero de mes (1-12) y se traducia
-                                    # aqui. Se detectan ambos formatos: si `etiqueta` es un
-                                    # numero puro se sigue traduciendo (compatibilidad con
-                                    # cualquier metrica que aun no se haya migrado); si ya es
-                                    # texto, se usa tal cual.
+                                    # Las series de mes devuelven el texto ya formado
+                                    # ("Ene 2026") para que el eje muestre mes Y año. Si
+                                    # `etiqueta` es un número puro (1-12) se traduce al
+                                    # nombre corto del mes, para métricas que devuelven
+                                    # solo el número; si ya es texto, se usa tal cual.
                                     texto_etiqueta = str(etiqueta or "").strip()
                                     if texto_etiqueta.isdigit() and 1 <= int(texto_etiqueta) <= 12:
                                         labels.append(_MESES_CORTOS[int(texto_etiqueta) - 1])
@@ -1833,5 +1828,5 @@ class MirrorManager:
         # ver sus indicadores. Se filtra en el backend porque aquí es donde
         # está la fuente de verdad de permisos (JWT → allowed_modules). La
         # lógica vive en `filtrar_pulso_por_modulos` (función de módulo) para
-        # poder reutilizarla al servir un snapshot precacheados (Capa 2).
+        # poder reutilizarla al servir un snapshot precalculado.
         return filtrar_pulso_por_modulos(results, allowed_modules)

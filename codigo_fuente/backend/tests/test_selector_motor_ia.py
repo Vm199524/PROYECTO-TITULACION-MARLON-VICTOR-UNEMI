@@ -1,15 +1,16 @@
 """
-Pruebas del selector manual de motor de IA (30/08/2026): Flash responde
-siempre por defecto; los demás motores solo se activan si el usuario los
-elige explícitamente. El catálogo de modelos permitidos es
-por usuario (override), independiente del sistema de roles.
+Pruebas del selector manual de motor de IA.
 
-Cubre:
-  1. `_modelos_permitidos_de` — resolución rol → default, override, fallback.
-  2. `_select_llm` — enrutamiento SIN mezclar motores (elegir uno = ese
-     motor responde de punta a punta, nunca un híbrido).
-  3. Revalidación en el servidor: el cliente nunca decide a ciegas qué
-     motor puede usar — mismo principio que el blindaje de SQL/trazabilidad.
+Flash responde siempre por defecto; los demás motores solo se activan si el
+usuario los elige explícitamente, y el motor elegido responde de principio a
+fin, nunca un híbrido. Se prueban la resolución de modelos permitidos
+(`_modelos_permitidos_de`: valor por rol, excepción por usuario y respaldo),
+el enrutamiento de `_select_llm` y la revalidación en el servidor: el cliente
+nunca decide a ciegas qué motor puede usar, igual que en el blindaje de SQL y
+trazabilidad.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os
@@ -84,9 +85,8 @@ def motor_engine(monkeypatch):
 
 def test_sin_forzar_siempre_flash_aunque_la_pregunta_sea_compleja(motor_engine):
     """
-    Regla de negocio (30/08/2026): "por defecto a la única IA que se le
-    hace consultas es a flash, solo a flash". Ya NO debe enrutar solo
-    automáticamente a Pro por una pregunta comparativa/forecast.
+    Por defecto solo se consulta a Flash: una pregunta comparativa o de
+    pronóstico NO se enruta automáticamente a Pro.
     """
     llm = motor_engine._select_llm(question="compara ventas y compras del año")
     assert llm is motor_engine.llm_flash
@@ -158,7 +158,7 @@ def test_validar_motor_desconocido_se_ignora():
     assert aviso is not None
 
 
-# ─── Regresión: modelos_permitidos llega en el login (JWT y respuesta) ─────
+# ─── modelos_permitidos llega en el login (JWT y respuesta) ────────────────
 
 
 def test_login_incluye_modelos_permitidos_en_jwt_y_respuesta():

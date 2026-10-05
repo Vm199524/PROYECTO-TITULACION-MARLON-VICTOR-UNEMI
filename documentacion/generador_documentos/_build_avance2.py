@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-_build_avance2.py — genera Avance_2_VicMar_Data_AI.docx a partir del
-documento oficial del Avance 1 (que NO se modifica), agregando:
+Generador del documento del Avance 2.
 
-  2. Análisis del caso (2.1 Requerimientos)            — retroalimentación tutoras
-  3. Diseño y desarrollo del trabajo práctico (3.1-3.3) — retroalimentación tutoras
+Genera Avance_2_VicMar_Data_AI.docx a partir del documento oficial del Avance 1
+(que NO se modifica): ajusta la sección 1, agrega 2. Análisis del caso (2.1
+Requerimientos) y 3. Diseño y desarrollo del trabajo práctico (3.1-3.3), y
+completa las referencias. Una sola fuente de verdad: ninguna cifra se escribe a
+mano; se leen de los artefactos que produce el código (metrics.json,
+metricas_clustering.json, resultados_nl2sql_*.json, diccionario_datos.json) y
+los fragmentos de código se extraen de los archivos fuente al generar, así el
+documento no puede decir algo distinto de lo que hace el sistema.
 
-Principio: UNA SOLA FUENTE DE VERDAD. Ninguna cifra se escribe a mano: se leen
-de los artefactos que produce el código (metrics.json, metricas_clustering.json,
-resultados_nl2sql_*.json, diccionario_datos.json) y los fragmentos de código
-se extraen de los archivos fuente al generar. Así el documento no puede
-decir algo distinto de lo que hace el sistema.
-
-Uso (desde la carpeta del Avance):
+Uso (desde documentacion/generador_documentos):
     python _build_avance2.py
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -43,6 +45,7 @@ DIAG = DOC / 'diagramas'
 
 # ── Artefactos del sistema (fuente única de cifras) ─────────────────────────
 def _json(ruta):
+    """Lee un archivo JSON en UTF-8."""
     return json.loads(Path(ruta).read_text(encoding='utf-8'))
 
 
@@ -65,14 +68,17 @@ def n(x, d=3):
 
 
 def pct(x, d=1):
+    """Convierte una proporción (0-1) en porcentaje con coma decimal y signo «%»."""
     return f'{n(x * 100, d)} %'
 
 
 def miles(x):
+    """Entero con punto como separador de miles."""
     return f'{int(x):,}'.replace(',', '.')
 
 
 def cv(m, modelo, clave):
+    """Media ± desviación de una métrica de validación cruzada de `modelo` en metrics.json."""
     c = m['comparacion_cv'][modelo][clave]
     return f"{n(c['media'])} ± {n(c['desviacion'])}"
 
@@ -89,6 +95,10 @@ NOMBRE = {'RF_CLASS_WEIGHT': 'Random Forest con ponderación de clases', 'RF_SMO
 
 # ── Extracción de código desde los archivos fuente ──────────────────────────
 def funcion_py(ruta, nombre, max_lineas=60):
+    """Extrae del archivo el código fuente de la función o asignación `nombre`.
+
+    Se corta a `max_lineas` (con «...» si sobra) y lanza KeyError si no existe.
+    """
     texto = Path(ruta).read_text(encoding='utf-8')
     for nodo in ast.walk(ast.parse(texto)):
         if isinstance(nodo, (ast.FunctionDef, ast.Assign)) and (
@@ -96,7 +106,8 @@ def funcion_py(ruta, nombre, max_lineas=60):
                 any(getattr(t, 'id', None) == nombre for t in getattr(nodo, 'targets', []))):
             seg = ast.get_source_segment(texto, nodo)
             lineas = seg.split('\n')
-            # quita docstrings largos para que el fragmento muestre la lógica
+            # En funciones de más de 25 líneas quita el primer docstring, para
+            # que el fragmento muestre la lógica.
             seg = re.sub(r'\n(\s+)"""[\s\S]*?"""\n', '\n', seg, count=1) if len(lineas) > 25 else seg
             lineas = seg.split('\n')
             return '\n'.join(lineas[:max_lineas]) + ('\n    ...' if len(lineas) > max_lineas else '')
@@ -121,6 +132,10 @@ ins = Insertor(doc)
 
 
 def buscar(prefijo, estilo=None):
+    """Devuelve el primer párrafo que empieza con `prefijo` (y con `estilo`, si se da).
+
+    Lanza KeyError si no lo encuentra.
+    """
     for p in P:
         if p.text.strip().startswith(prefijo) and (estilo is None or p.style.name == estilo):
             return p
@@ -176,7 +191,8 @@ reemplazar_texto(p, re.sub(
     'Seguridad Informática e Inteligencia de Negocios, esta última la que da nombre directo al presente trabajo.',
     p.text))
 
-# Numeración manual coherente: 2 y 3 se escriben en el título, igual que "1. Introducción".
+# Numeración manual coherente: 2 y 3 se escriben en el título, igual que "1. Introducción";
+# Referencias y Anexos van sin número automático.
 for pref in ('Referencias', 'Anexos', 'Anexo de información académica'):
     quitar_numeracion(buscar(pref, 'Heading 1'))
 
@@ -194,10 +210,12 @@ LEIDOS = [t for t in TPS if t['texto_completo_leido']]
 
 
 def _cita_tp(t):
+    """Cita del trabajo previo, con asterisco si su texto completo no se leyó."""
     return t['cita'] + ('*' if not t['texto_completo_leido'] else '')
 
 
 def _tec_tp(t):
+    """Une lenguaje, frameworks y base de datos del trabajo, omitiendo los no reportados."""
     tec = t['tecnologias']
     partes = [tec.get('lenguaje', ''), tec.get('frameworks', ''), tec.get('base_datos', '')]
     partes = [x for x in partes if x and not x.startswith(('no reporta', 'no verificable', 'no aplica'))]
@@ -242,6 +260,13 @@ a13 = ins.parrafo(a13, f'La comparación confirma el vacío de integración: {_a
 
 # ── Matrices de decisión (documentacion/decisiones/DT-*.json) ───────────────
 def _dt(ruta):
+    """Calcula la matriz de decisión ponderada de un archivo DT-*.json.
+
+    Ordena las candidatas por puntaje ponderado (sobre 5) y comprueba la
+    sensibilidad: la ganadora es estable si sigue primera al variar cada peso
+    un ±20 %. Devuelve (datos, ganadora, filas de la tabla, estable) y exige
+    que los pesos sumen 100.
+    """
     d = _json(ruta)
     tot = sum(c['peso'] for c in d['criterios'])
 
@@ -806,14 +831,18 @@ refs = [p for p in doc.paragraphs if p.style.name == 'Bibliography']
 
 
 def insertar_referencia(antes_de_prefijo, partes):
-    """partes: lista de (texto, cursiva). Copia el formato de la referencia vecina."""
+    """Inserta una referencia antes de la que empieza con `antes_de_prefijo`.
+
+    `partes` es una lista de (texto, cursiva). Copia el formato de párrafo de
+    la referencia vecina, sin su contenido.
+    """
     import copy
     base = next(p for p in refs if p.text.startswith(antes_de_prefijo))
     nuevo = copy.deepcopy(base._p)
     base._p.addprevious(nuevo)
     par = docx.text.paragraph.Paragraph(nuevo, base._parent)
-    # Quitar TODO el contenido copiado (runs e hipervínculos del DOI de la
-    # referencia vecina), conservando solo el formato del párrafo (pPr).
+    # Quita TODO el contenido copiado (runs e hipervínculos del DOI de la
+    # referencia vecina) y conserva solo el formato del párrafo (pPr).
     for hijo in list(nuevo):
         if hijo.tag != docx.oxml.ns.qn('w:pPr'):
             nuevo.remove(hijo)

@@ -1,16 +1,15 @@
 """
-Pruebas del latido SSE en /query/stream (30/08/2026).
+Pruebas del latido SSE en /query/stream.
 
-Defecto corregido ("Pro tampoco funciona"): `execute_query`
-es una llamada bloqueante — nada llega al navegador mientras corre. El
-navegador aborta la conexión si pasan 25s sin recibir NINGÚN byte
-(INACTIVIDAD_MS en App.jsx), así que cualquier motor (Flash, Pro u otro)
-que tardara más de eso en una pregunta compleja se cortaba SIEMPRE — no era
-un problema de un motor en particular, era el "techo" del transporte.
+`execute_query` es una llamada bloqueante y el navegador aborta la conexión si
+pasan 25 s sin recibir NINGÚN byte (INACTIVIDAD_MS en App.jsx); sin latido,
+cualquier motor (Flash, Pro u otro) se cortaría en una pregunta compleja. El
+endpoint ejecuta `execute_query` en un hilo aparte y envía un comentario SSE
+(": latido") cada 4 s mientras espera. La prueba verifica que una respuesta de
+6 s llega completa con los tres motores.
 
-La corrección: `execute_query` corre en un hilo aparte y el endpoint manda
-un comentario SSE (": latido") cada 4s mientras espera, sin importar qué
-motor esté trabajando del otro lado.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os
@@ -93,7 +92,7 @@ def test_latido_mantiene_viva_una_respuesta_lenta_para_los_3_motores(monkeypatch
     ):
         t0 = time.time()
         # Prompt único por motor: evita chocar con el caché de respuesta
-        # completa (Redis) de una ejecución anterior de este mismo test.
+        # completa (Redis) de una ejecución anterior de esta misma prueba.
         with client.stream(
             "POST", "/api/query/stream",
             json={"prompt": f"total de ventas {username}", "motor_ia": motor, "selected_company_code": "MONT"},
@@ -106,5 +105,5 @@ def test_latido_mantiene_viva_una_respuesta_lenta_para_los_3_motores(monkeypatch
     assert any("latido" in l for l in eventos), "debió mandar al menos un latido durante la demora"
     assert any("event: meta" in l for l in eventos)
     assert any("event: done" in l for l in eventos)
-    # La demora simulada (6s) sí debe reflejarse — no se cortó antes de tiempo.
+    # La demora simulada (6 s) sí debe reflejarse: no se cortó antes de tiempo.
     assert duracion >= 5.5

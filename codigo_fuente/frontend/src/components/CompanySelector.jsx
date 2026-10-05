@@ -1,17 +1,30 @@
+/**
+ * @file Selector de empresa con buscador (combobox). Permite cambiar la base activa
+ * escribiendo parte de su código o de su nombre comercial; con una veintena de
+ * empresas, escribir tres letras es más rápido que recorrer una cuadrícula de
+ * botones. Lo usan ConnectionCard, en «Orígenes de Datos», y DesktopHeader, dentro
+ * del popover de la insignia «Empresa Activa».
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Building2, Check, ChevronDown, Loader2, Search } from 'lucide-react';
 
 /**
- * Selector de empresa tipo "combobox buscable" (patrón command-palette).
+ * Muestra el selector de empresa con búsqueda por código o nombre (patrón de paleta
+ * de comandos). Implementa el rol `combobox` con su `listbox` asociado, navegación
+ * con flechas, Enter para elegir y Escape para cerrar.
  *
- * Reemplaza la cuadrícula de 22 botones fijos que había antes. Con esa
- * cantidad de empresas, una cuadrícula obliga a barrer visualmente toda la
- * pantalla para encontrar una; escribir tres letras es mucho más rápido.
- * Es el patrón que usan Linear, Vercel, Stripe y GitHub para cambiar de
- * organización/proyecto.
- *
- * Accesibilidad: implementa el rol `combobox` con `listbox` asociado,
- * navegación con flechas, Enter para elegir y Escape para cerrar.
+ * @param {object} props
+ * @param {Array<{database: string, business_name?: string}>} [props.companies=[]] - Empresas disponibles.
+ * @param {string} [props.activeDb=''] - Código de la base activa.
+ * @param {string} [props.switchingDb=''] - Código de la base a la que se está cambiando (muestra un indicador de carga).
+ * @param {Function} props.onSelect - Recibe el código de la base elegida.
+ * @param {boolean} [props.disabled=false] - Bloquea la selección.
+ * @param {boolean} [props.autoOpen=false] - Abre la lista al montar.
+ * @param {boolean} [props.hideTrigger=false] - Omite el botón propio y entrega solo el panel.
+ * @param {Function} [props.onRequestClose] - Avisa al contenedor externo que debe cerrarse.
+ * @returns {JSX.Element} Selector de empresa.
  */
 export function CompanySelector({
     companies = [],

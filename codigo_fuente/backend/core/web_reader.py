@@ -1,4 +1,14 @@
-# core/web_reader.py - Radar de Noticias en Tiempo Real (Aura v5.0)
+"""
+Radar de noticias en tiempo real a partir del RSS de Google News.
+
+Detecta preguntas de actualidad que no se responden con la base de datos
+(noticias, cargos actuales, cotizaciones) y obtiene titulares recientes sin
+costo de API. Las dependencias de red (requests, BeautifulSoup) se importan
+dentro de cada método para no cargarlas si el radar no se usa.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
+"""
 import logging
 from email.utils import parsedate_to_datetime
 from typing import List, Dict
@@ -9,9 +19,9 @@ import urllib.parse
 import re
 
 class WebReader:
-    """
-    Componente de acceso a internet ultra-ligero para Aura.
-    Usa el RSS de Google News para obtener titulares frescos sin costo de API.
+    """Acceso ligero a internet para preguntas de actualidad.
+
+    Usa el RSS de Google News para obtener titulares recientes sin costo de API.
     """
 
     REQUEST_HEADERS = {
@@ -33,10 +43,17 @@ class WebReader:
 
     @staticmethod
     def _normalize(text: str) -> str:
+        """Pasa el texto a minúsculas y deja solo letras, dígitos y espacios simples."""
         return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9áéíóúñü\s]", " ", str(text or "").lower())).strip()
 
     @staticmethod
     def is_live_query(text: str) -> bool:
+        """Indica si la pregunta pide información de actualidad.
+
+        Es verdadera si contiene un marcador de LIVE_QUERY_MARKERS o si
+        pregunta por un cargo («presidente», «alcalde», «ceo») junto con
+        «quién es», «actual» u «hoy».
+        """
         normalized = WebReader._normalize(text)
         if not normalized:
             return False
@@ -49,11 +66,11 @@ class WebReader:
 
     @staticmethod
     def _extract_keywords(text: str) -> str:
-        """Filtra jergas latinas, signos y conectores para crear una busqueda perfecta en Google."""
+        """Quita signos, conectores y expresiones coloquiales para armar la búsqueda en Google News."""
         text = text.lower()
         text = re.sub(r'[¿?¡!,.()"\']', '', text)
         
-        # Stopwords neutrales y slangs latinos comunes
+        # Palabras vacías y expresiones coloquiales latinoamericanas comunes.
         stopwords = {
             "que", "quien", "cual", "cuales", "como", "cuando", "donde", "por", "para", "es", "el", "la", "los", "las", 
             "un", "una", "unos", "unas", "de", "del", "al", "a", "en", "con", "y", "o", "actual", "hoy", "ahora", 
@@ -67,8 +84,12 @@ class WebReader:
 
     @staticmethod
     def get_news(query: str, limit: int = 5) -> str:
-        """
-        Busca noticias relevantes en Google News para la consulta del usuario.
+        """Busca noticias de las últimas 24 horas en Google News para la consulta.
+
+        Returns:
+            Un boletín numerado con los titulares, un aviso si no hay
+            resultados, un texto de error si falla la lectura, o una cadena
+            vacía si la consulta tiene menos de 3 caracteres.
         """
         if not query or len(query) < 3:
             return ""
@@ -76,7 +97,7 @@ class WebReader:
         clean_query = WebReader._extract_keywords(query)
         encoded_query = urllib.parse.quote(type(clean_query) is str and clean_query or "noticias")
 
-        # Formatear URL de RSS (idioma: es-419 para Latinoamérica) con temporalidad (últimas 24h)
+        # URL del RSS en español latinoamericano (es-419), limitada a las últimas 24 h.
         rss_url = f"https://news.google.com/rss/search?q={encoded_query}+when:1d&hl=es-419&gl=US&ceid=US:es-419"
         
         try:
@@ -96,7 +117,7 @@ class WebReader:
             for i, item in enumerate(items, 1):
                 title = item.title.text
                 pub_date = item.pubDate.text
-                # Limpiar el titulo retirando la fuente al final
+                # Retira del título el nombre de la fuente, que va al final tras « - ».
                 clean_title = title.rsplit(" - ", 1)[0] if " - " in title else title
                 bulletin_lines.append(f"{i}. {clean_title} ({pub_date})")
 
@@ -108,7 +129,7 @@ class WebReader:
 
     @staticmethod
     def get_general_trends() -> str:
-        """Obtiene las noticias generales del momento (sin query)."""
+        """Obtiene los 5 titulares generales del momento, sin consulta; cadena vacía si falla."""
         rss_url = "https://news.google.com/rss?hl=es-419&gl=US&ceid=US:es-419"
         try:
             import requests
@@ -126,6 +147,10 @@ class WebReader:
 
     @staticmethod
     def get_news_entries(query: str, limit: int = 5) -> List[Dict[str, str]]:
+        """Devuelve las noticias de las últimas 24 horas como dicts con title, published_at y link.
+
+        Devuelve una lista vacía si la consulta es muy corta o si falla la lectura.
+        """
         if not query or len(str(query).strip()) < 3:
             return []
         clean_query = WebReader._extract_keywords(query)
@@ -160,6 +185,11 @@ class WebReader:
 
     @staticmethod
     def format_live_brief(query: str, limit: int = 4) -> str:
+        """Arma un resumen en texto con los titulares recientes de la consulta.
+
+        Si no hay titulares específicos, recurre a las noticias generales del
+        momento y, si tampoco las hay, devuelve un aviso para reintentar.
+        """
         entries = WebReader.get_news_entries(query, limit=limit)
         if not entries:
             general = WebReader.get_general_trends()

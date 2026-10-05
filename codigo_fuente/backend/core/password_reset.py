@@ -1,15 +1,14 @@
 """
-core/password_reset.py — Códigos de un solo uso para "Olvidé mi contraseña".
+Códigos de un solo uso para «Olvidé mi contraseña».
 
-No existe una tabla de usuarios en base de datos: security_config.json ES el
-almacén de usuarios (ver main.py: _load_security_config/_save_security_config).
-Por eso tampoco hay una tabla de tokens de recuperación — se guardan en un
-JSON pequeño en el mismo directorio de caché que ya usa el resto del backend
-(memoria_empresa.py, query_cache.py...).
+Los usuarios viven en security_config.json y no en una tabla de base de datos,
+así que los códigos de recuperación se guardan en un JSON pequeño del
+directorio de caché del backend. Cada código tiene 6 dígitos, vale 15 minutos,
+se consume al usarse y se guarda como hash SHA-256: igual que la contraseña,
+nunca queda en texto plano.
 
-Cada código es numérico de 6 dígitos, vive 15 minutos, es de un solo uso y se
-guarda hasheado (SHA-256): igual que la contraseña real nunca se guarda en
-texto plano, tampoco este código que la controla.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -58,8 +57,10 @@ def _escribir(datos: dict) -> None:
 
 
 def puede_reenviar(username: str) -> bool:
-    """¿Ya pasó el tiempo mínimo desde el último código emitido a este
-    usuario? Evita que alguien reenvíe códigos en bucle."""
+    """Indica si ya pasó el tiempo mínimo desde el último código emitido al usuario.
+
+    Evita que se reenvíen códigos en bucle.
+    """
     entrada = _leer().get(_clave(username))
     if not entrada:
         return True
@@ -68,8 +69,10 @@ def puede_reenviar(username: str) -> bool:
 
 def generar_codigo(username: str) -> str:
     """Genera y persiste un código nuevo de 6 dígitos para `username`.
-    Devuelve el código en claro solo para enviarlo por correo — nunca se
-    vuelve a leer en claro desde el archivo."""
+
+    Devuelve el código en claro solo para enviarlo por correo; en el archivo
+    queda únicamente su hash.
+    """
     clave = _clave(username)
     codigo = f"{secrets.randbelow(1_000_000):06d}"
     with _LOCK:
@@ -85,10 +88,12 @@ def generar_codigo(username: str) -> str:
 
 
 def verificar_y_consumir(username: str, codigo: str) -> tuple[bool, str]:
-    """
-    Valida el código para `username`. Si es correcto lo invalida de
-    inmediato (un solo uso) y devuelve (True, ""). Si no, devuelve
-    (False, motivo) sin revelar más detalle del necesario.
+    """Valida el código de `username` y lo consume si es correcto.
+
+    Returns:
+        (True, "") si el código es válido, que queda invalidado de inmediato;
+        (False, motivo) si no existe, expiró, superó MAX_INTENTOS o no
+        coincide, sin revelar más detalle del necesario.
     """
     clave = _clave(username)
     codigo_limpio = str(codigo or "").strip()

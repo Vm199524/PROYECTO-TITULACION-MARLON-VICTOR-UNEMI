@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-evaluar_nl2sql.py — exactitud del motor conversacional NL2SQL (Avance 2,
-criterio de éxito d) y robustez ante preguntas maliciosas (criterio c).
+Evaluación del motor NL2SQL con un conjunto dorado de preguntas.
+
+Mide la exactitud del motor conversacional NL2SQL (criterio de éxito d) y su
+robustez ante preguntas maliciosas (criterio c).
 
 Qué hace: recorre el conjunto dorado (eval/nl2sql_gold.json) haciendo
 EXACTAMENTE el mismo recorrido que el frontend — POST /api/connect y luego
@@ -31,6 +33,9 @@ institución (violación de aislamiento).
 Uso:
     cd backend
     python -m eval.evaluar_nl2sql [--limite 5]
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -61,6 +66,12 @@ OTRA_INSTITUCION_PREFIJO = 'OU'
 
 # ── Normalización y comparación de resultados ───────────────────────────────
 def _norm(v):
+    """Normaliza un valor para compararlo.
+
+    Números (y textos numéricos, sin % ni separador de miles) pasan a float
+    con 4 decimales, booleanos a 0/1 y el resto de textos a minúsculas sin
+    espacios en los extremos.
+    """
     if v is None:
         return None
     if isinstance(v, bool):
@@ -75,15 +86,17 @@ def _norm(v):
 
 
 def _num_iguales(a: float, b: float) -> bool:
-    """Iguales con tolerancia de redondeo a 2 decimales, o en escala x100."""
+    """Compara dos números con tolerancia de redondeo a 2 decimales, o en escala x100."""
     return abs(a - b) <= 0.0051 or abs(a * 100 - b) <= 0.051 or abs(b * 100 - a) <= 0.051
 
 
 def _columnas(filas: list[tuple]) -> list[list]:
+    """Transpone una lista de filas en una lista de columnas."""
     return [list(c) for c in zip(*filas)] if filas else []
 
 
 def _iguales_col(a: list, b: list) -> bool:
+    """Compara dos columnas como multiconjuntos, aceptando proporción frente a porcentaje."""
     if len(a) != len(b):
         return False
     ca, cb = Counter(a), Counter(b)
@@ -97,9 +110,12 @@ def _iguales_col(a: list, b: list) -> bool:
 
 
 def _valor_en_fila(v, fila: tuple) -> bool:
-    """¿El valor de referencia aparece en la fila de la respuesta? Números:
-    iguales con 2 decimales o en escala x100 (0,7771 frente a 77,71 %).
-    Textos: iguales o contenidos (apellidos dentro de "nombre completo")."""
+    """Indica si el valor de referencia aparece en la fila de la respuesta.
+
+    Números: iguales con 2 decimales o en escala x100 (0,7771 frente a
+    77,71 %). Textos: iguales o contenidos (apellidos dentro de "nombre
+    completo").
+    """
     for c in fila:
         if isinstance(v, float) and isinstance(c, float):
             if _num_iguales(v, c):
@@ -112,7 +128,13 @@ def _valor_en_fila(v, fila: tuple) -> bool:
 
 
 def comparar(gold: list[tuple], pred: list[tuple]) -> dict:
-    g = [tuple(_norm(v) for v in f) for f in gold]
+    """Compara el resultado de la respuesta con el del SQL de referencia.
+
+    Returns:
+        {"estricta": bool, "relajada": bool} según los criterios del
+        encabezado; toda coincidencia estricta cuenta también como relajada.
+    """
+    g =[tuple(_norm(v) for v in f) for f in gold]
     p = [tuple(_norm(v) for v in f) for f in pred]
     estricta = len(g) == len(p) and Counter(tuple(sorted(map(str, f))) for f in g) == \
         Counter(tuple(sorted(map(str, f))) for f in p)
@@ -137,25 +159,37 @@ def comparar(gold: list[tuple], pred: list[tuple]) -> dict:
 
 
 def filas_otra_institucion(filas: list) -> int:
+    """Cuenta los valores con forma de identificador de OULAD ("OU" + dígitos) en una respuesta.
+
+    El conjunto dorado pertenece a otra institución (UNEMI_PRUEBAS), así que
+    cualquiera de esos valores es una violación del aislamiento.
+    """
     return sum(1 for f in filas for v in (f.values() if isinstance(f, dict) else f)
                if isinstance(v, str) and v.startswith(OTRA_INSTITUCION_PREFIJO) and v[2:].isdigit())
 
 
 # ── Base de datos ───────────────────────────────────────────────────────────
 def conexion_chat_reader() -> pyodbc.Connection:
-    cs = (f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={DEFAULT_HOST or 'localhost,1433'};DATABASE=CHAT;"
+    """Abre una conexión a CHAT con el usuario restringido chat_reader (credenciales del entorno)."""
+    cs =(f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={DEFAULT_HOST or 'localhost,1433'};DATABASE=CHAT;"
           f"UID={os.getenv('CHAT_READER_USER')};PWD={os.getenv('CHAT_READER_PASSWORD')};"
           "TrustServerCertificate=yes;Encrypt=no;")
     return pyodbc.connect(cs, autocommit=True, timeout=15)
 
 
 def ejecutar_referencia(cur, sql: str) -> list[tuple]:
+    """Ejecuta el SQL de referencia y devuelve sus filas como tuplas."""
     cur.execute(sql)
     return [tuple(r) for r in cur.fetchall()]
 
 
 def huella_bd() -> dict:
-    conn = conectar_admin('CHAT')
+    """Toma la huella (COUNT y CHECKSUM_AGG) de las tablas principales de CHAT y de alumnos_prueba.
+
+    Comparar la huella antes y después de las preguntas adversariales
+    demuestra que ninguna modificó la base.
+    """
+    conn =conectar_admin('CHAT')
     cur = conn.cursor()
     huella = {}
     for t in ('fact_matriculas', 'dim_alumno', 'fact_prediccion_abandono', 'fact_cluster_carrera'):
@@ -172,6 +206,18 @@ def huella_bd() -> dict:
 
 # ── Cliente en proceso ──────────────────────────────────────────────────────
 def preparar_cliente(institucion: str):
+    """Levanta la API en proceso y conecta al usuario de evaluación con la institución.
+
+    Desactiva las cachés y el aprendizaje en segundo plano, crea la sesión y
+    el token del usuario `acad` sin pasar por la contraseña y llama a
+    /api/connect como lo hace el frontend.
+
+    Returns:
+        (cliente de prueba, cabeceras con el token, usuario).
+
+    Raises:
+        RuntimeError: si /api/connect no responde 200.
+    """
     import main
     from api import routes_query
     from security import create_access_token
@@ -207,14 +253,24 @@ def preparar_cliente(institucion: str):
 
 
 def _es_falla_tecnica(cuerpo: dict) -> bool:
-    """El proveedor de IA no respondió (saturación, cuota, red): no es una
-    respuesta incorrecta, es indisponibilidad. Se reporta aparte."""
+    """Indica si la respuesta es una falla técnica del proveedor de IA.
+
+    Saturación, cuota o red: no es una respuesta incorrecta sino
+    indisponibilidad, y se reporta aparte.
+    """
     return (cuerpo.get('status') == 'error' and not cuerpo.get('rows')) or cuerpo.get('_http', 200) >= 500
 
 
 def preguntar(cliente, cabeceras, pregunta: str, institucion: str, reintentos: int = 1) -> tuple[dict, float]:
-    """Hace la pregunta; ante una falla TÉCNICA reintenta una vez tras 10 s,
-    igual que haría el usuario ("intenta de nuevo en unos segundos")."""
+    """Envía la pregunta a /api/query y mide cuánto tarda la respuesta.
+
+    Ante una falla TÉCNICA reintenta (una vez por defecto) tras 10 s, igual
+    que haría el usuario ("intenta de nuevo en unos segundos").
+
+    Returns:
+        (cuerpo de la respuesta con _http, _intentos y _falla_tecnica,
+        segundos transcurridos).
+    """
     t0 = time.perf_counter()
     for intento in range(reintentos + 1):
         r = cliente.post('/api/query', headers=cabeceras, json={
@@ -234,12 +290,19 @@ def preguntar(cliente, cabeceras, pregunta: str, institucion: str, reintentos: i
 
 
 def filas_de(respuesta: dict) -> list[tuple]:
-    filas = respuesta.get('rows') or []
+    """Extrae las filas de la respuesta como tuplas, en el orden de sus columnas."""
+    filas =respuesta.get('rows') or []
     cols = respuesta.get('columns') or []
     return [tuple(f.get(c) for c in cols) if isinstance(f, dict) else tuple(f) for f in filas]
 
 
 def main() -> int:
+    """Evalúa el conjunto dorado y las preguntas adversariales y guarda los resultados.
+
+    El detalle queda en resultados_nl2sql_<fecha>.json; en una corrida
+    completa (sin --limite) las métricas se guardan además en
+    fact_evaluacion_modelo.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--limite', type=int, default=0, help='Evaluar solo las primeras N preguntas (prueba rápida)')
     parser.add_argument('--pausa', type=float, default=30.0,

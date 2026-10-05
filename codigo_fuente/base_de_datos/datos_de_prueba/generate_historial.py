@@ -1,24 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Genera la trayectoria academica longitudinal (1 fila por alumno-periodo) a
-partir de alumnos_prueba.csv, que hoy solo tiene el estado FINAL de cada
-alumno (1 fila = 1 alumno). Sin historia no hay como entrenar un modelo de
-prediccion de abandono real: hace falta ver la EVOLUCION de cada estudiante
-(promedio, mora, asistencia) periodo a periodo, no solo su foto actual.
+Generación de la trayectoria académica longitudinal historial_matriculas.csv.
 
-Regla de generacion: el estado final de cada alumno (columna 'semestre' =
-en que periodo esta / se retiro, 'estado_matricula' = como termino) definido
-en alumnos_prueba.csv se respeta tal cual (no se toca ese archivo, sigue
-siendo la fuente del padron real). Este script solo rellena los periodos
-ANTERIORES 1..semestre-1 con una trayectoria sintetica coherente:
+alumnos_prueba.csv solo tiene el estado FINAL de cada alumno, y predecir el
+abandono exige ver la EVOLUCIÓN (promedio, mora, asistencia) periodo a periodo.
+Este script genera una fila por alumno-periodo: respeta el estado final
+('semestre' = periodo en que está o se retiró; 'estado_matricula' = cómo
+terminó), sin modificar alumnos_prueba.csv, y rellena los periodos anteriores.
+RETIRADO: rendimiento estable y, en los 1-2 periodos previos al abandono, caída
+de promedio y asistencia y más mora (la señal que el modelo debe aprender);
+ACTIVO, GRADUADO y EGRESADO: trayectoria estable con ruido normal. Todos los
+valores son SINTÉTICOS (semilla fija). Se ejecuta desde la raíz del repositorio.
 
-  - RETIRADO: rendimiento estable, luego caida de promedio + aumento de mora
-    + caida de asistencia en los 1-2 periodos previos al abandono (senal que
-    un modelo de churn deberia poder aprender).
-  - ACTIVO / GRADUADO / EGRESADO: trayectoria estable con ruido normal.
-
-Todos los valores son SINTETICOS (semilla fija), igual que en
-generate_dataset.py.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import csv
 import random
@@ -29,23 +24,29 @@ random.seed(20260909)
 SRC = 'codigo_fuente/base_de_datos/datos_de_prueba/alumnos_prueba.csv'
 OUT = 'codigo_fuente/base_de_datos/datos_de_prueba/historial_matriculas.csv'
 
-DIAS_POR_PERIODO = 152  # ~5 meses entre matriculas (2 periodos/anio)
+DIAS_POR_PERIODO = 152  # ~5 meses entre matrículas (2 periodos por año)
 
-# Variables nuevas pedidas para el modelo predictivo (sede, canal — ver
-# documentacion/tecnica/PREDICCION_ABANDONO.md #8). UNEMI real es de un solo campus (Milagro),
-# pero para probar de verdad que el pipeline soporta una IES multi-sede/
-# multi-canal (como Universidad Politecnica Salesiana, con sedes en
-# Cuenca/Quito/Guayaquil) se sintetiza una segunda sede y un canal a
-# distancia, constantes por alumno igual que carrera/facultad.
+# Variables sede y canal del modelo predictivo (ver
+# documentacion/tecnica/PREDICCION_ABANDONO.md, sección 3). UNEMI tiene un
+# solo campus (Milagro), pero para probar que el pipeline soporta una IES
+# multisede y multicanal se sintetizan una segunda sede y un canal EN LINEA,
+# constantes por alumno igual que la carrera y la facultad.
 SEDES = [('MILAGRO', 'Sede Milagro')] * 80 + [('DURAN', 'Extension Duran')] * 20
 CANALES = ['PRESENCIAL'] * 85 + ['EN LINEA'] * 15
 
 
 def clamp(v, lo, hi):
+    """Limita `v` al intervalo cerrado [lo, hi]."""
     return max(lo, min(hi, v))
 
 
 def generar_trayectoria(alumno: dict) -> list[dict]:
+    """Genera las filas alumno-periodo 1..semestre de un alumno de alumnos_prueba.csv.
+
+    Las fechas retroceden DIAS_POR_PERIODO desde la fecha de matrícula final;
+    sede y canal se sortean una vez y quedan fijos para todo el alumno. Solo
+    el último periodo lleva el estado final; los anteriores quedan ACTIVO.
+    """
     semestre_final = int(alumno['semestre'])
     estado_final = alumno['estado_matricula']
     fecha_final = date.fromisoformat(alumno['fecha_matricula'])
@@ -54,7 +55,7 @@ def generar_trayectoria(alumno: dict) -> list[dict]:
     beca = int(alumno['beca_porcentaje'])
     monto_neto = round(monto * (1 - beca / 100), 2)
 
-    # Linea base de la carrera del alumno (antes del posible deterioro final).
+    # Línea base del promedio del alumno (antes del posible deterioro final).
     if estado_final == 'RETIRADO':
         promedio_base = clamp(promedio_final + random.uniform(1.0, 2.3), 4.0, 9.5)
     else:
@@ -106,6 +107,7 @@ def generar_trayectoria(alumno: dict) -> list[dict]:
 
 
 def main():
+    """Lee alumnos_prueba.csv, escribe historial_matriculas.csv e imprime un resumen."""
     with open(SRC, encoding='utf-8-sig', newline='') as f:
         alumnos = list(csv.DictReader(f))
 

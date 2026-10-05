@@ -1,34 +1,50 @@
+/**
+ * @file Formateo de valores para tablas, gráficos y exportaciones. Aplica
+ * reglas según el nombre de la columna (identificaciones sin separadores,
+ * años, meses en letras, fechas) y el formato numérico es-EC; también da
+ * formato a encabezados y etiquetas de eje e interpreta números en formato
+ * latino o anglosajón.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 const MONTH_NAMES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
+/**
+ * Da formato de presentación a un valor de celda según su columna.
+ * @param {*} val Valor crudo devuelto por la consulta.
+ * @param {string} [columnName=''] Nombre de la columna, usado para elegir la regla.
+ * @returns {string} Valor listo para mostrar; '-' si está vacío.
+ */
 export const formatValue = (val, columnName = '') => {
     if (val === null || val === undefined) return '-';
     const strVal = String(val).trim();
     if (strVal === '') return '-';
 
-    // 1. Regla para Identificaciones (Cédula, RUC, ID) - DEBE SER TEXTO PURO
+    // 1. Identificaciones (cédula, RUC, ID): se muestran como texto puro.
     const isIdCol = /cédula|cedula|ruc|identificacion|id|código|codigo/i.test(columnName);
     
-    // Heurística de Seguridad: Si el valor es un entero largo (9-11 dígitos) y no hay nombre de columna,
-    // es casi seguro que es una Cédula o RUC. No debemos ponerle puntos.
+    // Sin nombre de columna, un entero de 9 a 11 dígitos es casi seguro una
+    // cédula o un RUC, así que no lleva separadores de miles.
     const isLikelyId = !columnName && Number.isInteger(val) && String(val).length >= 9 && String(val).length <= 11;
 
     if (isIdCol || isLikelyId) {
-        // Limpiar cualquier punto o coma que haya venido del backend por error de casteo
+        // Quita puntos o comas que hayan llegado del backend por un error de conversión.
         return strVal.replace(/[.,]/g, '');
     }
 
-    // 2. Regla para Años (Evitar puntos en 2024, 2025, etc)
+    // 2. Años: sin separador de miles (2024, no 2.024).
     const isYearCol = /año|anio|year|ejercicio/i.test(columnName);
     if (isYearCol && /^\d{4}$/.test(strVal)) {
         return strVal;
     }
 
-    // 3. Regla de Meses en Letras
-    // Solo aplica a columnas cuyo nombre SEA el mes (Mes, Month, Periodo, MesNombre, NombreMes)
-    // EXCLUYE columnas de código/número: MesNumero, NumMes, MonthNumber, NroMes, MesCodigo, etc.
+    // 3. Meses en letras. Solo aplica a columnas cuyo nombre es el mes (Mes,
+    // Month, Periodo, MesNombre, NombreMes); excluye las de código o número
+    // (MesNumero, NumMes, MonthNumber, NroMes, MesCodigo, etc.).
     const isNumericIdSuffix = /numero|num|nro|number|code|codigo|id|idx|index/i.test(columnName);
     const isMonthCol = /mes|month|periodo/i.test(columnName) && !isNumericIdSuffix;
     const num = parseInt(strVal, 10);
@@ -36,7 +52,7 @@ export const formatValue = (val, columnName = '') => {
         return MONTH_NAMES[num - 1];
     }
 
-    // 4. Regla de Fechas (YYYY.MM.DD -> YYYY-Mes-DD)
+    // 4. Fechas: AAAA.MM.DD (o con - y /) se muestra como AAAA-Mes-DD.
     const datePattern = /^(\d{4})[./-](\d{1,2})[./-](\d{1,2})/;
     const match = strVal.match(datePattern);
     if (match) {
@@ -48,19 +64,17 @@ export const formatValue = (val, columnName = '') => {
         }
     }
 
-    // 4b. Salvaguarda para columnas de fecha con un valor que NO trae
-    // día/mes (ej. el backend devolvió solo el año, "2026"). Bug real
-    // detectado en pruebas (29/08/2026): al no calzar con el patrón de
-    // fecha de arriba, ese "2026" caía en la regla numérica de más abajo y
-    // se mostraba como "2.026" (con separador de miles), como si fuera una
-    // cifra de dinero. Una columna de fecha nunca debe pasar por el
-    // formateador de números — se muestra tal cual llegó.
+    // 4b. Columnas de fecha cuyo valor no trae día ni mes (p. ej. solo el
+    // año, "2026"): no calzan con el patrón anterior y, sin esta regla,
+    // caerían en el formateador numérico y se verían como "2.026", como si
+    // fueran una cifra de dinero. Una columna de fecha se muestra tal cual
+    // llegó.
     const isDateCol = /fecha|\bdate\b/i.test(columnName);
     if (isDateCol) {
         return strVal;
     }
 
-    // Autocompletar ceros a la izquierda para cédulas cortas (Ecuador)
+    // Completa el cero inicial de las cédulas ecuatorianas de 9 dígitos.
     if (/^\d+$/.test(strVal) && strVal.length >= 9 && strVal.length <= 15 && isIdCol) {
         return strVal.length === 9 ? '0' + strVal : strVal;
     }
@@ -70,7 +84,7 @@ export const formatValue = (val, columnName = '') => {
     if (!hasLetters) {
         const numericValue = typeof val === 'number' ? val : parseNum(strVal);
         if (typeof val !== 'boolean' && isFinite(numericValue)) {
-            // Si es un código que empieza con cero, no formatear como número
+            // Un código que empieza con cero no se formatea como número.
             if (typeof val !== 'number' && /^0\d+$/.test(strVal)) {
                 return strVal;
             }
@@ -87,6 +101,12 @@ export const formatValue = (val, columnName = '') => {
         return strVal;
     };
 
+/**
+ * Convierte el nombre técnico de una columna en un encabezado legible
+ * (separa camelCase y guiones bajos y capitaliza cada palabra).
+ * @param {string} header Nombre de la columna.
+ * @returns {string} Encabezado para mostrar.
+ */
 export const formatHeader = (header) => {
     const normalized = String(header || '').trim().toLowerCase();
     if (normalized === 'anio' || normalized === 'ano') return 'Año';
@@ -95,29 +115,36 @@ export const formatHeader = (header) => {
     return splitCamel.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ').trim();
 };
 
+/**
+ * Acorta una etiqueta de eje de gráfico: números 1 a 12 como meses, nombres
+ * largos como primera palabra más inicial y textos largos recortados.
+ * @param {*} name Etiqueta original.
+ * @returns {string} Etiqueta corta para el eje.
+ */
 export const formatAxisName = (name) => {
     if (!name) return '';
-    // Limpiar caracteres invisibles del hack de duplicados y espacios extras
+    // Quita el marcador invisible de duplicados (\u200B) que agrega
+    // DataVisualizer y los espacios sobrantes.
     const str = String(name).replace(/[\u200B]/g, '').trim();
     
-    // 1. Regla de Meses
+    // 1. Meses
     const num = parseInt(str, 10);
     if (/^\d+$/.test(str) && num >= 1 && num <= 12) {
         return MONTH_NAMES[num - 1];
     }
 
-    // 2. Regla de Nombres de Personas (Ej: "PEÑAFIEL RUIZ JORGE" -> "JORGE P.")
-    // Si parece ser un nombre largo, mostrar primer nombre e inicial de apellido
+    // 2. Nombres de personas largos: primera palabra e inicial de la segunda
+    // (p. ej. "PEÑAFIEL RUIZ JORGE" -> "PEÑAFIEL R.").
     if (str.length > 12 && str.includes(' ')) {
         const words = str.split(' ').filter(w => w.length > 2);
         if (words.length >= 2) {
-            // Si el nombre viene en formato APELLIDO NOMBRE, intentamos detectar
-            // Para simplicidad, tomamos la primera palabra y la inicial de la segunda
+            // No se distingue el orden APELLIDO NOMBRE: por simplicidad se usa
+            // la primera palabra y la inicial de la segunda.
             return `${words[0]} ${words[1][0]}.`;
         }
     }
 
-    // 3. Recorte simple si sigue siendo largo
+    // 3. Recorte simple si sigue siendo largo.
     if (str.length > 15) {
         return str.slice(0, 12) + '...';
     }
@@ -125,14 +152,22 @@ export const formatAxisName = (name) => {
     return str;
 };
 
+/**
+ * Interpreta un número escrito en formato latino ("1.234,56") o anglosajón
+ * ("1,234.56"), resolviendo la ambigüedad de un solo punto por la cantidad de
+ * dígitos que le siguen.
+ * @param {*} val Valor numérico o texto.
+ * @returns {number} El número; 0 si está vacío o no es finito, NaN si el
+ *   texto no se puede interpretar.
+ */
 export const parseNum = (val) => {
     if (val === null || val === undefined || val === '') return 0;
     if (typeof val === 'number') return isFinite(val) ? val : 0;
     
     let str = String(val).trim();
     
-    // Detectar formato latino: "1.234,56"
-    // Si tiene punto Y coma, y la coma está después, el punto es de miles.
+    // Formato latino "1.234,56": si tiene punto y coma, y la coma está
+    // después, el punto es separador de miles.
     const hasComma = str.includes(',');
     const hasDot = str.includes('.');
     
@@ -162,7 +197,7 @@ export const parseNum = (val) => {
                 // Patrón X.XXX -> miles europeo (eliminar punto)
                 str = str.replace(/\./g, '');
             }
-            // Si afterDot.length !== 3 -> tratar como decimal (comportamiento anterior)
+            // Con otra cantidad de dígitos, el punto se trata como decimal.
         }
     }
 

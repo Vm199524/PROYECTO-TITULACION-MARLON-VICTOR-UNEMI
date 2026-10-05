@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-reporte_validacion.py — figuras y evaluación prospectiva a partir de los
-artefactos que dejan entrenar_abandono.py, predecir_abandono.py y
+Figuras de validación y evaluación prospectiva de los modelos.
+
+Genera las figuras y la evaluación prospectiva a partir de los artefactos que
+dejan entrenar_abandono.py, predecir_abandono.py y
 clustering_institucional.py (NO reentrena nada: solo lee resultados).
 
-Figuras (PNG, para el documento del Avance 2):
+Figuras (PNG en documentacion/figuras/, para el documento de titulación):
   <EMPRESA>_roc_pr.png           curvas ROC y precisión-recall (CV y temporal)
   <EMPRESA>_matriz_confusion.png matriz de confusión en el umbral operativo
   <EMPRESA>_importancia.png      importancia por permutación (prueba temporal)
@@ -21,6 +23,9 @@ predicción hecha antes, desenlace conocido después.
 Uso:
     cd backend
     python -m ml.reporte_validacion --empresa OULAD_UK
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -58,7 +63,8 @@ def _estilo(ax, titulo):
 
 
 def figura_roc_pr(empresa: str, carpeta: Path) -> None:
-    cv = pd.read_csv(carpeta / 'predicciones_cv.csv')
+    """Dibuja las curvas ROC y precisión-recall de la CV (fuera de pliegue) y de la prueba temporal."""
+    cv =pd.read_csv(carpeta / 'predicciones_cv.csv')
     te = pd.read_csv(carpeta / 'predicciones_temporal.csv')
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(10, 4.2))
     for nombre, y, p, c in (('Validación cruzada (fuera de pliegue)', cv['y'], cv['proba_oof'], COLOR['cv']),
@@ -80,7 +86,8 @@ def figura_roc_pr(empresa: str, carpeta: Path) -> None:
 
 
 def figura_confusion(empresa: str, metrics: dict) -> None:
-    m = np.array(metrics['validacion_temporal']['umbral_operativo']['matriz_confusion'])
+    """Dibuja la matriz de confusión de la prueba temporal en el umbral operativo."""
+    m =np.array(metrics['validacion_temporal']['umbral_operativo']['matriz_confusion'])
     fig, ax = plt.subplots(figsize=(4.4, 3.8))
     ax.imshow(m, cmap='Blues')
     for (i, j), v in np.ndenumerate(m):
@@ -95,7 +102,11 @@ def figura_confusion(empresa: str, metrics: dict) -> None:
 
 
 def figura_importancia(empresa: str, metrics: dict) -> None:
-    imp = [d for d in metrics['importancia_permutacion'] if d['media'] > 0][:10][::-1]
+    """Dibuja las 10 variables con mayor importancia por permutación positiva.
+
+    No genera la figura si ninguna variable tiene importancia positiva.
+    """
+    imp =[d for d in metrics['importancia_permutacion'] if d['media'] > 0][:10][::-1]
     if not imp:
         return
     fig, ax = plt.subplots(figsize=(6.5, 0.4 * len(imp) + 1.2))
@@ -109,7 +120,8 @@ def figura_importancia(empresa: str, metrics: dict) -> None:
 
 
 def figura_comparacion(empresa: str, metrics: dict) -> None:
-    comp = metrics['comparacion_cv']
+    """Dibuja diagramas de caja del ROC-AUC y del PR-AUC por pliegue de cada modelo comparado."""
+    comp =metrics['comparacion_cv']
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
     for ax, clave, titulo in zip(axes, ('roc_auc', 'pr_auc'), ('ROC-AUC por pliegue', 'PR-AUC por pliegue')):
         datos = [comp[n][clave]['pliegues'] for n in comp]
@@ -123,7 +135,8 @@ def figura_comparacion(empresa: str, metrics: dict) -> None:
 
 
 def figura_clustering(empresa: str, carpeta: Path) -> None:
-    ruta = carpeta / 'metricas_clustering.json'
+    """Dibuja silhouette y Davies-Bouldin según k; no hace nada si no existe metricas_clustering.json."""
+    ruta =carpeta / 'metricas_clustering.json'
     if not ruta.exists():
         return
     b = json.loads(ruta.read_text(encoding='utf-8'))['barrido_k']
@@ -141,6 +154,17 @@ def figura_clustering(empresa: str, carpeta: Path) -> None:
 
 
 def evaluacion_prospectiva_oulad(empresa: str) -> dict | None:
+    """Compara las predicciones guardadas con lo que ocurrió después en OULAD.
+
+    Cruza fact_prediccion_abandono con OULAD_PRUEBAS.dbo.verdad_futura y
+    evalúa dos desenlaces: y_proximo (retiro en el bloque siguiente al
+    calificado, que es el horizonte del modelo) e y_cualquier_momento
+    (retiro en cualquier bloque posterior). Guarda las métricas de
+    y_proximo en fact_evaluacion_modelo con el esquema PROSPECTIVA.
+
+    Returns:
+        Métricas de ambos desenlaces, o None si no hay predicciones.
+    """
     conn = conectar_admin('CHAT')
     pred = pd.read_sql("""
         SELECT da.cedula, RIGHT(dc.carrera, 3) AS code_module, fm.semestre AS bloque_actual,
@@ -186,11 +210,12 @@ def evaluacion_prospectiva_oulad(empresa: str) -> dict | None:
 
 
 def main() -> int:
+    """Genera las figuras de la institución y, para OULAD_UK, agrega la evaluación prospectiva a metrics.json."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--empresa', default='UNEMI_PRUEBAS')
     args = parser.parse_args()
     empresa = args.empresa.strip().upper()
-    carpeta = MODELS_ROOT / empresa
+    carpeta =MODELS_ROOT / empresa
     metrics = json.loads((carpeta / 'metrics.json').read_text(encoding='utf-8'))
     FIGURAS.mkdir(parents=True, exist_ok=True)
 

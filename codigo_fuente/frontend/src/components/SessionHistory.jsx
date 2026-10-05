@@ -1,26 +1,11 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-SIDEBAR-04]
- * ============================================================================
- * ARCHIVO: SessionHistory.jsx
- * MÓDULO: UI / Content Management
- *
- * 🎯 PROPÓSITO GERENCIAL:
- * Archivero de Retención. Permite al usuario consultar su pasado,
- * recuperar conversaciones valiosas previas, o mantener su espacio
- * limpio borrando consultas que ya no necesita.
- *
- * 📍 PUNTO DE INTERFAZ:
- * Ocupa la mitad inferior del menú lateral (Sidebar) con scroll independiente.
- *
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Listado de hilos de chat previos (Memoria a Largo Plazo).
- * - Menú contextual de opciones ('rename', 'delete') en cada ítem.
- * - Modo de selección múltiple (Fase 5, 28/08/2026:
- *   mismo patrón que los paneles de historial de las IA en la web) para
- *   fijar/eliminar varias conversaciones a la vez.
- * - Uso avanzado de animaciones (Framer Motion) para micro-interacciones suaves.
- * ============================================================================
+ * @file Historial de consultas del menú lateral. Lista las conversaciones guardadas
+ * con scroll propio y permite cargarlas, fijarlas, renombrarlas y eliminarlas desde
+ * un menú contextual, además de un modo de selección múltiple para fijar o eliminar
+ * varias a la vez (patrón habitual de los asistentes conversacionales). La gestión de
+ * sesiones vive en App.jsx; este componente solo la invoca.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useEffect, useState } from 'react';
@@ -31,17 +16,33 @@ import {
     MoreHorizontal, Pin, Trash, X,
 } from 'lucide-react';
 
-// Ancho fijo del menú contextual — se usa tanto para pintarlo como para
-// calcular dónde ubicarlo (ver abrirMenu). Antes se posicionaba con
-// `right-[110%]` relativo a un contenedor angosto (el sidebar colapsado),
-// y el contenedor de la lista tiene `overflow-y-auto`: por la forma en que
-// CSS calcula overflow, eso vuelve automático TAMBIÉN el eje X, así que el
-// menú quedaba recortado a la mitad — de ahí que los íconos de Fijar/
-// Renombrar/Eliminar se vieran "saliéndose de la burbuja". La solución es
-// sacar el menú de ese contenedor por completo con un portal a <body> y
-// posicionarlo con coordenadas de pantalla reales.
+// Ancho fijo del menú contextual; se usa para pintarlo y para calcular dónde
+// ubicarlo (ver abrirMenu). El contenedor de la lista tiene `overflow-y-auto`
+// y, por la forma en que CSS calcula el desbordamiento, eso vuelve automático
+// TAMBIÉN el eje X: un menú posicionado dentro de él queda recortado. Por eso
+// el menú sale de ese contenedor con un portal a <body> y se posiciona con
+// coordenadas de pantalla reales.
 const MENU_WIDTH = 168;
 
+/**
+ * Muestra la lista de conversaciones guardadas con sus acciones individuales y en lote.
+ *
+ * @param {object} props
+ * @param {object[]} props.sortedSessions - Sesiones ya ordenadas (`id`, `name`, `timestamp`, `pinned`).
+ * @param {string} props.activeSessionId - Id de la conversación abierta.
+ * @param {string|null} props.editingId - Id de la sesión que se está renombrando.
+ * @param {string} props.tempSessionName - Nombre provisional mientras se renombra.
+ * @param {string|null} props.menuOpenId - Id de la sesión con el menú contextual abierto.
+ * @param {Function} props.loadSession - Abre la sesión recibida.
+ * @param {Function} props.setMenuOpenId - Abre o cierra el menú contextual.
+ * @param {Function} props.togglePinSession - Alterna el fijado; recibe `(evento, id)`.
+ * @param {Function} props.renameSession - Inicia el renombrado; recibe `(evento, id)`.
+ * @param {Function} props.saveNewName - Guarda el nombre nuevo; recibe `(evento, id)`.
+ * @param {Function} props.setTempSessionName - Actualiza el nombre provisional.
+ * @param {Function} props.deleteSession - Elimina una sesión; recibe `(evento, id)`.
+ * @param {boolean} [props.hideHeader] - Oculta el encabezado «Historial de Consultas».
+ * @returns {JSX.Element|null} El historial, o null si no hay sesiones.
+ */
 export function SessionHistory({
     sortedSessions,
     activeSessionId,
@@ -55,14 +56,14 @@ export function SessionHistory({
     saveNewName,
     setTempSessionName,
     deleteSession,
-    hideHeader, // Nueva prop
+    hideHeader,
 }) {
     const [menuPos, setMenuPos] = useState(null);
     const [selectMode, setSelectMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState(() => new Set());
 
-    // Salir del modo selección si la lista cambia por completo (ej. se borró
-    // todo) para no dejar ids seleccionados que ya no existen.
+    // Cuando la lista cambia (p. ej. se borró todo), se descartan de la
+    // selección los ids que ya no existen.
     useEffect(() => {
         if (!selectMode) return;
         setSelectedIds((prev) => {
@@ -104,10 +105,9 @@ export function SessionHistory({
         });
     };
 
-    // deleteSession/togglePinSession solo aceptan un id a la vez (así ya
-    // funcionaban antes de esta selección múltiple), así que la acción en
-    // lote los llama uno por uno con un evento sintético inofensivo — sin
-    // tocar App.jsx para nada.
+    // deleteSession y togglePinSession aceptan un solo id a la vez, así que la
+    // acción en lote los llama uno por uno con un evento sintético inofensivo,
+    // sin cambiar sus firmas en App.jsx.
     const eventoNulo = { stopPropagation: () => {} };
 
     const eliminarSeleccionadas = () => {
@@ -117,9 +117,9 @@ export function SessionHistory({
     };
 
     const fijarSeleccionadas = () => {
-        // "Fijar" en lote debe dejar TODAS las seleccionadas fijadas, no
-        // alternar el estado de cada una — por eso solo se llama sobre las
-        // que todavía no están fijadas (togglePinSession alterna, no fija).
+        // «Fijar» en lote debe dejar TODAS las seleccionadas fijadas, no
+        // alternar el estado de cada una; por eso solo se llama sobre las que
+        // todavía no están fijadas (togglePinSession alterna, no fija).
         selectedIds.forEach((id) => {
             const sesion = sortedSessions.find((s) => s.id === id);
             if (sesion && !sesion.pinned) togglePinSession(eventoNulo, id);
@@ -252,9 +252,9 @@ export function SessionHistory({
                 })}
             </div>
 
-            {/* Menú contextual por ítem — portal a <body> para no quedar
+            {/* Menú contextual por ítem: portal a <body> para no quedar
                 recortado por el scroll del contenedor de arriba (ver nota de
-                MENU_WIDTH). Una sola instancia compartida, posicionada con
+                MENU_WIDTH). Es una sola instancia compartida, posicionada con
                 las coordenadas calculadas en abrirMenu(). */}
             {typeof document !== 'undefined' && createPortal(
                 <AnimatePresence>

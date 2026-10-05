@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-run_sql_file.py — ejecuta un archivo .sql (estilo sqlcmd: lotes separados
-por 'GO' en su propia linea) contra el servidor, sin depender de que sqlcmd
-este instalado en el host (no lo esta en este equipo; el contenedor Docker
-de SQL Server tampoco trae mssql-tools).
+Ejecución de archivos .sql por lotes sin depender de sqlcmd.
 
-Soporta variables estilo sqlcmd ($(nombre)) via --var nombre=valor.
+Ejecuta un archivo .sql (estilo sqlcmd: lotes separados por 'GO' en su
+propia línea) contra el servidor, sin depender de que sqlcmd esté instalado
+en el host (el contenedor Docker de SQL Server tampoco trae mssql-tools).
+
+Soporta variables estilo sqlcmd ($(nombre)) vía --var nombre=valor.
 
 Si no se pasa --var chat_reader_password, se toma CHAT_READER_PASSWORD de
 backend/.env (así la contraseña no queda en el historial de la terminal).
@@ -13,6 +14,9 @@ backend/.env (así la contraseña no queda en el historial de la terminal).
 Uso:
     cd backend
     python scripts/run_sql_file.py ../base_de_datos/crear_chat_academico.sql
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -28,6 +32,7 @@ from conexion_admin import conectar_admin  # noqa: E402
 
 
 def dividir_en_lotes(sql_text: str) -> list[str]:
+    """Divide el script en lotes por las líneas que solo contienen GO y descarta los vacíos."""
     lotes, actual = [], []
     for linea in sql_text.splitlines():
         if linea.strip().upper() == 'GO':
@@ -42,6 +47,10 @@ def dividir_en_lotes(sql_text: str) -> list[str]:
 
 
 def main() -> int:
+    """Sustituye las variables y ejecuta los lotes en orden con autocommit.
+
+    Ante un error muestra el lote que falló y vuelve a lanzar la excepción.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('sql_file')
     parser.add_argument('--host', default=None)

@@ -1,9 +1,18 @@
+/**
+ * @file Vista «Áreas de Análisis». Muestra en tarjetas las áreas temáticas
+ * (académico, finanzas, RR. HH., etc.) que el backend detecta en el esquema de la
+ * base activa, marcando cuáles están disponibles y cuáles bloqueadas. Lee los datos
+ * de /api/context-overview mediante el hook useContextOverview.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 import React from 'react';
 import { motion } from 'framer-motion';
 import { BarChart2, Briefcase, Database, FileSpreadsheet, GraduationCap, Lock, RefreshCw } from 'lucide-react';
 
 import { useContextOverview } from '../../hooks/useContextOverview';
 
+// Ícono por identificador de área; las áreas desconocidas usan Database.
 const AREA_ICONS = {
     rrhh: FileSpreadsheet,
     ventas: Briefcase,
@@ -13,6 +22,7 @@ const AREA_ICONS = {
     general: Database,
 };
 
+// Tarjeta de un área: ícono, nombre, descripción y estado (disponible o bloqueada).
 function AreaCard({ area }) {
     const Icon = AREA_ICONS[area?.id] || Database;
     const locked = area?.status === 'locked';
@@ -45,6 +55,15 @@ function AreaCard({ area }) {
     );
 }
 
+/**
+ * Muestra la cuadrícula de áreas de análisis de la base activa con un botón para
+ * refrescarla.
+ *
+ * @param {object} props
+ * @param {string} props.dbId - Identificador de la base cuyas áreas se consultan.
+ * @param {boolean} [props.enabled=true] - Si es false, no se consulta el backend.
+ * @returns {JSX.Element} Vista de áreas de análisis.
+ */
 export function AnalysisAreas({ dbId, enabled = true }) {
     const { overview, loading, error, reloadOverview } = useContextOverview(dbId, enabled);
     const areas = overview?.areas || [];

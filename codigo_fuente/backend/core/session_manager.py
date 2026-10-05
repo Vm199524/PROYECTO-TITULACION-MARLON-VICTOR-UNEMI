@@ -1,13 +1,15 @@
 """
-core/session_manager.py - Gestor de sesiones aisladas por usuario.
-Mantiene estado de conexion y contexto IA por identidad autenticada.
-Evita colisiones de datos entre usuarios durante una misma ejecucion.
+Gestor de sesiones aisladas por usuario autenticado.
 
-FASE 3 — C3: además del store en memoria, el estado NO sensible de cada
-sesión (empresa activa, esquema ya sincronizado) se refleja en
-core/session_state_store.py para sobrevivir un reinicio del proceso backend.
-connector/client (recursos vivos) y conn_str/api_key (secretos) nunca se
-persisten — ver el docstring de session_state_store.py para el porqué.
+Mantiene en memoria el conector SQL, el cliente de IA y el contexto de cada
+usuario para evitar colisiones de datos entre usuarios; lo usan main.py y
+api/routes_query.py. El estado no sensible (empresa activa, esquema
+sincronizado) se refleja en session_state_store.py para sobrevivir a un
+reinicio; los recursos vivos (connector, client) y los secretos (conn_str,
+api_key) nunca se persisten.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -18,17 +20,11 @@ from core.session_state_store import get_state, save_state, clear_state
 
 logger = logging.getLogger(__name__)
 
-# Archivo: session_manager.py
-# Rol: store en memoria de sesiones activas por usuario autenticado.
-# Recibe desde: backend/main.py y backend/api/routes_query.py.
-# Se conecta con: el conector SQL y el cliente IA asignados al login actual.
-# Responsabilidades: crear sesion, guardar contexto y aislar usuarios.
-
 
 class UserSession:
-    """
-    Representa el contexto privado de un usuario autenticado.
-    Incluye conector SQL, cliente IA y metadatos de modulo/rol.
+    """Contexto privado de un usuario autenticado.
+
+    Incluye el conector SQL, el cliente de IA y los metadatos de rol y módulos.
     """
 
     def __init__(self, user_id: str, role: str, name: str, allowed_modules: list):
@@ -43,11 +39,12 @@ class UserSession:
         self.schema_text = ""
         self.master_schema_text = ""
         self.semantic_relations = ""
-        # Cache por base/empresa activa para evitar mezclar esquemas entre dominios.
+        # Caché por base o empresa activa para no mezclar esquemas entre dominios.
         self.schema_cache: Dict[str, dict] = {}
-        # Cache de esquema COMPLETO por empresa (schema_dict + schema_text + semantic_relations).
-        # Persiste entre cambios de empresa en la misma sesión para evitar re-sync costosos.
-        # Clave = código de empresa (ej: "AGRINAG"). Cada empresa tiene su propio espacio aislado.
+        # Caché del esquema completo por empresa (schema_dict, schema_text y
+        # semantic_relations). Persiste entre cambios de empresa en la misma
+        # sesión para evitar resincronizaciones costosas. La clave es el código
+        # de empresa (p. ej., "AGRINAG"); cada empresa tiene su espacio aislado.
         self.full_schema_cache: Dict[str, dict] = {}
         self.context_db = ""
         self.conn_str = ""
@@ -65,7 +62,11 @@ class UserSession:
         semantic_relations: str = "",
         api_key: str = "",
     ):
-        """Actualiza recursos de la sesion tras un connect exitoso."""
+        """Actualiza los recursos de la sesión tras una conexión exitosa.
+
+        Reinicia schema_cache con el esquema de la base de contexto. Si no se
+        pasa api_key, la toma del cliente de IA cuando este la expone.
+        """
         self.connector = connector
         self.client = client
         self.schema_dict = schema_dict
@@ -83,11 +84,11 @@ class UserSession:
             self.schema_cache[context_key] = schema_dict
 
     def to_state_dict(self) -> dict:
-        """
-        Snapshot serializable del estado NO sensible de la sesión.
-        Deliberadamente excluye: connector, client, conn_str, api_key,
-        history_context (nunca se llenó, no vale la pena persistir), y
-        schema_cache (derivable de nuevo desde full_schema_cache).
+        """Devuelve una instantánea serializable del estado no sensible de la sesión.
+
+        Excluye a propósito connector, client, conn_str y api_key (recursos
+        vivos y secretos), history_context (no se llena) y schema_cache (se
+        reconstruye desde el esquema de contexto).
         """
         return {
             "role": self.role,
@@ -102,7 +103,7 @@ class UserSession:
         }
 
     def restore_state_dict(self, state: dict) -> None:
-        """Aplica un snapshot previamente guardado (no toca connector/client)."""
+        """Aplica una instantánea guardada previamente, sin tocar connector ni client."""
         if not isinstance(state, dict):
             return
         self.context_db = state.get("context_db", "") or ""
@@ -119,25 +120,27 @@ class UserSession:
 
 
 class SessionManager:
-    """
-    Registro en memoria de sesiones activas.
-    Diseñado para migrar facilmente a Redis o almacenamiento externo.
+    """Registro en memoria de las sesiones activas.
+
+    Está diseñado para migrar con facilidad a Redis u otro almacenamiento externo.
     """
 
     def __init__(self):
-        # Este store vive en memoria del proceso actual.
-        # En despliegue horizontal debe migrarse a persistencia distribuida.
+        # El almacén vive en la memoria del proceso actual; en un despliegue
+        # horizontal debe migrarse a una persistencia distribuida.
         self._sessions: Dict[str, UserSession] = {}
 
     def get_session(self, user_id: str) -> Optional[UserSession]:
-        """
-        Recupera sesion activa por usuario. Si el proceso se reinició y no
-        hay nada en memoria, intenta restaurar el último estado guardado
-        (empresa activa + esquema ya sincronizado). connector/client quedan
-        en None tras esta restauración — el flujo normal de auto-conexión
-        (ej. /api/bi/pulse, o que el usuario reseleccione la empresa) se
-        encarga de reconstruirlos, igual que ya hace hoy para una sesión
-        nueva sin conector.
+        """Recupera la sesión activa del usuario.
+
+        Si el proceso se reinició y no hay nada en memoria, intenta restaurar
+        el último estado guardado (empresa activa y esquema sincronizado). En
+        ese caso connector y client quedan en None: el flujo normal de
+        conexión automática (p. ej., /api/bi/pulse o volver a elegir la
+        empresa) los reconstruye, igual que en una sesión nueva sin conector.
+
+        Returns:
+            La sesión en memoria o restaurada, o None si no hay estado guardado.
         """
         session = self._sessions.get(user_id)
         if session is not None:
@@ -167,14 +170,14 @@ class SessionManager:
         return restored
 
     def create_session(self, user_id: str, role: str, name: str, allowed_modules: list) -> UserSession:
-        """Crea o refresca sesion del usuario luego de login exitoso."""
+        """Crea o reemplaza la sesión del usuario tras un inicio de sesión exitoso."""
         new_session = UserSession(user_id, role, name, allowed_modules)
         self._sessions[user_id] = new_session
         logger.info("Sesion creada para usuario: %s [%s]", user_id, role)
         return new_session
 
     def persist(self, user_id: str) -> None:
-        """Guarda el snapshot actual de la sesión (ver UserSession.to_state_dict)."""
+        """Guarda la instantánea actual de la sesión (ver UserSession.to_state_dict)."""
         session = self._sessions.get(user_id)
         if session is None:
             return
@@ -184,7 +187,7 @@ class SessionManager:
             logger.warning("[SESSION] No se pudo guardar estado de %s: %s", user_id, exc)
 
     def remove_session(self, user_id: str):
-        """Elimina sesion activa, libera recursos en memoria y borra el estado guardado."""
+        """Elimina la sesión activa, libera los recursos en memoria y borra el estado guardado."""
         if user_id in self._sessions:
             del self._sessions[user_id]
             logger.info("Sesion liberada: %s", user_id)

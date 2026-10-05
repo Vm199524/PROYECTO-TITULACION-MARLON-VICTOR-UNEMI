@@ -1,20 +1,16 @@
 """
 Pruebas del blindaje de SQL y trazabilidad (`_redactar_campos_privados`).
 
-Defecto grave detectado en pruebas (30/08/2026): cualquier
-usuario logueado, sin importar su rol (CONTABILIDAD, RRHH, LOGISTICA,
-Invitado), recibía en la respuesta de `/query` el SQL generado y el
-`agent_log` completo. El frontend solo ocultaba con CSS la pestaña
-"SQL"/"Cómo se calculó" — el payload de red seguía trayendo todo, visible
-abriendo el inspector de red del navegador. Eso no es control de acceso.
+Ocultar con CSS la pestaña "SQL"/"Cómo se calculó" no es control de acceso: el
+SQL generado y el `agent_log` seguirían visibles en el inspector de red del
+navegador. Por eso el backend quita esos campos de la respuesta de `/query`
+para cualquier rol que no sea ADMINISTRADOR y los conserva intactos para
+ADMINISTRADOR (incluida la cuenta protegida del desarrollador). La función no
+modifica el diccionario original, que se reutiliza en otras partes del
+pipeline, y no falla si faltan campos o si el payload viene vacío.
 
-Estas pruebas verifican que la función que quita esos campos:
-  1. Los quita para cualquier rol que no sea ADMINISTRADOR.
-  2. Los conserva intactos para ADMINISTRADOR (incluida la cuenta protegida
-     del desarrollador, cuyo rol también es ADMINISTRADOR).
-  3. No modifica el diccionario original (evita efectos secundarios si el
-     payload se reutiliza en otra parte del pipeline).
-  4. No revienta si faltan campos o si el payload viene vacío.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os
@@ -72,7 +68,7 @@ def test_administrador_conserva_todos_los_campos():
 
 
 def test_administrador_en_minusculas_o_con_espacios_tambien_conserva_los_campos():
-    """La comparación de rol es case-insensitive y tolera espacios sueltos."""
+    """La comparación de rol no distingue mayúsculas y tolera espacios sueltos."""
     payload = _payload_completo()
     for variante in ("administrador", "  ADMINISTRADOR  ", "Administrador"):
         resultado = _redactar_campos_privados(payload, {"role": variante})

@@ -1,13 +1,17 @@
 /**
- * utils/comandosVoz.js — Interpreta órdenes habladas antes de tratarlas como preguntas.
- *
- * Sin esto, decir "conéctate a Montessori" viajaba al motor SQL como si fuera
- * una consulta de negocio: no hay ninguna tabla que responda a eso, así que la
- * IA improvisaba o fallaba. Las órdenes de navegación se resuelven aquí, en el
- * navegador, sin gastar una llamada al servidor ni al modelo.
+ * @file Intérprete de comandos de voz. Reconoce órdenes habladas (cambiar de
+ * empresa, salir) antes de tratarlas como preguntas de datos. Una orden como
+ * «conéctate a Montessori» no tiene tabla que la responda en el motor SQL, así
+ * que se resuelve aquí, en el navegador, sin llamar al servidor ni al modelo.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
-/** Quita acentos y signos para comparar lo dicho con lo escrito en el catálogo. */
+/**
+ * Quita acentos y signos para comparar lo dicho con lo escrito en el catálogo.
+ * @param {string} texto Texto reconocido o nombre del catálogo.
+ * @returns {string} Texto en minúsculas, sin tildes, signos ni espacios repetidos.
+ */
 export function normalizar(texto) {
     return String(texto || '')
         .normalize('NFD')
@@ -38,6 +42,11 @@ const PATRONES_SALIR = [
  * ("montessori"), no el código de base ("MONT"), así que se compara contra
  * ambos. Se prefiere la coincidencia más larga: si alguien dice "enigma para
  * pruebas" debe ganar ENPR y no ENIG, que también contiene "enigma".
+ * @param {string} mencion Nombre o código de empresa extraído de la frase.
+ * @param {Array<{database?: string, company_code?: string, business_name?: string}>} [empresas=[]]
+ *   Catálogo de empresas disponibles.
+ * @returns {object|null} La empresa con la coincidencia más larga, o null si
+ *   la mención tiene menos de 3 caracteres o no coincide con ninguna.
  */
 export function buscarEmpresa(mencion, empresas = []) {
     const objetivo = normalizar(mencion);
@@ -72,6 +81,11 @@ export function buscarEmpresa(mencion, empresas = []) {
  * Ante la duda NO se interpreta como orden: es preferible mandar algo al motor
  * de consultas y que responda, que capturar por error una pregunta legítima y
  * dejar al usuario sin respuesta.
+ * @param {string} texto Frase reconocida por el dictado.
+ * @param {Array<object>} [empresas=[]] Catálogo de empresas disponibles.
+ * @returns {{tipo: string, empresa?: object, mencion?: string}|null} La orden
+ *   reconocida (`salir`, `cambiar_empresa` o `empresa_no_encontrada`), o null
+ *   si el texto debe ir al motor de consultas.
  */
 export function interpretarComandoVoz(texto, empresas = []) {
     const limpio = normalizar(texto);

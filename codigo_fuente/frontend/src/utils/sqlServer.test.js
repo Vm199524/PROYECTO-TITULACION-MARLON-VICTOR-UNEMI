@@ -1,3 +1,13 @@
+/**
+ * @file Pruebas de `normalizeSqlServerHost`. Verifican que los alias locales
+ * (`.`, `(local)`) se conviertan en `localhost` conservando la instancia o el
+ * puerto, y que se quiten las comillas externas y los espacios alrededor de
+ * los separadores `\` y `,`, para que el host escrito por el usuario llegue
+ * limpio a la conexión con SQL Server.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 import { describe, expect, it } from 'vitest';
 
 import { normalizeSqlServerHost } from './sqlServer';

@@ -1,12 +1,15 @@
 """
-tests/test_metric_catalog.py — Banco de evaluación de la Capa Semántica (Fase 1).
+Pruebas del catálogo de métricas certificadas de la capa semántica.
 
-Mide que las preguntas de gerencia se resuelvan contra la métrica certificada
-correcta, y que preguntas ajenas NO disparen falsos positivos.
-Este archivo ES el banco de evaluación: al agregar métricas al catálogo,
-agrega aquí sus pares pregunta→métrica esperada.
-
+Este archivo es el banco de evaluación: mide que las preguntas de gerencia se
+resuelvan contra la métrica certificada correcta (precisión mínima del 90 %),
+que las preguntas ajenas NO disparen falsos positivos y que el SQL de las
+métricas sea de solo lectura. Al agregar métricas al catálogo, se agregan aquí
+sus pares pregunta → métrica esperada.
 Ejecutar: pytest tests/test_metric_catalog.py -v
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import sys
 from pathlib import Path
@@ -53,7 +56,7 @@ class TestIntegridadCatalogo:
             assert len(m["sinonimos"]) >= 3, f"Métrica {m['id']} necesita ≥3 sinónimos"
 
     def test_certificadas_solo_select(self):
-        # Toda métrica certificada debe ser SELECT/WITH puro (read-only)
+        # Toda métrica certificada debe ser SELECT/WITH puro (solo lectura).
         with open(_CATALOG_PATH, "r", encoding="utf-8") as f:
             metricas = json.load(f)["metricas"]
         for m in metricas:
@@ -119,8 +122,8 @@ EVAL_DIRECTAS = [
     ("cuanto ganamos entre ventas y compras", "margen_bruto_simplificado"),
     ("empleados nuevos este año", "empleados_nuevos_este_anio"),
     ("nuevas contrataciones del año", "empleados_nuevos_este_anio"),
-    # Certificadas 24/07/2026 vía scripts/validar_borradores.py (INFORMATION_SCHEMA
-    # real en 12 empresas: ALIM, ALIMENTO, DAUN, ENIG, ENPR, ESTE, GYMJ, GYMM, MANA, MONT, SONG, TALL, VICE)
+    # Certificadas con scripts/validar_borradores.py contra el INFORMATION_SCHEMA
+    # real de ALIM, ALIMENTO, DAUN, ENIG, ENPR, ESTE, GYMJ, GYMM, MANA, MONT, SONG, TALL y VICE.
     ("ventas por vendedor", "ventas_por_vendedor"),
     ("quien vende mas", "ventas_por_vendedor"),
     ("principales clientes", "ventas_por_cliente"),
@@ -158,8 +161,8 @@ class TestBancoEvaluacion:
     def test_borradores_no_ejecutan_directo(self, pregunta):
         """
         Métricas con columnas sin confirmar (Vendedor, Cliente, detalle_factura)
-        deben quedar como pista para el LLM, nunca ejecutarse solas — aunque el
-        usuario pida 'certificar todo', la integridad del catálogo no se negocia.
+        quedan como pista para el LLM y nunca se ejecutan solas: una métrica
+        solo se certifica tras validar sus columnas contra datos reales.
         """
         hit = resolver_metrica(pregunta)
         assert hit is None, f"Borrador se ejecutó directo sin validar: '{pregunta}' → {hit and hit['id']}"
@@ -167,7 +170,7 @@ class TestBancoEvaluacion:
         assert hints != "", f"Borrador debería al menos aparecer como pista: '{pregunta}'"
 
     def test_precision_global(self):
-        """KPI del plan: precisión ≥90% sobre el banco de métricas certificadas."""
+        """Meta de calidad: precisión ≥ 90 % sobre el banco de métricas certificadas."""
         aciertos = 0
         for pregunta, esperada in EVAL_DIRECTAS:
             hit = resolver_metrica(pregunta)
@@ -184,9 +187,9 @@ class TestBancoEvaluacion:
 class TestParametros:
     def test_sin_anio_explicito_usa_periodo_mas_reciente_con_datos(self):
         """
-        Fase 1 (23/07/2026): sin año explícito, la métrica NO asume el año
-        calendario actual (muchas empresas no tienen datos hasta hoy) — usa
-        una subconsulta MAX(YEAR(Fecha)) sobre la tabla real de la métrica.
+        Sin año explícito, la métrica NO asume el año calendario actual
+        (muchas empresas no tienen datos hasta la fecha): usa una subconsulta
+        MAX(YEAR(Fecha)) sobre la tabla real de la métrica.
         """
         hit = resolver_metrica("total de ventas del año")
         assert "MAX(YEAR(Fecha))" in hit["sql"]
@@ -199,7 +202,7 @@ class TestParametros:
 
     def test_anio_pasado(self):
         hit = resolver_metrica("cuanto vendimos el año pasado")
-        if hit:  # tolerante: el sinónimo puede no matchear fuerte
+        if hit:  # tolerante: el sinónimo puede no coincidir con suficiente fuerza
             assert str(datetime.now().year - 1) in hit["sql"]
 
     def test_sql_sin_placeholders(self):
@@ -209,10 +212,10 @@ class TestParametros:
 
     def test_ventas_mes_actual_no_usa_getdate(self):
         """
-        Regresión: la validación multi-empresa del 23/07/2026 encontró 42
-        falsos 'vacío' en ventas_total_mes_actual y compras_total_anual por
-        usar GETDATE()/año calendario en empresas con datos desactualizados.
-        Verificamos que ya no dependan del reloj del servidor.
+        Con GETDATE() o el año calendario, las empresas con datos
+        desactualizados recibirían falsos resultados vacíos en
+        ventas_total_mes_actual y compras_total_anual. Las métricas no deben
+        depender del reloj del servidor.
         """
         hit = resolver_metrica("cuanto hemos vendido este mes")
         assert hit is not None

@@ -1,24 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-etl_academico.py — ETL fisico del dominio academico hacia el warehouse CHAT.
+ETL físico del dominio académico hacia el almacén CHAT.
 
-Generico / agnostico de institucion (ver backend/etl/perfiles.py): este
+Genérico y agnóstico de institución (ver backend/etl/perfiles.py): este
 script no sabe nada del esquema de UNEMI ni de ninguna otra IES en
-particular. Solo conoce los nombres LOGICOS de columnas que el warehouse
+particular. Solo conoce los nombres LÓGICOS de columnas que el warehouse
 CHAT necesita (perfiles.COLUMNAS_REQUERIDAS) y delega en un
 PerfilInstitucion el SELECT concreto que produce esas columnas desde el
-esquema real de cada institucion. Conectar una IES nueva (ej. UPS Cuenca) es
-agregar un perfil, no reescribir este archivo — ver el docstring de
-perfiles.py para el procedimiento completo.
+esquema real de cada institución. Conectar una IES nueva (p. ej., UPS
+Cuenca) es agregar un perfil, no reescribir este archivo; el procedimiento
+completo está en el docstring de perfiles.py.
 
-Es TRUNCATE + INSERT (recarga completa), no incremental/CDC — apropiado
-para el tamano y la cadencia de este proyecto de tesis. Un pipeline
-incremental real (CDC leyendo el transaction log) queda documentado como
-evolucion futura, no en este alcance.
+Es una recarga completa por institución (DELETE de sus filas + INSERT), no
+incremental/CDC: apropiada para el tamaño y la cadencia de este proyecto de
+tesis. Un pipeline incremental real (CDC leyendo el transaction log) queda
+documentado como evolución futura, fuera de este alcance.
 
 Uso:
     cd backend
     python scripts/etl_academico.py --perfil UNEMI_PRUEBAS
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -36,10 +39,12 @@ from conexion_admin import conectar_admin  # noqa: E402
 
 def conectar(host: str | None, driver: str | None, user: str | None, password: str | None,
              database: str) -> pyodbc.Connection:
+    """Abre una conexión administrativa; los parámetros en None se toman de backend/.env."""
     return conectar_admin(database, host=host, user=user, password=password, driver=driver)
 
 
 def extraer(cursor_origen, perfil: PerfilInstitucion) -> list[dict]:
+    """Ejecuta el SELECT del perfil, valida sus columnas y devuelve las filas como diccionarios."""
     cursor_origen.execute(perfil.sql_origen)
     columnas = [c[0] for c in cursor_origen.description]
     validar_columnas(columnas, perfil)
@@ -47,10 +52,12 @@ def extraer(cursor_origen, perfil: PerfilInstitucion) -> list[dict]:
 
 
 def trimestre_de(mes: int) -> int:
+    """Devuelve el trimestre (1-4) al que pertenece un mes."""
     return (mes - 1) // 3 + 1
 
 
 def _upsert_dim_simple(cursor, tabla: str, columna_pk: str, valor: str) -> None:
+    """Inserta el valor en una dimensión de una sola columna si aún no existe."""
     cursor.execute(
         f"IF NOT EXISTS (SELECT 1 FROM dbo.{tabla} WHERE {columna_pk} = ?) "
         f"INSERT INTO dbo.{tabla} ({columna_pk}) VALUES (?)",
@@ -59,6 +66,16 @@ def _upsert_dim_simple(cursor, tabla: str, columna_pk: str, valor: str) -> None:
 
 
 def cargar(cursor_destino, conn_destino, filas: list[dict], empresa_codigo: str, business_name: str) -> int:
+    """Recarga en CHAT los datos de una institución.
+
+    Borra sus predicciones, hechos y alumnos; completa las dimensiones
+    compartidas (empresa, facultad, carrera, estado, canal, sede y tiempo)
+    sin duplicar valores, e inserta dim_alumno y fact_matriculas, esta
+    última por lotes de 20 000 filas. monto_neto = monto x (1 - beca / 100).
+
+    Returns:
+        Número de filas insertadas en fact_matriculas.
+    """
     # ── Reinicio completo DE ESTA INSTITUCIÓN (recarga total, no incremental) ──
     # Orden obligado por las FK: predicciones -> hechos -> alumnos. Nunca se
     # toca lo de otra institución (cada DELETE filtra por empresa_codigo).
@@ -183,6 +200,7 @@ def cargar(cursor_destino, conn_destino, filas: list[dict], empresa_codigo: str,
 
 
 def main() -> int:
+    """Ejecuta el ETL del perfil indicado en --perfil: extrae de su base de origen y carga en CHAT."""
     parser = argparse.ArgumentParser(description=__doc__)
     # Sin valores por defecto aquí: conexion_admin.py lee backend/.env y se
     # detiene con un mensaje claro si falta la contraseña.

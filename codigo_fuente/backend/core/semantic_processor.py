@@ -1,3 +1,14 @@
+"""
+Procesador semántico del chat: traductor de términos y caché de consultas.
+
+Traduce términos coloquiales de la pregunta a la vista técnica que les
+corresponde (data/diccionario_semantico.json) y guarda las consultas exitosas
+con el nombre de la base abstraído como {DB}, aisladas por empresa y por motor
+de IA para que una respuesta nunca se reutilice en otra empresa.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
+"""
 import json
 import os
 import pathlib
@@ -6,11 +17,11 @@ import unicodedata
 from typing import Optional, Tuple, Dict, Any
 
 class SemanticProcessor:
-    """
-    Procesador Semántico para IA con Tri.
+    """Procesador semántico de preguntas en lenguaje natural.
+
     Implementa:
-    1. Traductor Humano (Mapping de términos coloquiales a vistas).
-    2. Caché Semántico (Almacenamiento de intenciones con placeholders {DB}).
+    1. Traductor de términos: asocia términos coloquiales con vistas técnicas.
+    2. Caché semántico: guarda intenciones resueltas con el marcador {DB}.
     """
 
     def __init__(self):
@@ -21,6 +32,7 @@ class SemanticProcessor:
         self._ensure_cache_exists()
 
     def _load_dictionary(self) -> dict:
+        """Carga el diccionario semántico; si falla, devuelve uno sin mapeos."""
         try:
             if self.dict_path.exists():
                 with open(self.dict_path, "r", encoding="utf-8") as f:
@@ -30,12 +42,14 @@ class SemanticProcessor:
         return {"mappings": []}
 
     def _ensure_cache_exists(self):
+        """Crea el archivo de caché vacío si todavía no existe."""
         self.cache_path.parent.mkdir(exist_ok=True)
         if not self.cache_path.exists():
             with open(self.cache_path, "w", encoding="utf-8") as f:
                 json.dump({}, f)
 
     def normalize_text(self, text: str) -> str:
+        """Normaliza el texto: quita tildes y signos de puntuación y lo pasa a minúsculas."""
         s = ''.join(
             c for c in unicodedata.normalize('NFD', text)
             if unicodedata.category(c) != 'Mn'
@@ -44,8 +58,10 @@ class SemanticProcessor:
         return s.lower().strip()
 
     def translate_intent(self, prompt: str) -> Optional[str]:
-        """
-        Busca términos humanos en el prompt y sugiere la vista técnica correspondiente.
+        """Busca términos coloquiales en la pregunta y sugiere la vista técnica correspondiente.
+
+        Returns:
+            La plantilla de vista del primer mapeo que coincide, o None.
         """
         norm_prompt = self.normalize_text(prompt)
         words = set(norm_prompt.split())
@@ -58,26 +74,17 @@ class SemanticProcessor:
         return None
 
     def _clave_cache(self, prompt: str, company_code: str, motor: str = "") -> str:
-        """
-        Clave del caché: SIEMPRE incluye la empresa, y desde el 30/08/2026
-        también el motor de IA (flash, pro o un proveedor puntual).
+        """Construye la clave del caché con la empresa, el motor de IA y la pregunta normalizada.
 
-        Antes la clave era solo el texto de la pregunta. Como en esta
-        arquitectura todas las consultas se ejecutan contra la base `CHAT`
-        (`active_db` == "CHAT" para todas las empresas), una respuesta
-        guardada mientras estaba activa la empresa A se reutilizaba tal cual
-        al preguntar lo mismo estando en la empresa B: mismo texto de
-        explicación y, si las vistas de CHAT no estaban apuntando a donde
-        correspondía, también los mismos números. Es una fuga de datos entre
-        empresas y es inaceptable en un producto multiempresa.
+        La empresa es obligatoria en la clave porque todas las consultas se
+        ejecutan contra la base `CHAT` (`active_db` es "CHAT" para todas las
+        empresas): sin ella, una respuesta guardada en la empresa A se
+        serviría en la empresa B, con su explicación y posiblemente sus
+        números, lo que sería una fuga de datos entre empresas.
 
-        El motor se agregó cuando se creó el selector manual de motores: sin
-        esto, una respuesta cacheada mientras el usuario tenía Pro elegido se
-        serviría también cuando eligiera Flash para la
-        misma pregunta — el "cruce entre motores" que ya se había eliminado
-        del camino en vivo, pero que seguía existiendo en el caché. Ahora
-        cada motor tiene su propia memoria, aislada de los demás: preguntar
-        lo mismo con Flash y con Pro guarda y sirve dos entradas distintas.
+        El motor (flash, pro o un proveedor puntual) aísla la memoria de cada
+        uno: preguntar lo mismo con Flash y con Pro guarda y sirve dos
+        entradas distintas, sin cruce entre motores.
         """
         empresa = str(company_code or "SIN_EMPRESA").strip().upper()
         motor_key = (motor or "flash").strip().lower()
@@ -86,28 +93,32 @@ class SemanticProcessor:
     def get_cached_query(
         self, prompt: str, active_db: str, company_code: str = "", motor: str = ""
     ) -> Optional[Dict[str, Any]]:
-        """
-        Busca en el caché semántico. Si encuentra un match, reemplaza {DB} por la base actual.
-        El match SOLO es válido dentro de la misma empresa Y el mismo motor de IA.
+        """Busca la pregunta en el caché semántico y reemplaza {DB} por la base actual.
+
+        Una coincidencia solo es válida dentro de la misma empresa y el mismo
+        motor de IA.
+
+        Returns:
+            Copia de la entrada con el SQL listo y `cache_hit=True`, o None.
         """
         clave = self._clave_cache(prompt, company_code, motor)
         try:
             with open(self.cache_path, "r", encoding="utf-8") as f:
                 cache = json.load(f)
 
-            # Nota: las entradas antiguas (guardadas con la clave sin empresa)
-            # se ignoran deliberadamente. No hay forma de saber de qué empresa
-            # provienen, así que se tratan como no confiables y se descartan.
+            # Las entradas guardadas con una clave sin empresa nunca coinciden
+            # con la clave actual: no se sabe de qué empresa provienen, así que
+            # se tratan como no confiables.
             entry = cache.get(clave)
             if entry:
                 # Reemplazo dinámico de la base de datos en el SQL guardado
                 sql_template = entry.get("sql", "")
-                # Reemplazamos tanto {DB} como [DB] o cualquier marcador que hayamos definido
+                # Sustituye el marcador {DB} por la base activa entre corchetes.
                 final_sql = sql_template.replace("{DB}", f"[{active_db}]")
                 final_sql = final_sql.replace("[{DB}]", f"[{active_db}]")
                 
-                # Si el SQL original no tenía placeholders, intentamos inyectar el nombre de la BD si es necesario
-                # Pero la regla es que el caché DEBE guardar con placeholders.
+                # El caché siempre guarda el SQL con marcadores; si una entrada no
+                # los tiene, se devuelve tal cual.
                 
                 result = dict(entry)
                 result["sql"] = final_sql
@@ -121,21 +132,24 @@ class SemanticProcessor:
         self, prompt: str, sql: str, viz_type: str, explanation: str, active_db: str,
         company_code: str = "", motor: str = "",
     ):
-        """
-        Guarda una consulta exitosa en el caché, abstrayendo el nombre de la base
-        de datos y aislando la entrada por empresa Y por motor de IA.
+        """Guarda una consulta exitosa en el caché.
+
+        Abstrae el nombre de la base de datos como {DB} y aísla la entrada por
+        empresa y por motor de IA.
         """
         norm_prompt = self._clave_cache(prompt, company_code, motor)
-        # Abstraer el nombre de la base de datos activa para que sea reusable
-        # Buscamos el nombre de la DB entre corchetes o como palabra suelta y lo reemplazamos por {DB}
+        # Se abstrae el nombre de la base activa para que la entrada sea
+        # reutilizable: se busca entre corchetes o como palabra suelta y se
+        # reemplaza por {DB}.
         
         sql_template = sql
         if active_db:
-            # Escapar caracteres especiales en el nombre de la DB
+            # Escapa los caracteres especiales del nombre de la base.
             safe_db = re.escape(active_db)
-            # Reemplazar [DB_NAME] o DB_NAME por {DB}
+            # Reemplaza [DB_NAME] por {DB}.
             sql_template = re.sub(rf'\[{safe_db}\]', '{DB}', sql, flags=re.IGNORECASE)
-            # Si no estaba con corchetes (poco probable en nuestro sistema pero por si las dudas)
+            # Si no estaba entre corchetes (poco frecuente en este sistema), se
+            # busca como palabra suelta.
             if sql_template == sql:
                 sql_template = re.sub(rf'\b{safe_db}\b', '{DB}', sql, flags=re.IGNORECASE)
 

@@ -1,7 +1,6 @@
 """
-backend.knowledge - Paquete de conocimiento semantico.
-Contiene mapeos y reglas para reducir contexto de esquema.
-Soporta optimizacion de prompts para el motor NL2SQL.
+Paquete de conocimiento semántico que reduce el esquema y orienta los prompts del motor NL2SQL.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
-# Inicializador del paquete de conocimiento.
-# Se mantiene vacio para no agregar sobrecarga.

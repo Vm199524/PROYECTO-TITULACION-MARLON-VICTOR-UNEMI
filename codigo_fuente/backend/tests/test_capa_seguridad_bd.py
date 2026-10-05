@@ -1,17 +1,19 @@
 """
-Pruebas de las TRES capas de seguridad del motor conversacional (criterio de
-éxito c del documento: "el aislamiento de datos por institución se verifica a
-nivel del motor de base de datos").
+Pruebas de las tres capas de seguridad del motor conversacional.
 
   Capa 3 (aplicación)  core/sql_sanitizer.py rechaza todo lo que no sea lectura.
   Capa 2 (semántica)   el LLM solo ve y consulta vistas VIS_*.
   Capa 1 (motor BD)    la cuenta chat_reader solo tiene SELECT sobre VIS_*,
                        y cada vista filtra por SESSION_CONTEXT('empresa_activa').
 
-Las pruebas de la capa 1 son de INTEGRACIÓN: usan el SQL Server real con dos
-instituciones cargadas (UNEMI_PRUEBAS y OULAD_UK) y se omiten si la base no
-está disponible. Son la evidencia de que la garantía no depende del código de
-la aplicación: aunque el sanitizador fallara, el motor rechaza la operación.
+Las pruebas de la capa 1 son de integración con el SQL Server real (UNEMI_PRUEBAS
+y OULAD_UK) y se omiten si la base no está disponible. Evidencian el criterio
+de éxito c: el aislamiento por institución se verifica en el motor de base de
+datos y no depende del código; aunque el sanitizador fallara, el motor rechaza
+la operación.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os
@@ -149,8 +151,8 @@ def test_sin_contexto_no_se_ve_ninguna_institucion():
 
 @pytest.mark.integracion
 def test_execute_chat_query_es_fail_closed(monkeypatch):
-    """Si chat_reader no está disponible, la consulta NO se ejecuta con la
-    cuenta del usuario (antes caía en silencio a la sesión admin)."""
+    """Si chat_reader no está disponible, la consulta NO se ejecuta: no recurre
+    en silencio a la cuenta del usuario ni a la sesión de administrador."""
     import main
 
     monkeypatch.setattr(main, "_get_chat_reader_connector", lambda: None)

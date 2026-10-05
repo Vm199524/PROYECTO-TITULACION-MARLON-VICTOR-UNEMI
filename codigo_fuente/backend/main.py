@@ -1,26 +1,15 @@
 """
- * ============================================================================
- * FICHA TÉCNICA DEL SISTEMA [BACKEND-CORE-01]
- * ============================================================================
- * ARCHIVO: main.py
- * MÓDULO: SERVER / API Orchestrator (FastAPI)
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Es el "Director de Orquesta" del Backend. Su función principal es recibir
- * las peticiones del usuario (Frontend), validar su identidad (VicMar Data AI)
- * y coordinar la comunicación con los motores de Inteligencia Artificial.
- * 
- * 📍 PUNTO DE OPERACIÓN:
- * Servidor Maestro de Aplicaciones. Es el primer punto de contacto de
- * cualquier consulta que viaje desde el navegador hacia el servidor SQL.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Gestión de Seguridad (JWT): Maneja el Login y los permisos de acceso.
- * - Auditoría de Tráfico: Registra IPs y tiempos de respuesta en tiempo real.
- * - Aislamiento de Sesiones: Garantiza que los hilos de chat de cada 
- *   gerente sean privados y seguros.
- * - Despachador de Rutas: Conecta el chat con el motor de razonamiento (NLP).
- * ============================================================================
+Punto de entrada de la API de VicMar Data AI.
+
+Crea la aplicación FastAPI, registra el middleware de auditoría y las cabeceras
+de seguridad, y expone las rutas de sesión (login, conexión a SQL Server,
+empresas), perfil, administración de usuarios, predicción de abandono,
+benchmarking y reportes BI. Las consultas en lenguaje natural se delegan a
+api/routes_query.py; todo SELECT de la IA contra CHAT se ejecuta con la cuenta
+de solo lectura chat_reader (ver execute_chat_query).
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import json
 import logging
@@ -35,36 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 
-# Archivo: main.py
-# Rol: punto de entrada FastAPI y orquestador HTTP del backend.
-# Recibe desde: frontend/src/services/api.js.
-# Coordina con: security.py, session_manager.py, db_connector.py,
-"""
- * ============================================================================
- * FICHA TÉCNICA DEL SISTEMA [BACKEND-CORE-01]
- * ============================================================================
- * ARCHIVO: main.py
- * MÓDULO: SERVER / API Orchestrator (FastAPI)
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Es el "Director de Orquesta" del Backend. Su función principal es recibir
- * las peticiones del usuario (Frontend), validar su identidad (VicMar Data AI)
- * y coordinar la comunicación con los motores de Inteligencia Artificial.
- * 
- * 📍 PUNTO DE OPERACIÓN:
- * Servidor Maestro de Aplicaciones. Es el primer punto de contacto de
- * cualquier consulta que viaje desde el navegador hacia el servidor SQL.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Gestión de Seguridad (JWT): Maneja el Login y los permisos de acceso.
- * - Auditoría de Tráfico: Registra IPs y tiempos de respuesta en tiempo real.
- * - Aislamiento de Sesiones: Garantiza que los hilos de chat de cada 
- *   gerente sean privados y seguros.
- * - Despachador de Rutas: Conecta el chat con el motor de razonamiento (NLP).
- * ============================================================================
-"""
 import base64
-import json
 import logging
 import os
 import pathlib
@@ -78,20 +38,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import text
 
-# Archivo: main.py
-# Rol: punto de entrada FastAPI y orquestador HTTP del backend.
-# Recibe desde: frontend/src/services/api.js.
-# Coordina con: security.py, session_manager.py, db_connector.py,
-# routes_query.py, routes_quantum_core.py y mirror_manager.py.
-# Expone: /api/login, /api/connect, /api/companies, /api/disconnect,
-# /api/diagnostic, /api/discovery y los routers de /api/query.
-# Secciones: bootstrap/middleware, modelos request, auth/sesion,
-# conexion SQL y endpoints operativos.
-
-# Internal path bootstrap
+# Agrega la carpeta del backend al path para los imports absolutos (config, core...).
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Configuracion de logging
+# Configuración de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VicMarDataAI-Main")
 
@@ -104,8 +54,9 @@ from security import (ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token,
                       get_password_hash, get_token_data, get_token_data_opcional,
                       verify_password)
 
-# OPTIMIZACION TURBO BOOT: Los componentes pesados se cargan segun demanda
-# para garantizar que el arranque del login sea < 2 segundos.
+# Los componentes pesados (cliente de IA, conector SQL, exportadores) se
+# importan dentro de cada ruta, bajo demanda, para que el arranque y el login
+# tarden menos de 2 segundos.
 
 
 BASE_DIR = pathlib.Path(__file__).parent
@@ -113,12 +64,11 @@ LOG_DIR = BASE_DIR / "security_logs"
 LOG_DIR.mkdir(exist_ok=True)
 logger = logging.getLogger(__name__)
 
-# Sentry (FASE 4 - punto 4 Nivel 2): captura excepciones no manejadas en
-# produccion con su traceback completo, agrupadas automaticamente para no
-# alertar mil veces por el mismo bug. Se inicializa ANTES de crear `app` para
-# que la integracion de FastAPI intercepte todas las rutas.
-# Condicional a que exista SENTRY_DSN: sin el, el backend arranca y funciona
-# exactamente igual que hoy, solo que sin reportar errores a ningun lado.
+# Sentry captura las excepciones no manejadas en producción con su traceback
+# completo, agrupadas para no alertar muchas veces por el mismo error. Se
+# inicializa antes de crear `app` para que la integración de FastAPI intercepte
+# todas las rutas. Es opcional: sin SENTRY_DSN el backend funciona igual, solo
+# que sin reportar errores.
 if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -128,7 +78,7 @@ if SENTRY_DSN:
         environment=APP_ENV,
         integrations=[FastApiIntegration()],
         traces_sample_rate=0.2,
-        send_default_pii=False,  # nunca mandar cuerpos de peticion con credenciales/datos de clientes
+        send_default_pii=False,  # nunca enviar cuerpos de petición con credenciales o datos de clientes
     )
     logger.info("[SENTRY] Captura de errores activa (%s)", APP_ENV)
 else:
@@ -151,6 +101,11 @@ app.add_middleware(
 
 @app.middleware("http")
 async def security_audit_middleware(request: Request, call_next):
+    """Registra cada petición en security_logs/access_audit.log y agrega cabeceras de seguridad.
+
+    Anota IP (de X-Forwarded-For si hay proxy), ruta, estado y duración, y
+    añade X-Content-Type-Options, X-Frame-Options y X-XSS-Protection.
+    """
     client_host = request.client.host if request.client else "unknown"
     client_ip = request.headers.get("x-forwarded-for", client_host).split(",")[0].strip()
     start_time = time.time()
@@ -170,7 +125,7 @@ async def security_audit_middleware(request: Request, call_next):
         with open(LOG_DIR / "access_audit.log", "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
     except Exception:
-        # Never block request flow because of logging I/O
+        # Un fallo al escribir el log nunca debe bloquear la petición.
         pass
 
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -180,6 +135,7 @@ async def security_audit_middleware(request: Request, call_next):
 
 
 class ConnectRequest(BaseModel):
+    """Datos para conectar la sesión a una base: servidor, base, autenticación, driver o archivo local."""
     host: str
     database: str
     auth_type: str
@@ -192,6 +148,7 @@ class ConnectRequest(BaseModel):
 
 
 class DatabasesRequest(BaseModel):
+    """Datos para listar las bases de un servidor SQL Server."""
     host: str
     auth_type: str
     user: str = ""
@@ -201,6 +158,7 @@ class DatabasesRequest(BaseModel):
 
 
 class CompaniesRequest(BaseModel):
+    """Datos para listar las empresas de un servidor; `database` es la base catálogo con sys300."""
     host: str
     database: str = ""
     auth_type: str
@@ -210,6 +168,7 @@ class CompaniesRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    """Credenciales de inicio de sesión."""
     username: str
     password: str
 
@@ -223,17 +182,20 @@ class ExportarTablaRequest(BaseModel):
 
 @app.get("/")
 async def root():
+    """Devuelve un estado simple de la API. No requiere autenticación."""
     return {"status": "Quantum BI API Online", "version": "v3.6.0"}
 
 
 @app.get("/health", tags=["Sistema"])
 @app.get("/api/health", tags=["Sistema"], include_in_schema=False)
 async def health_check():
-    # Alias "/api/health": el frontend lo sondea vía /api (el proxy de Vite y
-    # el rewrite de Firebase solo reenvían esa ruta). Antes sondeaba "/health"
-    # a secas, que en local caía en el servidor de Vite y nunca llegaba aquí
-    # (bug real 31/08/2026 — el pre-calentamiento no arrancaba el backend).
-    """Endpoint vital para el arranque rapido del frontend."""
+    """Indica que la API está en línea y cuántas sesiones hay activas. No requiere autenticación.
+
+    El frontend la sondea para precalentar el backend al arrancar. Existe el
+    alias /api/health porque el proxy de Vite y el rewrite de Firebase solo
+    reenvían /api: en local, "/health" a secas cae en el servidor de Vite y
+    nunca llega aquí.
+    """
     return {
         "status": "online",
         "ts": time.time(),
@@ -264,7 +226,7 @@ def _resolve_driver_local(preferred: str) -> str:
         if candidate in available:
             return candidate
 
-    # Ultimo recurso: cualquier driver SQL Server
+    # Último recurso: cualquier driver de SQL Server
     for d in available:
         if "SQL Server" in d:
             return d
@@ -274,9 +236,9 @@ def _resolve_driver_local(preferred: str) -> str:
 
 @app.get("/api/drivers", tags=["Sistema"])
 async def get_odbc_drivers():
-    """
-    Retorna los drivers ODBC de SQL Server disponibles en esta maquina.
-    El frontend usa esto para poblar el selector de drivers dinamicamente.
+    """Devuelve los drivers ODBC de SQL Server instalados en este equipo y el recomendado.
+
+    Alimenta el selector de drivers del frontend. No requiere autenticación.
     """
     try:
         import pyodbc
@@ -288,6 +250,7 @@ async def get_odbc_drivers():
         ]
         # Ordenar por preferencia: SQL Server siempre primero para consistencia con UI
         def driver_priority(d):
+            """Orden: "SQL Server", luego ODBC 18, 17, 13, Native Client y el resto."""
             if d == "SQL Server": return 0
             if "18" in d: return 1
             if "17" in d: return 2
@@ -296,9 +259,8 @@ async def get_odbc_drivers():
             return 5
         sql_drivers.sort(key=driver_priority)
         
-        # El recomendado real para la UI siempre sera SQL Server si queremos consistencia, 
-        # o el primero de la lista si queremos precision tecnica. 
-        # Elegimos SQL Server si esta en las opciones validas (via resolve_driver_local)
+        # Se recomienda siempre "SQL Server" para que coincida con el valor por
+        # defecto de la interfaz, aunque no sea el driver más reciente de la lista.
         return {"drivers": sql_drivers, "recommended": "SQL Server"}
     except Exception as e:
         logger.warning("No se pudo listar drivers ODBC: %s", e)
@@ -306,13 +268,11 @@ async def get_odbc_drivers():
 
 
 # ── Catálogo de servidores conocidos ────────────────────────────────────────
-# Patrón de registro de conexiones (el mismo que usa cualquier banco): el
-# campo "Nombre del servidor" del frontend NUNCA debería depender de que el
-# usuario adivine/escriba un host de memoria — eso es lo que hoy hace que
-# alguien escriba "localhost" y no sepa qué contraseña le corresponde. Este
-# catálogo es la fuente de verdad de los servidores AUTORIZADOS para esta
-# instalación. Nunca incluye contraseñas: la credencial la escribe/gestiona
-# el usuario aparte (o vendría de un vault en un entorno real de banco).
+# Registro de los servidores autorizados para esta instalación: el campo
+# "Nombre del servidor" del frontend se llena desde aquí en lugar de depender de
+# que el usuario escriba un host de memoria (y no sepa qué credencial le
+# corresponde). Nunca incluye contraseñas: la credencial la ingresa el usuario
+# aparte (en un entorno productivo vendría de un gestor de secretos).
 SERVERS_CATALOG = [
     {
         "id": "docker-local-pruebas",
@@ -329,48 +289,40 @@ SERVERS_CATALOG = [
 
 @app.get("/api/servers", tags=["Sistema"])
 async def get_servers_catalog():
-    """
-    Catálogo de servidores conocidos/autorizados para poblar el selector de
-    'Nombre del servidor' del frontend — nunca contiene contraseñas.
+    """Devuelve el catálogo de servidores autorizados para el selector "Nombre del servidor".
+
+    Nunca contiene contraseñas. No requiere autenticación.
     """
     return {"servers": SERVERS_CATALOG}
 
 
-# NOTA (30/08/2026): aquí vivía `DEFAULT_SECURITY_CONFIG`, con cuatro cuentas
-# de verdad (admin, contador, rrhh, logistica) y sus hashes bcrypt escritos en
-# el código. Se eliminaron por seguridad: al estar en el repositorio, sus
-# contraseñas son deducibles, y `_load_security_config` las activaba en cuanto
-# faltaba `security_config.json` — exactamente lo que ocurre en cualquier
-# despliegue con Docker, porque `.dockerignore` excluye ese archivo. Los roles
-# por defecto (que describen permisos pero no dan acceso a nadie) se
-# conservan en `core/user_store.py`, junto con el resto del almacén.
-
-
 def _load_security_config() -> dict:
-    """Lee usuarios y roles del almacén central (ver core/user_store.py).
+    """Lee usuarios y roles del almacén central (core/user_store.py).
 
-    Antes esta función leía `security_config.json` directamente y, cuando el
-    archivo no existía, devolvía una configuración por defecto con cuentas
-    REALES embebidas en este mismo archivo. Eso significaba que cualquier
-    despliegue sin ese archivo —incluida toda imagen de Docker, porque
-    `.dockerignore` lo excluye— arrancaba con credenciales conocidas por
-    cualquiera que tuviera el repositorio. Ahora el almacén decide: si no hay
-    usuarios, no hay acceso (fallo cerrado), y una instalación nueva se
-    arranca con el bootstrap por variables de entorno."""
+    No hay cuentas por defecto en el código: unas credenciales escritas aquí
+    serían conocidas por cualquiera con el repositorio y se activarían en todo
+    despliegue sin security_config.json (por ejemplo, las imágenes de Docker,
+    porque .dockerignore lo excluye). Si no hay usuarios, nadie entra (fallo
+    cerrado); una instalación nueva se inicializa con el bootstrap por
+    variables de entorno. Los roles por defecto, que describen permisos pero
+    no dan acceso a nadie, viven en core/user_store.py.
+    """
     return user_store.cargar_config()
 
 
 def _save_security_config(config: dict) -> None:
     """Persiste usuarios y roles en el almacén central.
 
-    Sigue siendo el único punto de escritura (cambio de contraseña, correo y
-    foto de perfil, gestión de usuarios). Según la configuración, escribe en
-    el archivo local o en Cloud Storage — necesario para que en Cloud Run los
-    cambios sobrevivan al reinicio del contenedor."""
+    Es el único punto de escritura (cambio de contraseña, correo y foto de
+    perfil, gestión de usuarios). Según la configuración, escribe en el archivo
+    local o en Cloud Storage, necesario para que en Cloud Run los cambios
+    sobrevivan al reinicio del contenedor.
+    """
     user_store.guardar_config(config)
 
 
 def _find_user(config: dict, username: str) -> dict | None:
+    """Busca un usuario por nombre sin distinguir mayúsculas; devuelve None si no existe."""
     username_key = str(username or "").strip().lower()
     return next(
         (u for u in config.get("users", []) if str(u.get("username", "")).strip().lower() == username_key),
@@ -379,10 +331,11 @@ def _find_user(config: dict, username: str) -> dict | None:
 
 
 def _ip_cliente(request: Request) -> str:
-    """IP real del cliente aunque haya proxy — mismo criterio que
-    log_action() en TripleA_VentasIA (X-Forwarded-For antes que la IP de
-    conexión directa, que con un proxy/load balancer delante sería la del
-    proxy, no la del usuario)."""
+    """Devuelve la IP real del cliente aunque haya un proxy.
+
+    Prioriza X-Forwarded-For sobre la IP de la conexión directa, que con un
+    proxy o balanceador delante sería la del proxy y no la del usuario.
+    """
     xff = request.headers.get("x-forwarded-for", "")
     if xff:
         return xff.split(",")[0].strip()
@@ -391,6 +344,13 @@ def _ip_cliente(request: Request) -> str:
 
 @app.post("/api/login", tags=["Sesion"])
 async def login(req: LoginRequest, request: Request):
+    """Valida usuario y contraseña y devuelve el JWT con rol, módulos y modelos de IA permitidos.
+
+    Ruta pública. Responde 400 si falta algún dato, 401 si las credenciales no
+    coinciden (el mismo mensaje para usuario inexistente y contraseña errónea)
+    y 403 si la cuenta está desactivada. Además registra el acceso en la
+    auditoría, crea la sesión en memoria y actualiza el último acceso.
+    """
     username_input = (req.username or "").strip()
     password_input = req.password or ""
     if not username_input or not password_input:
@@ -419,10 +379,9 @@ async def login(req: LoginRequest, request: Request):
     role_info = config["roles"].get(user.get("role", "GUEST"), {})
     modelos_permitidos = _modelos_permitidos_de(user)
 
-    # Traza de "Mi Perfil": primera vez que se ve este usuario se fija su
-    # fecha de alta; en cada login se refresca el último acceso. Se escribe
-    # de vuelta a security_config.json, que es el único almacén de usuarios
-    # que existe hoy (no hay tabla de usuarios en base de datos).
+    # Datos de "Mi Perfil": la primera vez se fija la fecha de alta y en cada
+    # login se actualiza el último acceso. Se guardan en el almacén de usuarios
+    # (core/user_store.py); no hay tabla de usuarios en la base de datos.
     now_iso = datetime.utcnow().isoformat() + "Z"
     if not user.get("created_at"):
         user["created_at"] = now_iso
@@ -472,32 +431,36 @@ async def login(req: LoginRequest, request: Request):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# MI PERFIL (Fase 5 — 28/08/2026)
+# MI PERFIL
 # ═══════════════════════════════════════════════════════════════════════════
-# No existe una tabla de usuarios en base de datos: security_config.json ES
-# el almacén de usuarios (username, password hasheada, nombre, rol). Estos
-# endpoints leen y escriben ese mismo archivo, con _save_security_config
-# como único punto de escritura para no divergir del login.
+# No hay tabla de usuarios en la base de datos: el almacén de usuarios
+# (core/user_store.py) guarda usuario, contraseña hasheada, nombre y rol. Estas
+# rutas escriben siempre con _save_security_config, el mismo punto que usa el
+# login, para no divergir.
 
 _AVATAR_MIME_PERMITIDO = {"image/png", "image/jpeg", "image/webp"}
-_AVATAR_MAX_BYTES = 700_000  # ~700KB en base64: de sobra para un avatar cuadrado
+_AVATAR_MAX_BYTES = 700_000  # ~700 KB en base64: de sobra para un avatar cuadrado
 _RE_DATA_URL = re.compile(r"^data:(image/[a-zA-Z0-9.+-]+);base64,(.+)$", re.DOTALL)
 
 
 class ChangePasswordRequest(BaseModel):
+    """Contraseña actual y nueva para el cambio desde Mi Perfil."""
     current_password: str
     new_password: str
 
 
 class UpdateEmailRequest(BaseModel):
+    """Nuevo correo de contacto; vacío lo borra."""
     email: str
 
 
 class AvatarUploadRequest(BaseModel):
+    """Foto de perfil como data URL base64 (PNG, JPG o WEBP)."""
     image_data_url: str
 
 
 def _perfil_publico(user: dict, role_info: dict) -> dict:
+    """Arma la vista del perfil que se envía al frontend (sin la contraseña hasheada)."""
     return {
         "username": user.get("username", ""),
         "name": user.get("name", ""),
@@ -512,6 +475,7 @@ def _perfil_publico(user: dict, role_info: dict) -> dict:
 
 @app.get("/api/profile", tags=["Perfil"])
 def obtener_perfil(current_user: dict = Depends(get_token_data)):
+    """Devuelve el perfil del usuario autenticado; 404 si la cuenta ya no existe."""
     config = _load_security_config()
     user = _find_user(config, current_user.get("sub", ""))
     if not user:
@@ -522,6 +486,10 @@ def obtener_perfil(current_user: dict = Depends(get_token_data)):
 
 @app.put("/api/profile/email", tags=["Perfil"])
 def actualizar_correo_perfil(req: UpdateEmailRequest, request: Request, current_user: dict = Depends(get_token_data)):
+    """Actualiza el correo de contacto del usuario autenticado y lo registra en la auditoría.
+
+    Responde 400 si el formato no es válido; un correo vacío lo borra.
+    """
     correo = req.email.strip()
     if correo and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", correo):
         raise HTTPException(status_code=400, detail="El correo no tiene un formato válido.")
@@ -544,6 +512,11 @@ def actualizar_correo_perfil(req: UpdateEmailRequest, request: Request, current_
 
 @app.post("/api/profile/password", tags=["Perfil"])
 def cambiar_password_perfil(req: ChangePasswordRequest, request: Request, current_user: dict = Depends(get_token_data)):
+    """Cambia la contraseña del usuario autenticado tras verificar la actual.
+
+    Exige mínimo 8 caracteres (400) y responde 401 si la contraseña actual no
+    coincide. El cambio queda en la auditoría.
+    """
     if len(req.new_password) < 8:
         raise HTTPException(status_code=400, detail="La nueva contraseña debe tener mínimo 8 caracteres.")
 
@@ -567,9 +540,11 @@ def cambiar_password_perfil(req: ChangePasswordRequest, request: Request, curren
 
 
 def _validar_avatar_data_url(data_url: str) -> str:
-    """Valida un avatar en base64 (mismas reglas para 'Mi Perfil' y para el
-    alta/edición de usuarios desde Administración) y devuelve el detalle del
-    error si no es válido, o cadena vacía si está bien."""
+    """Valida un avatar en base64 y devuelve el detalle del error, o cadena vacía si es válido.
+
+    Aplica las mismas reglas en Mi Perfil y en el alta o edición de usuarios
+    desde Administración.
+    """
     match = _RE_DATA_URL.match(data_url or "")
     if not match:
         return "La imagen debe venir como data URL base64 (png, jpg o webp)."
@@ -587,6 +562,7 @@ def _validar_avatar_data_url(data_url: str) -> str:
 
 @app.post("/api/profile/avatar", tags=["Perfil"])
 def subir_foto_perfil(req: AvatarUploadRequest, current_user: dict = Depends(get_token_data)):
+    """Guarda la foto de perfil del usuario autenticado tras validar formato y tamaño (400 si no pasa)."""
     error_avatar = _validar_avatar_data_url(req.image_data_url)
     if error_avatar:
         raise HTTPException(status_code=400, detail=error_avatar)
@@ -604,6 +580,7 @@ def subir_foto_perfil(req: AvatarUploadRequest, current_user: dict = Depends(get
 
 @app.delete("/api/profile/avatar", tags=["Perfil"])
 def eliminar_foto_perfil(current_user: dict = Depends(get_token_data)):
+    """Quita la foto de perfil del usuario autenticado."""
     config = _load_security_config()
     user = _find_user(config, current_user.get("sub", ""))
     if not user:
@@ -615,16 +592,18 @@ def eliminar_foto_perfil(current_user: dict = Depends(get_token_data)):
     return {"status": "success"}
 
 
-# ── Recuperación de contraseña por correo (Fase 5 — 28/08/2026) ────────────
-# Sin sesión: el usuario, por definición, no puede loguearse. El mensaje de
-# "solicitar" es SIEMPRE el mismo exista o no el usuario/correo, para no
-# revelar qué cuentas existen (enumeración de usuarios).
+# ── Recuperación de contraseña por correo ──────────────────────────────────
+# Sin sesión: quien la usa, por definición, no puede iniciar sesión. El mensaje
+# de "solicitar" es siempre el mismo, exista o no el usuario o su correo, para
+# no revelar qué cuentas existen (enumeración de usuarios).
 
 class PasswordResetRequestModel(BaseModel):
+    """Usuario que solicita el código de recuperación."""
     username: str
 
 
 class PasswordResetConfirmModel(BaseModel):
+    """Usuario, código recibido por correo y nueva contraseña."""
     username: str
     code: str
     new_password: str
@@ -632,6 +611,11 @@ class PasswordResetConfirmModel(BaseModel):
 
 @app.post("/api/password-reset/request", tags=["Perfil"])
 def solicitar_recuperacion_password(req: PasswordResetRequestModel):
+    """Envía por correo un código para restablecer la contraseña. Ruta pública.
+
+    Responde siempre el mismo mensaje, exista o no la cuenta, y no reenvía si
+    core/password_reset.py aún no lo permite.
+    """
     from core.email_service import enviar_correo
     from core.password_reset import generar_codigo, puede_reenviar
 
@@ -660,6 +644,11 @@ def solicitar_recuperacion_password(req: PasswordResetRequestModel):
 
 @app.post("/api/password-reset/confirm", tags=["Perfil"])
 def confirmar_recuperacion_password(req: PasswordResetConfirmModel, request: Request):
+    """Restablece la contraseña si el código de correo es válido y no expiró. Ruta pública.
+
+    Responde 400 tanto si el usuario no existe como si el código falla, y si la
+    contraseña tiene menos de 8 caracteres. El cambio queda en la auditoría.
+    """
     from core.password_reset import verificar_y_consumir
 
     if len(req.new_password) < 8:
@@ -687,38 +676,37 @@ def confirmar_recuperacion_password(req: PasswordResetConfirmModel, request: Req
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# ADMINISTRACIÓN: gestión de usuarios y auditoría (Fase 5 — 28/08/2026)
+# ADMINISTRACIÓN: gestión de usuarios y auditoría
 # ═══════════════════════════════════════════════════════════════════════════
-# Portado conceptualmente de TripleA_VentasIA (app/auth + app/audit), que usa
-# una tabla SQL de usuarios y roles. Aquí no hace falta inventar un sistema
-# de roles nuevo: security_config.json YA tiene un catálogo de roles con sus
-# módulos habilitados (ADMINISTRADOR, CONTABILIDAD, RRHH, LOGISTICA, GUEST) —
-# es exactamente el mecanismo de "según el rol se habilitan los módulos"
-# definido en los requisitos. Estos endpoints solo agregan un CRUD de usuarios sobre
-# ese mismo catálogo, más un registro de auditoría (core/audit_log.py).
+# Reutiliza el catálogo de roles del almacén de usuarios (ADMINISTRADOR,
+# CONTABILIDAD, RRHH, LOGISTICA, GUEST), cada uno con sus módulos habilitados:
+# es el mecanismo de "según el rol se habilitan los módulos" de los
+# requisitos. Estas rutas solo agregan el CRUD de usuarios sobre ese catálogo
+# y el registro de auditoría (core/audit_log.py).
 #
-# Todos exigen rol ADMINISTRADOR — _requiere_admin() corta con 403 si no.
+# Todas exigen rol ADMINISTRADOR: _requiere_admin() responde 403 si no.
 
 
 def _requiere_admin(current_user: dict) -> None:
+    """Lanza HTTPException 403 si el usuario del token no es ADMINISTRADOR."""
     if str(current_user.get("role", "")).strip().upper() != "ADMINISTRADOR":
         raise HTTPException(status_code=403, detail="Solo un administrador puede acceder a esto.")
 
 
-# ── Modelos de IA seleccionables (30/08/2026) ──────────────────────────────
+# ── Modelos de IA seleccionables ───────────────────────────────────────────
 #
-# Selector manual: Flash responde SIEMPRE por defecto (rápido, sin costo
+# Selector manual: Flash responde siempre por defecto (rápido, sin costo
 # externo); Pro u otro proveedor solo se activan si el usuario los elige
 # explícitamente para esa consulta (ver `motor_ia` en QueryRequest,
 # api/routes_query.py). Este catálogo decide qué opciones ve cada usuario.
 #
-# No depende del sistema de roles: es un campo aparte, `modelos_permitidos`,
-# en el registro del usuario (security_config.json), que un ADMINISTRADOR
-# ajusta por persona desde Gestión de Usuarios.
-# "gemini"/"groq"/"nvidia_*" (09/09/2026) prueban un proveedor o modelo
-# gratuito puntual (ver core/nl2sql_engine.py::_select_llm), separado de
-# "flash", que ya cascada automáticamente por todos. Los 5 "nvidia_*" son
-# modelos distintos de NVIDIA NIM (config.py::NVIDIA_MODELOS_DISPONIBLES).
+# Además del default por rol, cada usuario puede tener su propio campo
+# `modelos_permitidos` en el almacén de usuarios, que un ADMINISTRADOR ajusta
+# por persona desde Gestión de Usuarios.
+# "gemini", "groq" y "nvidia_*" prueban un proveedor o modelo gratuito puntual
+# (ver core/nl2sql_engine.py::_select_llm), a diferencia de "flash", que ya
+# recorre la cascada automática. Los cinco "nvidia_*" son modelos distintos de
+# NVIDIA NIM (config.py::NVIDIA_MODELOS_DISPONIBLES).
 MODELOS_IA_VALIDOS = (
     "flash", "pro", "gemini", "groq",
     "nvidia_deepseek_pro", "nvidia_deepseek_flash", "nvidia_kimi", "nvidia_nemotron", "nvidia_muse",
@@ -735,7 +723,7 @@ MODELOS_IA_POR_DEFECTO: dict[str, list[str]] = {
 
 def _modelos_permitidos_de(usuario: dict) -> list[str]:
     """
-    Modelos de IA que puede elegir este usuario.
+    Devuelve los modelos de IA que puede elegir este usuario.
 
     Prioridad: el override explícito guardado en el propio usuario
     (`modelos_permitidos`) manda sobre el default de su rol — así un admin
@@ -753,6 +741,7 @@ def _modelos_permitidos_de(usuario: dict) -> list[str]:
 
 
 class CrearUsuarioRequest(BaseModel):
+    """Datos para crear un usuario desde Gestión de Usuarios."""
     username: str
     name: str
     email: str = ""
@@ -763,6 +752,7 @@ class CrearUsuarioRequest(BaseModel):
 
 
 class EditarUsuarioRequest(BaseModel):
+    """Cambios parciales de un usuario; los campos en None no se modifican."""
     name: str | None = None
     email: str | None = None
     role: str | None = None
@@ -774,8 +764,9 @@ class EditarUsuarioRequest(BaseModel):
 
 def _es_usuario_protegido(u: dict) -> bool:
     """
-    Cuenta del desarrollador: nadie puede borrarla, desactivarla ni editarla
-    desde Gestión de Usuarios, ni siquiera otro ADMINISTRADOR.
+    Indica si es la cuenta del desarrollador, que nadie puede borrar,
+    desactivar ni editar desde Gestión de Usuarios, ni siquiera otro
+    ADMINISTRADOR.
 
     Existe por un riesgo concreto: esta cuenta es la dueña de la seña de
     desarrollador (`core/modo_desarrollador.py`). Si otro administrador
@@ -805,6 +796,7 @@ def _es_usuario_protegido(u: dict) -> bool:
 
 
 def _usuario_publico(u: dict) -> dict:
+    """Arma la vista de un usuario para Gestión de Usuarios (sin la contraseña)."""
     return {
         "username": u.get("username", ""),
         "name": u.get("name", ""),
@@ -825,6 +817,7 @@ def _usuario_publico(u: dict) -> dict:
 
 @app.get("/api/admin/roles", tags=["Administración"])
 def listar_roles(current_user: dict = Depends(get_token_data)):
+    """Devuelve los roles con su descripción y módulos. Solo ADMINISTRADOR."""
     _requiere_admin(current_user)
     config = _load_security_config()
     roles = [
@@ -836,6 +829,7 @@ def listar_roles(current_user: dict = Depends(get_token_data)):
 
 @app.get("/api/admin/users", tags=["Administración"])
 def listar_usuarios(current_user: dict = Depends(get_token_data)):
+    """Devuelve todos los usuarios, los más recientes primero y sin contraseñas. Solo ADMINISTRADOR."""
     _requiere_admin(current_user)
     config = _load_security_config()
     usuarios = sorted(
@@ -848,6 +842,12 @@ def listar_usuarios(current_user: dict = Depends(get_token_data)):
 
 @app.post("/api/admin/users", tags=["Administración"])
 def crear_usuario(req: CrearUsuarioRequest, request: Request, current_user: dict = Depends(get_token_data)):
+    """Crea un usuario con contraseña hasheada y lo registra en la auditoría. Solo ADMINISTRADOR.
+
+    Responde 400 si el usuario ya existe o falta, si el rol o los modelos de
+    IA no son válidos, si la contraseña tiene menos de 8 caracteres o si el
+    avatar no pasa la validación.
+    """
     _requiere_admin(current_user)
     username = req.username.strip().lower()
     if not username:
@@ -896,6 +896,12 @@ def crear_usuario(req: CrearUsuarioRequest, request: Request, current_user: dict
 
 @app.put("/api/admin/users/{username}", tags=["Administración"])
 def editar_usuario_admin(username: str, req: EditarUsuarioRequest, request: Request, current_user: dict = Depends(get_token_data)):
+    """Edita nombre, correo, rol, contraseña, estado, foto o modelos de IA de un usuario. Solo ADMINISTRADOR.
+
+    La cuenta protegida del desarrollador solo la modifica su dueño (403) y
+    nadie puede desactivarse a sí mismo (400). Los cambios quedan en la
+    auditoría.
+    """
     _requiere_admin(current_user)
     config = _load_security_config()
     user = _find_user(config, username)
@@ -966,6 +972,11 @@ def editar_usuario_admin(username: str, req: EditarUsuarioRequest, request: Requ
 
 @app.delete("/api/admin/users/{username}", tags=["Administración"])
 def eliminar_usuario_admin(username: str, request: Request, current_user: dict = Depends(get_token_data)):
+    """Elimina un usuario y lo registra en la auditoría. Solo ADMINISTRADOR.
+
+    No permite borrarse a sí mismo (400) ni borrar la cuenta protegida del
+    desarrollador (403).
+    """
     _requiere_admin(current_user)
     if username.strip().lower() == str(current_user.get("sub", "")).strip().lower():
         raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo.")
@@ -1003,6 +1014,7 @@ def obtener_auditoria(
     date_from: str = Query(""), date_to: str = Query(""),
     current_user: dict = Depends(get_token_data),
 ):
+    """Devuelve los eventos de auditoría filtrados por texto, acción, entidad y fechas, con estadísticas. Solo ADMINISTRADOR."""
     _requiere_admin(current_user)
     from core.audit_log import listar as _listar_auditoria, estadisticas as _estadisticas_auditoria
     eventos = _listar_auditoria(q=q, accion=action, entidad=entity, desde=date_from, hasta=date_to)
@@ -1011,6 +1023,7 @@ def obtener_auditoria(
 
 @app.get("/api/admin/audit/export", tags=["Administración"])
 def exportar_auditoria(current_user: dict = Depends(get_token_data)):
+    """Descarga la auditoría completa en un .xlsx con formato, fila de total y autofiltro. Solo ADMINISTRADOR."""
     _requiere_admin(current_user)
     import io
     import openpyxl
@@ -1038,8 +1051,7 @@ def exportar_auditoria(current_user: dict = Depends(get_token_data)):
         c = ws.cell(row=1, column=ci, value=h)
         c.fill, c.font, c.alignment, c.border = hdr_fill, hdr_font, hdr_align, brd
 
-    # Anchos calculados por contenido tras escribir los datos:
-    # ancho = min(60, max(largo cabecera, largo máx. de celdas de datos) + 2).
+    # Largo máximo por columna, para fijar los anchos al final.
     anchos = [len(h) for h in headers]
     for i, ev in enumerate(eventos, 1):
         fill = alt_fill if i % 2 == 0 else None
@@ -1068,7 +1080,7 @@ def exportar_auditoria(current_user: dict = Depends(get_token_data)):
         c.font = Font(bold=True)
         c.number_format = "#,##0"
         # La etiqueta del pie es más larga que los números de la columna "#";
-        # inclúyela en el ancho para que no quede recortada.
+        # se incluye en el ancho para que no quede recortada.
         anchos[0] = max(anchos[0], len("Total de eventos"))
         # Auto-filtro: cabecera + datos, excluyendo la fila de pie.
         ws.auto_filter.ref = f"A1:{ws.cell(row=1, column=ncols).column_letter}{len(eventos) + 1}"
@@ -1093,8 +1105,10 @@ def exportar_auditoria(current_user: dict = Depends(get_token_data)):
 
 @app.post("/api/databases", tags=["Sesion"])
 def fetch_databases(req: DatabasesRequest, current_user: dict = Depends(get_token_data)):
-    """
-    Obtiene las bases de datos visibles en el servidor SQL indicado.
+    """Lista, sin duplicados, las bases del servidor SQL Server indicado. Requiere usuario autenticado.
+
+    Sin credenciales en la petición usa las de backend/.env; si tampoco hay,
+    recurre a la autenticación de Windows.
     """
     from db_connector import get_available_databases, normalize_sql_server_host
     _ = current_user
@@ -1141,6 +1155,16 @@ def connect(
     request: Request,
     current_user: dict = Depends(get_token_data),
 ):
+    """Conecta la sesión del usuario a una base de SQL Server (o a un archivo SQLite local).
+
+    Requiere sesión iniciada (401 si no). Si el host local falla, prueba hosts
+    alternativos. Responde de inmediato: si el esquema de esa empresa ya está
+    en la caché de la sesión lo restaura; si no, carga en el momento la lista
+    de tablas con datos y deja el enriquecimiento completo (columnas y
+    relaciones semánticas) en segundo plano. También prepara el cliente de IA,
+    identifica el nombre comercial y registra en la auditoría qué empresa se
+    activó.
+    """
     from core.deepseek_client import DeepSeekClient
     from db_connector import (
         SQLServerConnector,
@@ -1180,8 +1204,7 @@ def connect(
     else:
         use_windows_auth = not has_sql_credentials
 
-    # DRIVER RESOLUTION: Intentar con el driver del usuario primero,
-    # luego cascada por todos los drivers disponibles en el sistema.
+    # Driver: el solicitado en la conexión si está instalado; si no, el mejor disponible.
     effective_driver = _resolve_driver_local(req.driver)
     logger.info(f"[CONNECT] Driver resuelto: {effective_driver} (solicitado: {req.driver})")
     
@@ -1236,10 +1259,10 @@ def connect(
             hint = f" Hosts intentados: {', '.join(attempted_hosts)}."
         raise HTTPException(status_code=400, detail=f"{msg}{hint}")
 
-    # OPTIMIZACION: Retorno inmediato para desbloquear UI. 
-    # La sincronizacion pesada de esquemas se delega a Background Task.
-    
-    # Pre-creamos el cliente minimo para saludos rapidos
+    # La respuesta vuelve de inmediato para no bloquear la interfaz; la
+    # sincronización pesada del esquema queda en una tarea en segundo plano.
+
+    # Cliente de IA mínimo, listo para responder saludos mientras se sincroniza.
     api_key = req.api_key or os.getenv("DEEPSEEK_API_KEY", "")
     if not api_key:
         if session.client and getattr(session.client, "_api_key", None):
@@ -1265,23 +1288,22 @@ def connect(
         conn_str=conn_str,
         api_key=api_key,
     )
-    # FASE 3 — C3: snapshot no sensible (empresa activa) por si el backend
-    # se reinicia antes de que termine el sync de esquema en background.
+    # Persiste un estado no sensible (la empresa activa) por si el backend se
+    # reinicia antes de que termine la sincronización en segundo plano.
     SESSION_STORE.persist(session.user_id)
 
-    # Caché de Reportes BI: ya no se limpia GLOBALMENTE al cambiar de empresa.
-    # La caché del pulso está llaveada por (usuario, empresa, año, mes) — ver
-    # get_bi_pulse() — así que cambiar de empresa no invalida los pulsos de
-    # OTROS usuarios ni de otras empresas de este mismo usuario. Al volver a
-    # una empresa ya visitada hace < TTL, las tarjetas responden al instante
-    # desde caché (frescura híbrida). El TTL corto se encarga de la vigencia.
+    # La caché del Pulso BI no se limpia al cambiar de empresa: está indexada
+    # por (usuario, empresa, año, mes) —ver get_bi_pulse()—, así que cambiar de
+    # empresa no invalida los pulsos de otros usuarios ni de otras empresas de
+    # este mismo usuario. Al volver a una empresa visitada hace menos del TTL,
+    # las tarjetas responden al instante; el TTL corto se encarga de la vigencia.
 
     # ====================================================================
-    # CACÉ DE ESQUEMA COMPLETO POR EMPRESA
+    # CACHÉ DE ESQUEMA COMPLETO POR EMPRESA
     # Cada empresa tiene su propia clave en full_schema_cache. Al cambiar
-    # de empresa el sistema responde INMEDIATAMENTE con los datos correctos:
-    # - Empresa ya visitada → esquema restaurado en <1ms, sin background sync.
-    # - Empresa nueva      → flujo normal (FASE 0 + FASE 1+2 background).
+    # de empresa el sistema responde de inmediato con los datos correctos:
+    # - Empresa ya visitada → esquema restaurado en <1 ms, sin sincronizar.
+    # - Empresa nueva      → carga rápida + enriquecimiento en segundo plano.
     # El aislamiento por clave garantiza que nunca se mezclan datos entre
     # empresas distintas aunque el usuario cambie rápidamente.
     # ====================================================================
@@ -1298,7 +1320,7 @@ def connect(
     fast_schema: dict = {}
 
     if schema_from_cache:
-        # Restaurar esquema completo desde caché — sin sync adicional
+        # Esquema completo restaurado desde la caché, sin sincronizar de nuevo.
         fast_schema = _cached_full["schema_dict"]
         session.schema_dict = fast_schema
         session.schema_text = _cached_full.get("schema_text", "")
@@ -1314,9 +1336,9 @@ def connect(
         )
     else:
         # ====================================================================
-        # FASE 0: Sync RÁPIDO INMEDIATO (síncrono) con sys.partitions
-        # Identifica tablas con datos en <100ms y las pone disponibles YA.
-        # El usuario puede consultar sin esperar el background task.
+        # CARGA RÁPIDA (síncrona) con sys.partitions
+        # Identifica las tablas con datos en <100 ms y las deja disponibles de
+        # inmediato: se puede consultar sin esperar la tarea en segundo plano.
         # ====================================================================
         if not connector.is_sqlite and not connector.is_postgres and db_context_name and db_context_name.upper() not in ('MASTER', ''):
             try:
@@ -1327,7 +1349,7 @@ def connect(
                     _db_q = _quote_db_name(_safe_db)
                     tables_with_data = connector.get_tables_with_data_fast(_conn, db_q=_db_q)
                 if tables_with_data:
-                    # Schema mínimo: sabemos qué tablas tienen datos, sin columnas aún
+                    # Esquema mínimo: tablas con datos, todavía sin columnas.
                     fast_schema = {
                         tbl: {"type": "TABLA", "columns": [], "row_count": cnt}
                         for tbl, cnt in tables_with_data.items()
@@ -1344,18 +1366,22 @@ def connect(
                 logger.warning("[FASE0] sys.partitions rápido falló: %s", _e)
 
     # ====================================================================
-    # FASE 1 + 2: Enriquecimiento completo en Background Task
-    # Añade columnas + análisis semántico sin bloquear la respuesta.
-    # Omitido si el esquema completo ya estaba en caché (schema_from_cache).
+    # ENRIQUECIMIENTO COMPLETO EN SEGUNDO PLANO
+    # Añade columnas y análisis semántico sin bloquear la respuesta. Se
+    # omite si el esquema completo ya estaba en caché (schema_from_cache).
     # ====================================================================
     def finish_full_sync(session_ref, conn_ref, target_db: str):
+        """Completa el esquema de `target_db` (columnas y relaciones), lo entrega a la IA y lo guarda en caché.
+
+        Corre como tarea en segundo plano; los errores solo se registran en el log.
+        """
         try:
             logger.info("[SYNC] Enriqueciendo esquema completo para '%s'", target_db)
-            # Aplicar filtro de curaduría para IA (Velocidad y consistencia con BI)
+            # Mismo filtro de curaduría que usa BI, por velocidad y coherencia entre ambos.
             full_schema = resolve_schema_for_db(session_ref, target_db, refresh=True, logger=logger)
-            
+
             if not full_schema and fast_schema:
-                full_schema = fast_schema  # conservar el mínimo si falló el full
+                full_schema = fast_schema  # conserva el esquema mínimo si falló el completo
                 
             full_text = conn_ref.get_schema_as_text(
                 database_override=target_db if target_db and target_db.upper() not in ('MASTER', '') else None,
@@ -1375,9 +1401,9 @@ def connect(
             if session_ref.client:
                 session_ref.client.set_schema(full_text, full_semantics)
 
-            # ── Guardar en caché completo de empresa ─────────────────────
+            # ── Caché del esquema completo de la empresa ─────────────────
             # La próxima vez que el usuario seleccione esta empresa, el
-            # esquema se restaura en <1ms sin ningún re-sync.
+            # esquema se restaura en <1 ms sin volver a sincronizar.
             if not hasattr(session_ref, "full_schema_cache") or not isinstance(session_ref.full_schema_cache, dict):
                 session_ref.full_schema_cache = {}
             if _sync_key and isinstance(full_schema, dict) and full_schema:
@@ -1387,19 +1413,16 @@ def connect(
                     "semantic_relations": full_semantics,
                 }
                 logger.info("[SCHEMA_CACHE] 💾 Guardado en caché para '%s' (%d entidades)", target_db, len(full_schema))
-                # FASE 3 — C3: persistir el esquema recién sincronizado para
-                # que un reinicio del backend no obligue a repetir este sync.
+                # Persiste el esquema recién sincronizado para que un reinicio
+                # del backend no obligue a repetir la sincronización.
                 SESSION_STORE.persist(session_ref.user_id)
 
             if not conn_ref.is_sqlite and not conn_ref.is_postgres:
-                # Auditoria 11/09/2026: start_proactive_sentinel es `async def`
-                # pero se llamaba aqui de forma sincrona (sin await/asyncio.run) —
-                # solo creaba una corrutina que nunca corria, y aunque se arreglara
-                # el await, QuantumSentinel.run_patrol() llama a
-                # mirror.run_discovery_scan()/mirror.auto_heal(), que no existen en
-                # MirrorManager (verificado: cero definiciones en todo el repo).
-                # Se desactiva la llamada en vez de simular una "autocuracion" que
-                # nunca estuvo terminada — ver auditoría interna del 11/09/2026 #2.1.
+                # Solo se consolida la memoria de la empresa. El centinela
+                # proactivo (QuantumSentinel.run_patrol) no se invoca: depende de
+                # mirror.run_discovery_scan() y mirror.auto_heal(), que no existen
+                # en MirrorManager, así que no se simula una "autocuración" que no
+                # está implementada.
                 ejecutar_consolidacion(session_ref.context_db)
 
             logger.info("[SYNC] Sincronizacion completa para '%s' (%d entidades)", target_db, len(full_schema))
@@ -1411,8 +1434,8 @@ def connect(
 
 
     # ====================================================================
-    # FASE 0.5: Identidad de Empresa (Nombre Comercial Real)
-    # Intenta sacar el nombre real de sys300 si estamos en una DB de negocio.
+    # IDENTIDAD DE LA EMPRESA (nombre comercial real)
+    # Se intenta leer de sys300 (o de tb_empres) cuando la base es de negocio.
     # ====================================================================
     biz_name = requested_database
     if not connector.is_sqlite and not connector.is_postgres and db_context_name and db_context_name.upper() not in ('MASTER', ''):
@@ -1445,9 +1468,9 @@ def connect(
         except Exception:
             pass
 
-    # Auditoría (Fase 5 — 28/08/2026): qué empresa activó cada usuario y
-    # cuándo. Es el evento que un auditor pediría primero ante cualquier
-    # duda de "¿quién vio los datos de la empresa X y en qué momento?".
+    # Auditoría: qué empresa activó cada usuario y cuándo. Es el evento que un
+    # auditor pediría primero ante la duda de "¿quién vio los datos de la
+    # empresa X y en qué momento?".
     if not is_local_file and db_context_name and db_context_name.upper() not in ("MASTER", ""):
         from core.audit_log import registrar as _registrar_auditoria, ACCION_CONSULTAR, ENTIDAD_EMPRESA
         _registrar_auditoria(
@@ -1464,16 +1487,17 @@ def connect(
         "business_name": biz_name,
         "host": effective_host,
         "role": session.role,
-        "schema_dict": {},  # El front no necesita el schema aqui
+        "schema_dict": {},  # El frontend no necesita el esquema aquí
         "is_syncing": len(fast_schema) == 0 and not schema_from_cache,
         "tables_detected": len(fast_schema),
-        "schema_cached": schema_from_cache,  # ⚡ True = esquema restaurado de caché en <1ms
+        "schema_cached": schema_from_cache,  # True = esquema restaurado desde la caché
     }
 
 
 
 @app.post("/api/disconnect", tags=["Sesion"])
 async def disconnect(current_user: dict = Depends(get_token_data)):
+    """Cierra la sesión en memoria del usuario autenticado."""
     user_id = current_user.get("sub")
     SESSION_STORE.remove_session(user_id)
     return {"status": "Sesion cerrada correctamente"}
@@ -1484,6 +1508,10 @@ async def disconnect(current_user: dict = Depends(get_token_data)):
 
 @app.get("/api/diagnostic", tags=["Sistema"])
 async def get_diagnostic(current_user: dict = Depends(get_token_data)):
+    """Devuelve un diagnóstico de la sesión: empresa activa, entidades y vistas mapeadas, rol y módulos.
+
+    Requiere usuario autenticado; sin conexión activa responde "inactive".
+    """
     user_id = current_user.get("sub")
     session = SESSION_STORE.get_session(user_id)
     if not session or not session.connector:
@@ -1509,6 +1537,7 @@ async def get_diagnostic(current_user: dict = Depends(get_token_data)):
 
 @app.get("/api/discovery", tags=["Sistema"])
 async def discovery_scan(current_user: dict = Depends(get_token_data)):
+    """Devuelve hasta 10 entidades del esquema de la sesión activa. Requiere usuario autenticado."""
     user_id = current_user.get("sub")
     session = SESSION_STORE.get_session(user_id)
     if not session or not session.connector:
@@ -1529,6 +1558,7 @@ async def discovery_scan(current_user: dict = Depends(get_token_data)):
 
 @app.delete("/api/cache/clear", tags=["Cache"])
 async def clear_cache_endpoint(current_user: dict = Depends(get_token_data)):
+    """Vacía la caché de consultas y devuelve cuántas entradas eliminó. Cualquier usuario autenticado."""
     _ = current_user
     removed = clear_cache()
     return {"status": "Cache limpiado", "entries_removed": removed}
@@ -1536,9 +1566,11 @@ async def clear_cache_endpoint(current_user: dict = Depends(get_token_data)):
 
 @app.post("/api/companies", tags=["Sistema"])
 def get_companies(req: CompaniesRequest, current_user: dict = Depends(get_token_data)):
-    """
-    Obtiene el listado unificado de bases de datos/empresas.
-    Prioriza el 'Root' de SQL Server (sys.databases) y enriquece con metadatos de sys300 si existen.
+    """Devuelve el listado unificado de empresas del servidor. Requiere usuario autenticado.
+
+    La fuente de verdad son las bases en línea (sys.databases); el nombre
+    comercial, el nombre corto y el RUC se completan desde la tabla sys300 de
+    la base catálogo (`database`, por defecto PROYECTO) cuando existe.
     """
     from db_connector import SQLServerConnector, build_connection_string, normalize_sql_server_host, get_available_databases
     _ = current_user
@@ -1556,7 +1588,7 @@ def get_companies(req: CompaniesRequest, current_user: dict = Depends(get_token_
     if not effective_host:
         return {"status": "error", "companies": [], "error": "Debe indicar un host SQL Server."}
 
-    # 1. Obtener la "RAIZ NORMAL" (sys.databases) - Fuente de Verdad Tecnica
+    # 1. Bases en línea del servidor (sys.databases): fuente de verdad técnica
     raw_dbs = get_available_databases(
         host=req.host,
         driver=req.driver or "AUTO",
@@ -1573,12 +1605,12 @@ def get_companies(req: CompaniesRequest, current_user: dict = Depends(get_token_
             "error": "No se encontraron bases de datos en el servidor indicado o error de conexión."
         }
 
-    # 2. Intentar obtener el mapeo de Negocio (sys300) para enriquecer nombres
+    # 2. Catálogo de negocio (sys300) para enriquecer los nombres
     business_map = {}
     source_info = "SQL Server Root (sys.databases)"
     
     try:
-        # Resolvemos driver local para la conexion a Master/Proyecto
+        # Driver local para la conexión a la base catálogo
         effective_driver = _resolve_driver_local(req.driver)
         
         db_catalog = (req.database or "PROYECTO").strip()
@@ -1595,11 +1627,11 @@ def get_companies(req: CompaniesRequest, current_user: dict = Depends(get_token_
         ok, _ = connector.connect()
         if ok:
             with connector.engine.connect() as conn:
-                # Query optimizado de sys300
+                # Catálogo de empresas en sys300
                 query = text(f"SELECT codigo, nombre, nomcorto, ruc FROM [{db_catalog}].dbo.sys300 WHERE codigo IS NOT NULL")
                 result = conn.execute(query)
                 for row in result.fetchall():
-                    # Mapeamos por codigo (que suele coincidir con el nombre de la BD)
+                    # Se indexa por código, que suele coincidir con el nombre de la base.
                     key = str(row.codigo or "").strip().upper()
                     if key:
                         business_map[key] = {
@@ -1609,10 +1641,10 @@ def get_companies(req: CompaniesRequest, current_user: dict = Depends(get_token_
                         }
             source_info = f"Certificado (sys.databases + {db_catalog}.sys300)"
     except Exception:
-        # Si sys300 falla (ej. no existe DB Proyecto), seguimos solo con los nombres de BD
+        # Si sys300 falla (p. ej. no existe la base PROYECTO), se usan solo los nombres de las bases.
         pass
 
-    # 3. Construir lista final unificada
+    # 3. Lista final unificada
     companies = []
     for db_info in raw_dbs:
         db = db_info.get("database", "")
@@ -1631,7 +1663,7 @@ def get_companies(req: CompaniesRequest, current_user: dict = Depends(get_token_
             "short_name": bdata.get("short") or db,
             "modules": [],
             "ruc": bdata.get("ruc", ""),
-            "is_root": True # Indicador de que viene de la raiz
+            "is_root": True # Indica que viene de sys.databases
         })
 
     return {
@@ -1652,6 +1684,9 @@ def _activate_chat_views(connector, db_name: str) -> str:
 
     Patrón SQL activado:
         exec CHAT.dbo.SP_MODIFICA_VISTA_IA 'MONT'
+
+    Returns:
+        "OK" si el SP se ejecutó; si no, el mensaje de error (no lanza excepción).
     """
     safe_name = db_name.strip().upper()
     if not safe_name:
@@ -1673,9 +1708,11 @@ _chat_reader_connector = None
 
 def _get_chat_reader_connector():
     """
-    Conexión de SOLO LECTURA, separada de la sesión admin del usuario
-    (`sa`), exclusiva para EJECUTAR el SELECT final que genera la IA contra
-    CHAT. Aunque `core/sql_sanitizer.py` fallara en filtrar algo peligroso,
+    Devuelve la conexión de solo lectura a CHAT (login chat_reader), o None si no está disponible.
+
+    Está separada de la sesión administrativa del usuario (`sa`) y sirve
+    solo para ejecutar el SELECT final que genera la IA contra CHAT. Aunque
+    `core/sql_sanitizer.py` fallara en filtrar algo peligroso,
     esta cuenta físicamente no tiene permisos de escritura ni acceso a
     ALIM/UNEMI_PRUEBAS — es la última línea de defensa a nivel de motor de
     base de datos (capa 3 del diseño de seguridad, ver
@@ -1708,25 +1745,24 @@ def _get_chat_reader_connector():
 
 def execute_chat_query(connector, sql: str, db_label: str, empresa: str = "", **kwargs):
     """
-    Punto ÚNICO de decisión de qué credencial ejecuta un SELECT y con qué
-    aislamiento de empresa: si el destino es CHAT, se usa el login de solo
-    lectura `chat_reader` — nunca la sesión admin del usuario — Y se fija
-    `SESSION_CONTEXT('empresa_activa')` en la MISMA conexión que corre el
-    SELECT (ver db_connector.py::execute_query_with_context y el hallazgo
-    #2 de auditoría interna del 09/09/2026: antes el aislamiento dependía de un
-    ALTER VIEW global, con condición de carrera entre empresas distintas
-    concurrentes).
+    Ejecuta un SELECT decidiendo qué credencial lo corre y con qué aislamiento de empresa.
 
-    FAIL-CLOSED (Avance 2, criterio de éxito c): si `chat_reader` no está
-    disponible, la consulta contra CHAT NO se ejecuta con la sesión admin —
-    se devuelve un error. Antes caía al connector del usuario ("mejor una
-    consulta con permisos amplios que un backend caído"), lo que anulaba en
-    silencio la garantía de aislamiento a nivel del motor. Solo en un
-    entorno de desarrollo sin chat_reader puede desactivarse con
-    CHAT_READER_OBLIGATORIO=0 (y queda registrado en el log).
+    Es el único punto de esa decisión; las rutas de /api/query lo usan en
+    lugar de `connector.execute_query(sql, target_db=db_label)`. Si el destino
+    es CHAT, usa el login de solo lectura `chat_reader` (nunca la sesión
+    administrativa del usuario) y fija `SESSION_CONTEXT('empresa_activa')` en
+    la misma conexión que corre el SELECT (ver
+    db_connector.py::execute_query_with_context), de modo que el aislamiento
+    no depende de un ALTER VIEW global con condición de carrera entre empresas.
 
-    Reemplaza las llamadas directas a `connector.execute_query(sql,
-    target_db=db_label)` en las rutas de /api/query.
+    Falla cerrado: si `chat_reader` no está disponible, la consulta contra
+    CHAT no se ejecuta con otra cuenta y se devuelve un error, porque caer a la
+    sesión del usuario anularía en silencio la garantía de aislamiento del
+    motor. Solo en desarrollo puede desactivarse con CHAT_READER_OBLIGATORIO=0
+    (queda registrado en el log).
+
+    Returns:
+        Tupla (columnas, filas, error).
     """
     if db_label == "CHAT":
         from etl.perfiles import institucion_de_base
@@ -1764,12 +1800,14 @@ def get_prediccion_abandono(
     current_user: dict = Depends(_token_con_modulo_academico),
 ):
     """
-    Panel de riesgo de abandono: alumnos ACTIVOS de la empresa conectada,
-    ordenados por probabilidad de abandono descendente. Calculado offline
-    por backend/ml/predecir_abandono.py y leido aqui a traves de
-    VIS_PREDICCION_ABANDONO — la MISMA vista que el chat NL2SQL puede
-    consultar en lenguaje natural (esta en la lista blanca VIS_*), asi que
-    el panel y el chat nunca pueden mostrar numeros distintos.
+    Devuelve el panel de riesgo de abandono: alumnos activos de la empresa conectada,
+    ordenados por probabilidad de abandono descendente, con cédula enmascarada.
+
+    Requiere el módulo ACADEMICO o rol ADMINISTRADOR. La predicción se calcula
+    fuera de línea con backend/ml/predecir_abandono.py y se lee aquí a través
+    de VIS_PREDICCION_ABANDONO, la misma vista que el chat NL2SQL puede
+    consultar en lenguaje natural (está en la lista blanca VIS_*), así que el
+    panel y el chat nunca pueden mostrar números distintos.
     """
     user_id = current_user.get("sub") or "default_user"
     session = SESSION_STORE.get_session(user_id)
@@ -1822,11 +1860,13 @@ def get_evaluacion_modelo(
     current_user: dict = Depends(_token_con_modulo_academico),
 ):
     """
-    Métricas reales de validación del modelo de la institución activa (CV
-    agrupada, validación temporal, clustering) leídas de VIS_EVALUACION_MODELO
-    — la misma vista que el chat puede consultar ("¿qué tan confiable es el
-    modelo?"). Cumple lo que promete la sección 1.2: que una autoridad no
-    técnica pueda consultar Y confiar en los resultados.
+    Devuelve las métricas reales de validación del modelo de la institución activa.
+
+    Incluye validación cruzada agrupada, validación temporal y clustering,
+    leídas de VIS_EVALUACION_MODELO, la misma vista que el chat puede consultar
+    ("¿qué tan confiable es el modelo?"). Así una autoridad sin perfil técnico
+    puede consultar los resultados y saber cuánto confiar en ellos. Requiere
+    el módulo ACADEMICO o rol ADMINISTRADOR.
     """
     user_id = current_user.get("sub") or "default_user"
     session = SESSION_STORE.get_session(user_id)
@@ -1852,10 +1892,12 @@ def get_clusters_carrera(
     current_user: dict = Depends(_token_con_modulo_academico),
 ):
     """
-    Segmentación de carreras por perfil de riesgo (K-Means sobre tasa de
-    abandono histórica, rendimiento y riesgo actual del modelo predictivo —
-    ver backend/ml/clustering_institucional.py). Misma vista VIS_CLUSTER_CARRERA
-    para panel y chat.
+    Devuelve la segmentación de carreras por perfil de riesgo.
+
+    K-Means sobre la tasa de abandono histórica, el rendimiento y el riesgo
+    actual del modelo predictivo (ver backend/ml/clustering_institucional.py).
+    El panel y el chat leen la misma vista, VIS_CLUSTER_CARRERA. Requiere el
+    módulo ACADEMICO o rol ADMINISTRADOR.
     """
     user_id = current_user.get("sub") or "default_user"
     session = SESSION_STORE.get_session(user_id)
@@ -1886,12 +1928,14 @@ def get_benchmarking_comparativo(
     current_user: dict = Depends(_token_con_modulo_academico),
 ):
     """
-    Módulo 2 (benchmarking institucional): compara la tasa de abandono
-    histórica de la empresa activa contra referentes EXTERNOS publicados en
-    fuentes académicas con DOI, cada uno con su definición exacta y su nivel
-    de comparabilidad (ver documentacion/tecnica/BENCHMARKING_INSTITUCIONAL.md).
-    Los indicadores externos no dependen de SESSION_CONTEXT (son públicos,
-    no propios de ninguna empresa) — el propio cálculo interno sí.
+    Compara la tasa de abandono histórica de la empresa activa con referentes externos.
+
+    Benchmarking institucional: los referentes salen de fuentes académicas con
+    DOI, cada uno con su definición exacta y su nivel de comparabilidad (ver
+    documentacion/tecnica/BENCHMARKING_INSTITUCIONAL.md). Los indicadores
+    externos no dependen de SESSION_CONTEXT (son públicos, no propios de
+    ninguna empresa); el cálculo interno sí. Requiere el módulo ACADEMICO o
+    rol ADMINISTRADOR.
     """
     user_id = current_user.get("sub") or "default_user"
     session = SESSION_STORE.get_session(user_id)
@@ -1939,26 +1983,30 @@ def get_benchmarking_comparativo(
 
 def _prepare_chat_for_query(connector, source_db: str) -> tuple[dict, str, str]:
     """
-    ════════════════════════════════════════════════════════════════════════════════
-    NUEVA ARQUITECTURA: Consultas directas a vistas CHAT (sin plantillas).
-    ════════════════════════════════════════════════════════════════════════════════
-    
+    Prepara CHAT para responder preguntas sobre la empresa `source_db`.
+
     Pasos:
-    1. Ejecuta SP_MODIFICA_VISTA_IA para configurar las vistas CHAT
-    2. Obtiene el esquema REAL de las vistas en CHAT
-    3. Devuelve:
-       - schema_dict: Diccionario con estructuras de vistas CHAT
-       - query_db: BD a consultar ('CHAT') en lugar de source_db
-    
-    El IA debe generar SQL que CONSULTE LAS VISTAS DE CHAT.
-    No usa plantillas templated ni caché semántico.
+    1. Verifica que la base CHAT exista en el servidor.
+    2. Ejecuta SP_MODIFICA_VISTA_IA para configurar las vistas de CHAT.
+    3. Lee el esquema real de CHAT y deja solo las vistas VIS_* que la
+       empresa puede ver.
+
+    La IA genera SQL que consulta directamente esas vistas; no usa
+    plantillas ni caché semántica.
+
+    Returns:
+        Tupla (esquema, esquema_en_texto, base_a_consultar = "CHAT", estado_del_SP).
+
+    Raises:
+        ValueError: si la base CHAT no existe; routes_query.py lo convierte en
+            un mensaje amigable.
     """
     safe_source_db = source_db.strip().upper() if source_db else "CHAT"
     
     # ── VALIDACIÓN FÍSICA DE EXISTENCIA DE CHAT ────────────────────────────────
-    # Verificamos si la base de datos CHAT existe físicamente en este servidor.
-    # Si no existe, lanzamos una excepción explícita para que routes_query.py
-    # retorne el mensaje amigable de "Este servidor no tiene habilitado el módulo...".
+    # Si la base CHAT no existe en este servidor se lanza una excepción
+    # explícita, para que routes_query.py devuelva el mensaje amigable de
+    # "Este servidor no tiene habilitado el módulo...".
     chat_exists = False
     if not connector.is_sqlite and not connector.is_postgres:
         try:
@@ -1979,19 +2027,14 @@ def _prepare_chat_for_query(connector, source_db: str) -> tuple[dict, str, str]:
     try:
         chat_schema = connector.get_schema(database_override="CHAT", empresa=safe_source_db) or {}
 
-        # Blindaje (28/08/2026): ficha_trabajador/rol_pago pasan el chequeo de
-        # "¿tiene datos?" de get_schema() SIEMPRE, para CUALQUIER empresa —
-        # confirmado en pruebas reales contra las 22 empresas del servidor.
-        # No es un error de esa verificación: esas vistas leen literalmente
-        # de la base física "RRHH" sin filtrar por empresa (ver
-        # core/integridad_vistas.py), así que EXISTS() les da verdadero
-        # aunque los datos sean de OTRA empresa. Si se dejan en el esquema
-        # que ve la IA, la IA las ve como "disponibles" para cualquier
-        # pregunta — la causa raíz del defecto detectado en pruebas
-        # (preguntas de ventas devolviendo el aviso de nómina). Se excluyen
-        # aquí, en el esquema mismo, salvo que la verificación EN VIVO
-        # confirme que hoy sí están aisladas para esta empresa activa
-        # (hoy eso solo es cierto para AGRINAG/AGGO).
+        # ficha_trabajador y rol_pago pasan siempre el chequeo "¿tiene datos?"
+        # de get_schema(), para cualquier empresa: leen de la base física
+        # "RRHH" sin filtrar por empresa (ver core/integridad_vistas.py), así
+        # que EXISTS() es verdadero aunque los datos sean de otra. Si quedaran
+        # en el esquema, la IA las vería disponibles para cualquier pregunta
+        # (p. ej. preguntas de ventas que devolverían el aviso de nómina). Se
+        # excluyen del esquema salvo que la verificación en vivo confirme que
+        # están aisladas para la empresa activa.
         from core.integridad_vistas import vista_aislada_para_empresa, nombres_vistas_no_aisladas
         for _vista_riesgo in nombres_vistas_no_aisladas():
             if _vista_riesgo in chat_schema and not vista_aislada_para_empresa(
@@ -1999,19 +2042,14 @@ def _prepare_chat_for_query(connector, source_db: str) -> tuple[dict, str, str]:
             ):
                 chat_schema.pop(_vista_riesgo, None)
 
-        # Auditoría 09/09/2026 (#2, seguimiento): las tablas físicas del
-        # warehouse (dim_*/fact_matriculas) y de infraestructura interna
-        # (tb_bi_snapshot, hallazgo #4) NO deben quedar visibles para la IA
-        # — chat_reader solo tiene permiso de leer las vistas de presentación
-        # (VIS_*, ver base_de_datos/crear_chat_academico.sql). Si el esquema se las
-        # sigue mostrando como "disponibles", la IA a veces las elige (se
-        # detectaron DOS casos reales distintos: dim_*/fact_matriculas y
-        # luego tb_bi_snapshot) y el intento falla con "permission denied" —
-        # un error interno que un traductor de mensajes genérico confundía
-        # con "no tienes permiso por tu rol" (bug real reportado por el
-        # usuario). En vez de seguir descubriendo tablas una por una, se
-        # invierte a lista BLANCA: solo sobreviven las vistas VIS_* (la
-        # convención de nombre ya establecida para vistas de presentación).
+        # Lista blanca: solo sobreviven las vistas de presentación VIS_*, las
+        # únicas que chat_reader puede leer (ver
+        # base_de_datos/crear_chat_academico.sql). Si el esquema mostrara
+        # tablas del almacén (dim_*, fact_matriculas) o de infraestructura
+        # (tb_bi_snapshot), la IA a veces las elegiría y la consulta fallaría
+        # con "permission denied", un error que se confunde con falta de
+        # permisos del rol. La lista blanca evita tener que descubrir esas
+        # tablas una por una.
         for _nombre_tabla in list(chat_schema.keys()):
             if not _nombre_tabla.strip().lower().startswith("vis_"):
                 chat_schema.pop(_nombre_tabla, None)
@@ -2023,24 +2061,22 @@ def _prepare_chat_for_query(connector, source_db: str) -> tuple[dict, str, str]:
         chat_schema = {}
         chat_schema_text = ""
 
-    # PASO 3: Retornar para usar en IA + Querys
+    # PASO 3: esquema para la IA y base destino de las consultas
     return chat_schema, chat_schema_text, "CHAT", sp_status
 
 
 # ── Caché corta del Pulso BI ────────────────────────────────────────────────
-# Cada carga de Reportes BI ejecuta ~20-40 consultas SQL secuenciales (4 tarjetas
-# originales + ~16 del catálogo de métricas certificadas + series + sondas). Sin
-# caché, CADA clic en una empresa (o cada refresco automático, o cada usuario
-# que entra a la misma empresa) repite todo ese trabajo desde cero — de ahí
-# la lentitud reportada. Con un TTL corto (90s), navegar/reentrar a una
-# empresa reciente responde al instante, y el auto-refresco de 15 min sigue
-# trayendo datos frescos igual (90s << 15 min, nunca sirve algo viejo de más).
+# Cada carga de Reportes BI ejecuta ~20-40 consultas SQL secuenciales (tarjetas
+# base, métricas certificadas, series y sondas). Sin caché, cada clic en una
+# empresa, cada refresco automático o cada usuario que entra a la misma empresa
+# repetiría todo ese trabajo. Con un TTL corto (90 s), volver a una empresa
+# reciente responde al instante, y el autorrefresco de 15 min sigue trayendo
+# datos frescos (90 s es mucho menor que 15 min).
 #
-# La llave incluye user_id y source_db (además de año/mes), NO es una caché
-# global: el pulso de un usuario/empresa no se filtra a otro. Antes se hacía
-# _BI_PULSE_CACHE.clear() en CADA request y en cada /api/connect (con TTL de 5s),
-# lo que dejaba la caché permanentemente vacía — cada carga recalculaba desde
-# cero. Ese clear se eliminó: el TTL + llave por empresa dan frescura híbrida.
+# La llave incluye user_id y source_db (además de año y mes): no es una caché
+# global, así que el pulso de un usuario o empresa no se filtra a otro. No se
+# vacía en cada petición ni en /api/connect: el TTL y la llave por empresa
+# bastan para la frescura.
 _BI_PULSE_CACHE: dict = {}
 _BI_PULSE_TTL_SECONDS = 90
 
@@ -2053,15 +2089,20 @@ def get_bi_pulse(
     current_user: dict = Depends(get_token_data),
 ):
     """
-    Endpoint para obtener KPIs de negocio rápidos (BentoGrid).
-    Usa el conector de la sesión activa del usuario para extraer datos de la empresa.
+    Devuelve las tarjetas de KPIs de Reportes BI de la empresa activa, filtradas por los módulos del rol.
+
+    Requiere usuario autenticado. Si la sesión no tiene conector, intenta
+    conectarse con las credenciales de backend/.env. Sirve en este orden:
+    caché en memoria (90 s), snapshot persistente en CHAT (solo la vista por
+    defecto, sin año ni mes) y cálculo en vivo, que vuelve a guardar el
+    snapshot.
     """
     user_id = current_user.get("sub") or "default_user"
     role = current_user.get("role", "ADMINISTRADOR")
-    # El JWT guarda los módulos del rol en la clave "modules" (ver login).
-    # Antes se leía "allowed_modules", que nunca existe en el token, y caía en
-    # el default con TODOS los módulos — por eso un CONTABILIDAD veía tarjetas
-    # de ACADEMICO. Se leen ambas claves por compatibilidad con tokens viejos.
+    # El JWT guarda los módulos del rol en la clave "modules" (ver login); leer
+    # solo "allowed_modules", que el token no trae, dejaría pasar todos los
+    # módulos (p. ej. tarjetas de ACADEMICO a CONTABILIDAD). Se leen ambas
+    # claves por compatibilidad con tokens emitidos con el formato anterior.
     allowed_modules = current_user.get("modules", current_user.get("allowed_modules", [])) or []
 
     session = SESSION_STORE.get_session(user_id)
@@ -2072,17 +2113,15 @@ def get_bi_pulse(
     if not source_db:
         source_db = "MONT"
 
-    # Auto-conectar si la sesión no tiene conector activo
+    # Conexión automática si la sesión no tiene conector activo
     if not session.connector:
         try:
             from db_connector import SQLServerConnector, build_connection_string, normalize_sql_server_host
             from config import DEFAULT_HOST
-            # Bug real (28/08/2026): aquí se usaba "localhost" + Windows auth
-            # (Trusted_Connection=yes), que en el servidor de producción
-            # fallaba con el login del usuario del SO (18456: 'Manuko\victo')
-            # en vez del 'sa' configurado en .env — dejando el Pulso BI sin
-            # conector y, de rebote, el chat sin base activa. Se usa ahora la
-            # MISMA ruta de credenciales SQL que /api/connect.
+            # Usa la misma ruta de credenciales SQL que /api/connect (host y
+            # usuario de backend/.env). Con autenticación de Windows, en el
+            # servidor el login sería el usuario del sistema operativo (error
+            # 18456) y el Pulso BI, y con él el chat, quedarían sin base activa.
             host = normalize_sql_server_host(DEFAULT_HOST or "localhost")
             conn_str = build_connection_string(
                 host=host,
@@ -2230,6 +2269,7 @@ _SNAP_EMPRESAS_CACHE = None  # (timestamp_listado, [empresas])
 
 
 def _snapshot_connector_lock():
+    """Devuelve el candado que protege la creación del conector de snapshots (lo crea la primera vez)."""
     global _SNAPSHOT_CONNECTOR_LOCK
     if _SNAPSHOT_CONNECTOR_LOCK is None:
         import threading
@@ -2270,7 +2310,10 @@ def _snapshot_connector():
 
 
 def _listar_empresas_para_snapshots():
-    """Empresas candidatas (sys.databases sin CHAT/PROYECTO/sistema). Cache 15 min."""
+    """Devuelve las empresas candidatas a snapshot (sys.databases sin CHAT, PROYECTO ni bases de sistema).
+
+    El listado se guarda 15 minutos en memoria.
+    """
     global _SNAP_EMPRESAS_CACHE
     now = time.time()
     if _SNAP_EMPRESAS_CACHE and (now - _SNAP_EMPRESAS_CACHE[0]) < 900:
@@ -2333,7 +2376,11 @@ def _computar_pulso_en_vivo(session, source_db, year=None, mes=None):
 
 
 def _calcular_y_guardar_snapshot(connector, empresa):
-    """Calcula el pulso de una empresa y lo persiste (o marca fallo). (ok, segs)."""
+    """Calcula el pulso de una empresa y lo persiste, o marca el intento como fallido.
+
+    Returns:
+        Tupla (ok, segundos).
+    """
     from core.bi_snapshot_store import guardar_snapshot, marcar_snapshot_fallido
 
     from types import SimpleNamespace
@@ -2362,7 +2409,11 @@ def _calcular_y_guardar_snapshot(connector, empresa):
 
 
 def _autorizar_scheduler(current_user: dict, x_scheduler_token: str) -> None:
-    """Permite el job (token compartido) o un ADMINISTRADOR con JWT válido."""
+    """Permite el paso al job (token compartido) o a un ADMINISTRADOR con JWT válido.
+
+    Raises:
+        HTTPException: 403 en cualquier otro caso.
+    """
     from config import BI_SCHEDULER_TOKEN
 
     if BI_SCHEDULER_TOKEN:
@@ -2436,7 +2487,10 @@ def bi_snapshots_status(
     current_user: dict = Depends(get_token_data_opcional),
     x_scheduler_token: str = Header("", alias="X-Scheduler-Token"),
 ):
-    """Estado de frescura de cada snapshot (diagnóstico del job)."""
+    """Devuelve el estado de frescura de cada snapshot (diagnóstico del job).
+
+    Solo para el job (X-Scheduler-Token) o un ADMINISTRADOR.
+    """
     _autorizar_scheduler(current_user, x_scheduler_token)
 
     from config import (BI_SNAPSHOT_REFRESH_SECONDS,
@@ -2474,23 +2528,15 @@ def get_bi_available_periods(
     current_user: dict = Depends(get_token_data),
 ):
     """
-    Años y meses con datos REALES en la base activa, para el filtro mes/año de
-    Reportes BI (Fase 4 — antes era un <select> con [año actual, -1, -2, -3]
-    fijos en el frontend, que asumía años que la empresa podía no tener
-    facturado, o le faltaban años más viejos que sí tenía).
+    Devuelve los años y meses con datos reales en la base activa, para el filtro de período de Reportes BI.
 
-    Consulta la vista de ventas de CHAT ([CHAT].[dbo].[Ventas] o
-    [CHAT].[dbo].[cabecera_factura], la que exista para esta empresa — ver
-    nota de "_detectar_vista_ventas" más abajo), no las tablas físicas.
-
-    Antes intentaba tb_cabmov/tb_cabmov1 directamente, asumiendo que ahí vive
-    SIEMPRE la facturación real de cualquier empresa. Bug real (28/08/2026):
-    para MONT esa tabla devuelve 0 filas — su facturación real corre por otra
-    tabla física (tb_cabmovT, ligada a edu_alumno, distinta del ERP genérico
-    tb_cabmov/tb_detmov). La vista de CHAT sí trae los números reales
-    (verificado contra ella: $255.6K en enero, $317.3K en mayo, etc.), así
-    que es la fuente confiable — al costo de depender de qué nombre tenga
-    desplegado esta empresa, por eso se prueban ambos candidatos.
+    Requiere usuario autenticado. Consulta la vista de ventas de CHAT
+    ([CHAT].[dbo].[Ventas] o [CHAT].[dbo].[cabecera_factura], la que exista
+    para esta empresa; ver _detectar_vista_ventas) y no las tablas físicas:
+    no todas las empresas facturan en tb_cabmov (MONT, por ejemplo, usa
+    tb_cabmovT, ligada a edu_alumno), mientras que la vista sí trae la
+    facturación real de cada una. Como el nombre de la vista puede variar, se
+    prueban ambos candidatos.
     """
     user_id = current_user.get("sub") or "default_user"
     role = current_user.get("role", "ADMINISTRADOR")
@@ -2533,18 +2579,24 @@ def get_bi_available_periods(
 
 
 def _detectar_vista_ventas(connection) -> str | None:
-    """Ver core/vista_resolver.py — fuente única de esta detección, compartida
-    con api/routes_query.py y core/mirror_manager.py."""
+    """Devuelve el nombre de la vista de ventas que existe en CHAT, o None.
+
+    Delega en core/vista_resolver.py, fuente única de esta detección, que
+    comparten api/routes_query.py y core/mirror_manager.py.
+    """
     from core.vista_resolver import CANDIDATOS_VENTAS, detectar_vista_sqlalchemy
 
     return detectar_vista_sqlalchemy(connection, CANDIDATOS_VENTAS, target_db="CHAT")
 
 
 def _requiere_modulo_ventas_o_finanzas(allowed_modules: list) -> None:
-    """Comparación por Período es una tarjeta de Ventas: solo ADMINISTRADOR y
-    CONTABILIDAD (módulos VENTAS/FINANZAS) deben verla. Lista vacía/None no
-    filtra (mismo criterio que filtrar_pulso_por_modulos), para no romper
-    tokens de ADMIN o sesiones viejas sin módulos."""
+    """Lanza 403 si los módulos del rol no incluyen VENTAS ni FINANZAS.
+
+    Comparación por Período es una tarjeta de Ventas: solo ADMINISTRADOR y
+    CONTABILIDAD deben verla. Una lista vacía o None no filtra (mismo criterio
+    que filtrar_pulso_por_modulos), para no bloquear tokens de ADMINISTRADOR
+    ni sesiones anteriores sin módulos.
+    """
     mods = {str(m).strip().upper() for m in (allowed_modules or [])}
     if mods and not (mods & {"VENTAS", "FINANZAS"}):
         raise HTTPException(status_code=403, detail="Tu rol no tiene acceso a Comparación por Período.")
@@ -2564,10 +2616,10 @@ def get_bi_compare_periods(
     por período"). El período B es opcional: sin él, solo se devuelve el total
     del período A.
 
-    Consulta la vista de ventas de CHAT (ver `_detectar_vista_ventas`), no las
-    tablas físicas: para MONT se confirmó que tb_cabmov no trae su facturación
-    real (usa otra tabla física propia, tb_cabmovT), así que la vista es la
-    única fuente confiable independientemente de la empresa.
+    Solo roles con VENTAS o FINANZAS (403 si no). Consulta la vista de ventas
+    de CHAT (ver `_detectar_vista_ventas`) y no las tablas físicas: tb_cabmov no
+    trae la facturación real de todas las empresas (MONT usa su propia tabla
+    tb_cabmovT), así que la vista es la fuente confiable para cualquiera.
     """
     user_id = current_user.get("sub") or "default_user"
     role = current_user.get("role", "ADMINISTRADOR")
@@ -2584,6 +2636,7 @@ def get_bi_compare_periods(
         return {"status": "error", "message": "No hay sesion activa con base de datos conectada."}
 
     def _fecha_valida(valor: str) -> bool:
+        """Indica si el valor es una fecha con formato YYYY-MM-DD."""
         try:
             datetime.strptime(valor, "%Y-%m-%d")
             return True
@@ -2597,7 +2650,8 @@ def get_bi_compare_periods(
         raise HTTPException(status_code=400, detail="desde_b/hasta_b deben tener formato YYYY-MM-DD.")
 
     def _totales(connection, vista_ventas: str, vista_compras: str | None, desde: str, hasta: str) -> dict:
-        ventas = connection.execute(text(
+        """Suma ventas, número de facturas y compras entre dos fechas, ambas incluidas."""
+        ventas =connection.execute(text(
             f"SELECT ISNULL(SUM(Total), 0), COUNT(DISTINCT NumeroFactura) "
             f"FROM [CHAT].[dbo].[{vista_ventas}] WHERE Fecha >= '{desde}' AND Fecha <= '{hasta}'"
         )).fetchone()
@@ -2650,16 +2704,14 @@ def exportar_reporte_excel(
     current_user: dict = Depends(get_token_data),
 ):
     """
-    Exportación a Excel multi-hoja de la empresa activa (Fase 4 —
-    28/08/2026, portado desde el proyecto hermano
-    TripleA_VentasIA): Facturas, Detalle Items, Productos, Clientes y,
-    para instituciones educativas, Cartera por rubro. Reemplaza el CSV
-    plano de Reportes BI.
+    Descarga un Excel de varias hojas con los datos de la empresa activa.
 
-    Consulta la base FÍSICA de la empresa directamente (tb_cabmov,
-    tb_detmov, tb_client...), nunca las vistas de CHAT — mismo criterio ya
-    aplicado en el resto del backend tras el hallazgo del 28/08/2026 (CHAT
-    es un espejo compartido por todo el servidor, no aislado por empresa).
+    Hojas: Facturas, Detalle Items, Productos, Clientes y, en instituciones
+    educativas, Cartera por rubro; `start` y `end` acotan las facturas.
+    Requiere usuario autenticado y la exportación queda en la auditoría.
+    Consulta directamente la base física de la empresa (tb_cabmov, tb_detmov,
+    tb_client...), nunca las vistas de CHAT, porque CHAT es un espejo
+    compartido por todo el servidor y no está aislado por empresa.
     """
     from fastapi.responses import StreamingResponse
 
@@ -2706,17 +2758,14 @@ def exportar_tabla_excel_generica(
     current_user: dict = Depends(get_token_data),
 ):
     """
-    Convierte una tabla genérica (columnas + filas, tal como las devuelve una
-    respuesta del chat) a un libro .xlsx con el mismo formato profesional de
-    /api/reportes/exportar-excel (cabecera azul con letra blanca, bordes,
-    filas alternadas, congelado de cabecera y auto-filtro).
+    Convierte una tabla del chat (columnas y filas) en un libro .xlsx con formato.
 
-    Requisito (29/08/2026): el botón "CSV" de las tarjetas de
-    respuesta del chat pasa a "Excel" y genera este formato en vez del CSV
-    plano, para que las descargas se vean profesionales. Los datos NO vienen
-    de la base aquí: el frontend envía las columnas/filas que ya tiene en
-    pantalla (el resultado de la consulta), y este endpoint solo les aplica
-    el formato de Excel — por eso no hace falta el conector de la sesión.
+    Usa el mismo formato que /api/reportes/exportar-excel (cabecera verde con
+    letra blanca, bordes, filas alternadas, cabecera congelada y autofiltro).
+    Lo llama el botón "Excel" de las tarjetas de respuesta del chat. Los
+    datos no salen de la base: el frontend envía las columnas y filas que ya
+    tiene en pantalla y esta ruta solo les da formato, por eso no necesita el
+    conector de la sesión. Requiere usuario autenticado.
     """
     from fastapi.responses import StreamingResponse
     from core.excel_exporter import exportar_tabla_excel as _exportar_tabla_excel
@@ -2747,7 +2796,7 @@ def exportar_tabla_excel_generica(
     )
 
 
-# Router de consultas desacoplado
+# Routers de api/, montados bajo /api.
 from api.routes_query import get_router
 from api.routes_quantum_core import router as quantum_core_router
 from api.routes_sessions import get_sessions_router

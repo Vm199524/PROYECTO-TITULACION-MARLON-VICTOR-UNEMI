@@ -1,9 +1,11 @@
 /**
- * Archivo: ChatInput.jsx
- * Rol: formulario de envio de preguntas del chat.
- * Recibe desde: ChatArea.jsx.
- * Se conecta con: handleQuery y correct definidos en App.jsx.
- * Responsabilidades: capturar prompt, autocorregir y disparar /api/query.
+ * @file Campo de consulta del chat. Captura la pregunta en lenguaje natural y la envía
+ * con handleQuery (que llama a /api/query), muestra la autocorrección sugerida y reúne
+ * las herramientas de la consulta: dictado por voz, imágenes adjuntas para el modelo
+ * de visión, selector de motor de IA (según los modelos permitidos del usuario) y el
+ * botón de sugerencias. Lo usa ChatArea.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
@@ -14,23 +16,22 @@ import { useDictado } from '../hooks/useDictado';
 
 const FIXED_PLACEHOLDER = '¿Qué analizamos hoy?';
 
-// FASE 4 — punto 6: máximo de imágenes por consulta al modelo Vision. Más de
-// esto degrada mucho la latencia de DeepSeek sin aportar demasiado.
+// Máximo de imágenes por consulta al modelo de visión: más de esto degrada
+// mucho la latencia de DeepSeek sin aportar demasiado.
 const MAX_IMAGENES = 4;
 
-// Selector manual de motor de IA (30/08/2026):
-// Flash responde SIEMPRE por defecto; los demás motores solo entran si el
-// usuario los elige a propósito para esa consulta puntual. Un catálogo aparte
-// (no depende del sistema de roles) porque cada usuario puede tener sus
-// propios modelos permitidos, ajustables desde Gestión de Usuarios.
+// Selector manual de motor de IA. Flash responde SIEMPRE por defecto; los
+// demás motores solo entran si el usuario los elige a propósito para una
+// consulta puntual. Es un catálogo aparte del sistema de roles porque cada
+// usuario puede tener sus propios modelos permitidos, ajustables desde
+// Gestión de Usuarios.
 const MOTORES_IA = {
     flash: { label: 'Flash', icon: Zap, desc: 'Rápido — consultas directas' },
     pro: { label: 'Pro', icon: TrendingUp, desc: 'Comparativas y finanzas avanzadas' },
-    // Cascada gratuita (09/09/2026, backend Python — core/nl2sql_engine.py):
-    // "Flash" ya prueba Gemini→Groq→NVIDIA→(DeepSeek si hay llave) en cascada
-    // automática. Estos son para PROBAR un proveedor/modelo puntual a
-    // propósito; si ese falla igual, el backend cae al resto de los
-    // gratuitos solo.
+    // Cascada gratuita (backend, core/nl2sql_engine.py): «Flash» ya prueba
+    // Gemini→Groq→NVIDIA→(DeepSeek si hay llave) en cascada automática. Estos
+    // motores sirven para PROBAR un proveedor o modelo puntual; si ese falla,
+    // el backend recurre por sí solo al resto de los gratuitos.
     gemini: { label: 'Gemini 3.8 Flash', icon: Sparkles, desc: 'Google · 1M tokens de contexto · principal de la cascada' },
     groq: { label: 'GPT-OSS 120B', icon: Gauge, desc: 'Groq · velocidad extrema · respaldo #2' },
     nvidia_deepseek_pro: { label: 'DeepSeek V4 Pro', icon: Brain, desc: 'NVIDIA NIM · razonamiento complejo, contexto hasta 1M' },
@@ -40,6 +41,27 @@ const MOTORES_IA = {
     nvidia_muse: { label: 'Muse Glimmer 30B', icon: Eye, desc: 'NVIDIA NIM · Meta · razonamiento multimodal + tool calling' },
 };
 
+/**
+ * Muestra el formulario de consulta con sus herramientas.
+ *
+ * @param {object} props
+ * @param {string} props.prompt - Texto actual de la consulta.
+ * @param {Function} props.setPrompt - Actualiza el texto (también recibe lo dictado).
+ * @param {object} props.userAuth - Usuario autenticado; `modelos_permitidos` define los motores del selector.
+ * @param {string} [props.motorIA=''] - Motor elegido; si no está permitido se usa Flash.
+ * @param {Function} props.setMotorIA - Cambia el motor de IA.
+ * @param {Function} props.handleQuery - Envía la consulta (submit del formulario).
+ * @param {boolean} props.loading - Si hay una consulta en curso.
+ * @param {Function} props.cancelQuery - Detiene la consulta en curso.
+ * @param {string} props.correctionHint - Corrección sugerida que se muestra sobre el campo.
+ * @param {object} props.textareaRef - Referencia al textarea.
+ * @param {Array} [props.attachedImages=[]] - Imágenes adjuntas como data URL.
+ * @param {Function} props.setAttachedImages - Actualiza las imágenes adjuntas.
+ * @param {boolean} [props.hasSugerencias=false] - Si hay sugerencias que mostrar.
+ * @param {boolean} [props.mostrarSugerencias=false] - Si la ficha de sugerencias está abierta.
+ * @param {Function} props.onToggleSugerencias - Abre o cierra la ficha de sugerencias.
+ * @returns {JSX.Element} Campo de consulta.
+ */
 export const ChatInput = ({
     prompt, setPrompt, userAuth, motorIA = '', setMotorIA, handleQuery, loading,
     cancelQuery,
@@ -49,24 +71,22 @@ export const ChatInput = ({
     hasSugerencias = false, mostrarSugerencias = false, onToggleSugerencias,
 }) => {
     // Solo se muestra el selector si el usuario tiene MÁS de un motor
-    // disponible — con uno solo (el caso normal de RRHH/Logística: solo
-    // Flash) no aporta nada un selector sin opciones reales.
+    // disponible: con uno solo (el caso normal de RRHH o Logística, solo
+    // Flash) un selector sin opciones reales no aporta nada.
     const [selectorAbierto, setSelectorAbierto] = useState(false);
-    // Pro desactivado (01/09/2026): daba problemas y ya no aparece en el
-    // selector. Flash sigue por defecto. Para reactivar Pro, quitar el
-    // `&& m !== 'pro'`.
+    // El motor Pro está desactivado y no aparece en el selector; Flash queda
+    // por defecto. Para reactivarlo, basta con quitar `&& m !== 'pro'`.
     const modelosDisponibles = (userAuth?.modelos_permitidos || ['flash']).filter((m) => MOTORES_IA[m] && m !== 'pro');
     const mostrarSelectorMotor = typeof setMotorIA === 'function' && modelosDisponibles.length > 1;
     const motorActivo = MOTORES_IA[motorIA] && modelosDisponibles.includes(motorIA) ? motorIA : 'flash';
     const IconoMotorActivo = MOTORES_IA[motorActivo].icon;
-    // Seccion: captura y envio del prompt hacia el handler del contenedor.
 
     // ── Dictado por voz ──────────────────────────────────────────────────
     // Lo dictado se AÑADE al texto existente en vez de reemplazarlo: así el
     // usuario puede escribir una parte, dictar otra, o corregir a mano lo que
     // el reconocimiento entendió mal. No se envía solo: el usuario revisa y
-    // pulsa enviar, porque una transcripción errónea disparando una consulta
-    // sin confirmación sería peor que escribirla.
+    // pulsa enviar, porque una transcripción errónea que dispara una consulta
+    // sin confirmación es peor que escribirla.
     const recibirTextoDictado = useCallback((texto) => {
         setPrompt((actual) => {
             const previo = String(actual || '').trim();
@@ -78,7 +98,7 @@ export const ChatInput = ({
     const { escuchando, textoParcial, error: errorDictado, iniciar: alternarDictado, disponible: dictadoDisponible } =
         useDictado({ onTexto: recibirTextoDictado });
 
-    // ── Adjuntar imágenes (modelo Vision) ────────────────────────────────
+    // ── Adjuntar imágenes (modelo de visión) ─────────────────────────────
     // Cada imagen se guarda como data URL completa (FileReader.readAsDataURL)
     // porque así el backend la recibe lista para mandarla directo a DeepSeek
     // sin que el frontend tenga que separar el mime type del contenido.
@@ -87,12 +107,11 @@ export const ChatInput = ({
 
     // El texto del textarea está centrado (textAlign: 'center'), pero el
     // grupo de íconos vive en un <div> hermano a la derecha, así que el
-    // centro real de la caja del textarea no coincide con el centro que el
-    // usuario quiere: la misma distancia entre el borde izquierdo de TODA
-    // la tarjeta y el borde izquierdo del botón de Sugerencias (requisito
-    // de diseño, 30/08/2026). En vez de asumir paddings/gaps fijos del form
-    // (se rompe cada vez que se agrega un ícono nuevo — pasó con el selector
-    // de motor de IA), se mide con getBoundingClientRect la posición REAL
+    // centro real de la caja del textarea no coincide con el centro visual
+    // buscado: el punto medio entre el borde izquierdo de TODA la tarjeta y
+    // el borde izquierdo del botón de Sugerencias. En vez de asumir paddings
+    // y gaps fijos del formulario (que se descuadran cada vez que se agrega
+    // un ícono), se mide con getBoundingClientRect la posición REAL
     // del borde de la tarjeta y del borde del botón de Sugerencias (o del
     // grupo completo de íconos si ese botón no existe) y se calcula el
     // paddingLeft exacto que el textarea necesita para que su punto medio
@@ -130,20 +149,18 @@ export const ChatInput = ({
         };
     }, [hasSugerencias, mostrarSelectorMotor, puedeAdjuntar, dictadoDisponible, loading, isSidebarOpen, textareaRef]);
 
-    // ── Exclusión mutua entre las herramientas del input ─────────────────
-    // Requisito (30/08/2026): "si tengo abierto sugerencias y doy
-    // click a adjuntar imagen se cierra la tarjeta de sugerencias, o
-    // viceversa". Es decir, solo UNA de estas herramientas puede estar
-    // activa a la vez: sugerencias, dictado, adjuntar y el selector de motor.
+    // ── Exclusión mutua entre las herramientas del campo ─────────────────
+    // Solo UNA herramienta puede estar activa a la vez: sugerencias, dictado,
+    // adjuntar y el selector de motor.
     //
     // Se resuelve cerrando lo demás al activar una (no deshabilitando los
     // botones): un botón que no responde se siente roto, mientras que el
     // relevo automático es lo que hace cualquier barra de herramientas.
     //
-    // Nota sobre "adjuntar": abre el diálogo NATIVO del sistema operativo,
-    // que no se puede cerrar por código y además bloquea la página mientras
-    // está abierto. Por eso su parte del trato es solo la que sí depende de
-    // nosotros: antes de abrirlo, cierra sugerencias y corta el dictado.
+    // Nota sobre «adjuntar»: abre el diálogo NATIVO del sistema operativo,
+    // que no se puede cerrar por código y bloquea la página mientras está
+    // abierto. Por eso solo se controla lo que depende de la aplicación:
+    // antes de abrirlo, se cierran las sugerencias y se corta el dictado.
     const cerrarSugerenciasSiAbierto = useCallback(() => {
         if (mostrarSugerencias) onToggleSugerencias?.();
     }, [mostrarSugerencias, onToggleSugerencias]);
@@ -187,7 +204,7 @@ export const ChatInput = ({
 
     const manejarSeleccionImagenes = useCallback((e) => {
         const archivos = Array.from(e.target.files || []);
-        e.target.value = ''; // permite re-seleccionar el mismo archivo despues de quitarlo
+        e.target.value = ''; // permite volver a elegir el mismo archivo después de quitarlo
 
         if (!archivos.length || !puedeAdjuntar) return;
 
@@ -217,7 +234,7 @@ export const ChatInput = ({
         >
             <div className="w-full max-w-[1000px] px-4 sm:px-6">
                 {/* Estado del dictado: se muestra lo que se va entendiendo en
-                    tiempo real para que el usuario no hable "al vacío" sin saber
+                    tiempo real para que el usuario no hable «al vacío» sin saber
                     si el micrófono lo está captando. */}
                 <AnimatePresence>
                     {(escuchando || errorDictado) && (
@@ -243,7 +260,7 @@ export const ChatInput = ({
                     )}
                 </AnimatePresence>
 
-                {/* Miniaturas de imágenes adjuntas (modelo Vision) */}
+                {/* Miniaturas de imágenes adjuntas (modelo de visión) */}
                 {puedeAdjuntar && attachedImages.length > 0 && (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, justifyContent: 'center' }}>
                         {attachedImages.map((img) => (
@@ -271,7 +288,7 @@ export const ChatInput = ({
                     </div>
                 )}
 
-                {/* Correction hint */}
+                {/* Corrección sugerida */}
                 <AnimatePresence>
                     {correctionHint && (
                         <motion.div
@@ -287,7 +304,7 @@ export const ChatInput = ({
                     )}
                 </AnimatePresence>
 
-                {/* Input wrapper (Senior Console Layout) */}
+                {/* Contenedor del campo de consulta */}
                 <form
                     ref={formRef}
                     onSubmit={handleQuery}
@@ -375,7 +392,7 @@ export const ChatInput = ({
                         className="chat-scrollbar"
                     />
 
-                    {/* Action buttons or info */}
+                    {/* Botones de acción o estado de la consulta */}
                     <div ref={iconsRef} className="flex items-center gap-3" style={{ minWidth: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {loading && (
                             <motion.span
@@ -388,12 +405,10 @@ export const ChatInput = ({
                         )}
 
                         {hasSugerencias && (
-                            // Antes era un botón circular suelto AFUERA de esta
-                            // tarjeta, con su propio popup de fondo oscuro
-                            // distinto — se veía como un elemento aparte, no
-                            // como parte del chat. Ahora vive en el mismo grupo
-                            // de íconos que adjuntar/dictar/enviar, dentro de
-                            // esta misma tarjeta (29/08/2026).
+                            // El botón de sugerencias vive en el mismo grupo de
+                            // íconos que adjuntar, dictar y enviar, dentro de esta
+                            // tarjeta, para que se lea como parte del chat y no
+                            // como un elemento aparte.
                             <button
                                 ref={sugerenciasBtnRef}
                                 type="button"
@@ -616,7 +631,7 @@ export const ChatInput = ({
                     </div>
                 </form>
 
-                {/* Footer (Senior Polish) */}
+                {/* Pie con el nombre y la versión del producto */}
                 <p style={{ fontSize: 10, color: 'var(--text-faint)', textAlign: 'center', marginTop: 14, letterSpacing: '0.12em', fontWeight: 700, textTransform: 'uppercase', opacity: 0.6 }}>
                     Inteligencia de Negocios · VicMar Data AI v4.5
                 </p>

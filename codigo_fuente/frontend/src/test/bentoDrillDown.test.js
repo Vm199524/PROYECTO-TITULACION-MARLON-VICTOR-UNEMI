@@ -1,11 +1,16 @@
+/**
+ * @file Pruebas de `buildCardDrillQuestion` (BentoDashboard). Verifican que
+ * las tarjetas «Este Mes», «Acumulado <año>», «Clientes», «Productos» y
+ * «Balance Comercial» generen una pregunta concreta para el detalle. El
+ * fallback genérico («Muéstrame el detalle detrás de: …») es ambiguo y hace
+ * que el modelo tarde demasiado o no responda.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 import { describe, it, expect } from 'vitest';
 import { buildCardDrillQuestion } from '../components/views/BentoDashboard';
 
-// Regresión (29/08/2026): las tarjetas "Este Mes",
-// "Acumulado <año>", "Clientes" y "Productos" del Balance Comercial tienen
-// datos reales, pero caían en el fallback genérico ("Muéstrame el detalle
-// detrás de: Productos"), cuya redacción ambigua hacía que la IA tardara
-// mucho o se quedara sin responder ("Ver Detalle" bugueado).
 describe('buildCardDrillQuestion — tarjetas del Balance Comercial', () => {
     it('genera una pregunta concreta para "Este Mes"', () => {
         expect(buildCardDrillQuestion({ title: 'Este Mes' })).toBe('Muéstrame el detalle de ventas de este mes');

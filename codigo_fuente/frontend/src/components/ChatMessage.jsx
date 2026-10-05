@@ -1,3 +1,12 @@
+/**
+ * @file Mensaje del chat. Dibuja la pregunta del usuario (con edición y reenvío) o la
+ * respuesta de la IA: texto en Markdown, resultados en tabla o gráfico (DataVisualizer,
+ * PayslipView), preguntas rápidas, insignia de origen de la respuesta, lectura en voz
+ * alta y regeneración. Las pestañas SQL y «Cómo se calculó» solo se muestran al rol
+ * ADMINISTRADOR. Lo usan ChatArea y ChatAreaMobile.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 import React, { useState } from 'react';
 import {
     Activity, BarChart3, Brain, Check, ClipboardList, Code, Copy, FileText, Hexagon,
@@ -27,14 +36,14 @@ const SqlBlock = ({ sql }) => {
         try {
             await navigator.clipboard.writeText(sql);
         } catch {
-            // Fallback para navegadores/entornos sin permiso de portapapeles.
+            // Alternativa para navegadores o entornos sin permiso de portapapeles.
             const ta = document.createElement('textarea');
             ta.value = sql;
             ta.style.position = 'fixed';
             ta.style.opacity = '0';
             document.body.appendChild(ta);
             ta.select();
-            try { document.execCommand('copy'); } catch { /* noop */ }
+            try { document.execCommand('copy'); } catch { /* sin acción */ }
             document.body.removeChild(ta);
         }
         setCopied(true);
@@ -75,10 +84,10 @@ const SqlBlock = ({ sql }) => {
     );
 };
 
-// ── Insignia de origen (Modo Transparencia — Fase 1) ──
+// ── Insignia de origen (modo transparencia) ──
 // Muestra de un vistazo si la respuesta vino de una fórmula certificada,
-// del caché semántico, o fue generada libremente por la IA. Así el usuario
-// nunca tiene que adivinar qué tan "oficial" es un número.
+// del caché semántico o fue generada libremente por la IA. Así el usuario
+// nunca tiene que adivinar qué tan «oficial» es un número.
 const ANSWER_SOURCE_META = {
     metrica_certificada: {
         label: 'Métrica certificada',
@@ -112,31 +121,42 @@ const AnswerSourceBadge = ({ source }) => {
     );
 };
 
+/**
+ * Muestra un mensaje del chat, ya sea del usuario o de la IA.
+ *
+ * @param {object} props
+ * @param {object} props.msg - Mensaje (`type`, `content`, `result`, `quickQuestions`, `isStreaming`, `activeTab`...).
+ * @param {Function} props.setChatHistory - Actualiza el historial (pestaña activa, edición, regeneración).
+ * @param {object[]} props.chatHistory - Historial completo de la conversación.
+ * @param {object} props.userAuth - Usuario autenticado; su rol decide si se ven las pestañas técnicas.
+ * @param {boolean} [props.isFixed=false] - Modo barra fija: solo muestra las preguntas rápidas.
+ * @param {Function} props.handleQuery - Envía una consulta; recibe `(evento, texto, opciones)`.
+ * @param {boolean} [props.isLastMessage=false] - Si es la última respuesta (habilita «Regenerar»).
+ * @param {boolean} [props.loading=false] - Si hay una consulta en curso.
+ * @returns {JSX.Element} Burbuja del mensaje.
+ */
 export const ChatMessage = ({
     msg, setChatHistory, chatHistory, idx, deviceType,
     userAuth, activeModule, isFixed = false, handleQuery,
     isLastMessage = false, loading = false,
 }) => {
-    // Bug real (30/08/2026): estaba apagado sin condición, así que ningún
-    // mensaje mostraba sus preguntas rápidas aunque el backend las mandara —
-    // por ejemplo, las 3 opciones del rol Invitado (demo / solicitar acceso /
-    // conectar BD) llegaban como texto Markdown suelto en vez de botones.
+    // Las preguntas rápidas que envía el backend se muestran siempre como
+    // botones; por ejemplo, las tres opciones del rol Invitado (demo, solicitar
+    // acceso, conectar BD), que de otro modo quedarían como texto Markdown.
     const showQuickQuestions = true;
 
-    // Bug real "gravísimo" (30/08/2026): las
-    // pestañas SQL y "Cómo se calculó" se mostraban a cualquier rol
-    // (CONTABILIDAD, RRHH, LOGISTICA, Invitado), exponiendo nombres reales de
-    // vistas/tablas y la lógica interna del pipeline. La defensa real está en
-    // el backend (`_redactar_campos_privados` en api/routes_query.py, que ya
-    // no envía esos campos si el rol no es ADMINISTRADOR) — esta comprobación
-    // aquí es una segunda capa, para que ni siquiera se intente pintar la
-    // pestaña si por alguna razón el campo llegara igual.
+    // Las pestañas SQL y «Cómo se calculó» exponen nombres reales de vistas y
+    // tablas y la lógica interna del pipeline, así que solo las ve el rol
+    // ADMINISTRADOR. La defensa principal está en el backend
+    // (`_redactar_campos_privados` en api/routes_query.py, que no envía esos
+    // campos a otros roles); esta comprobación es una segunda capa para no
+    // intentar pintar la pestaña si el campo llegara igual.
     const esAdministrador = String(userAuth?.role || '').trim().toUpperCase() === 'ADMINISTRADOR';
 
-    // Edición de la propia pregunta y estado del texto editado — declarados
-    // aquí arriba, antes de cualquier return condicional, para no alterar el
-    // orden de hooks entre mensajes de usuario y de IA (mismo patrón que ya
-    // usa este archivo con useLectura más abajo).
+    // Edición de la propia pregunta y estado del texto editado. Se declaran
+    // antes de cualquier return condicional para no alterar el orden de los
+    // hooks entre mensajes de usuario y de IA (mismo patrón que useLectura
+    // más abajo).
     const [editing, setEditing] = useState(false);
     const [editedText, setEditedText] = useState(msg.content || '');
 
@@ -144,9 +164,9 @@ export const ChatMessage = ({
 
     // ── USUARIO (Burbuja azul sólida) ──
     if (msg.type === 'user') {
-        // "Editar y reenviar": corta el historial desde este mensaje en
-        // adelante (se pierde la respuesta vieja)
-        // y reenvía el texto editado como una pregunta nueva.
+        // «Editar y reenviar»: corta el historial desde este mensaje en
+        // adelante (se descarta la respuesta anterior) y reenvía el texto
+        // editado como una pregunta nueva.
         const guardarEdicion = () => {
             const texto = editedText.trim();
             if (!texto) { setEditing(false); return; }
@@ -231,7 +251,7 @@ export const ChatMessage = ({
         );
     }
 
-    // ── IA (IA de VicMar Data AI - Estilo Grok Minimalista) ──
+    // ── Respuesta de la IA de VicMar Data AI (estilo minimalista) ──
     const result = normalizeQueryResult(msg.result);
     const hasStructuredResult = !!msg.result;
     const activeTab = msg.activeTab || 'Resultados';
@@ -252,8 +272,8 @@ export const ChatMessage = ({
     const activeViz = result?.user_viz_override || result?.render?.type || result?.visualization_type || 'table';
 
     // Lectura en voz alta con la voz local del sistema: el texto no sale del
-    // equipo. Es a petición (botón), nunca automática — una respuesta hablándose
-    // sola en una oficina con datos de sueldos sería indiscreto.
+    // equipo. Es a petición (botón), nunca automática: una respuesta que se lee
+    // sola en una oficina con datos de sueldos sería indiscreta.
     const { hablar, hablando, disponible: lecturaDisponible } = useLectura();
     const leerRespuesta = () => {
         // Se construye desde los datos, no desde el texto: la cifra suele vivir
@@ -261,9 +281,10 @@ export const ChatMessage = ({
         hablar(construirRespuestaHablada({ content: msg.content, result }));
     };
 
-    // "Regenerar": solo se ofrece en la última respuesta del hilo; no tiene sentido regenerar una respuesta intermedia
-    // cuando el historial no soporta ramas. Quita solo esta burbuja de IA y
-    // reenvía la misma pregunta con skipUserBubble para no duplicarla.
+    // «Regenerar» solo se ofrece en la última respuesta del hilo: regenerar una
+    // intermedia no tiene sentido porque el historial no admite ramas. Quita
+    // solo esta burbuja de IA y reenvía la misma pregunta con skipUserBubble
+    // para no duplicarla.
     const puedeRegenerar = isLastMessage && puedeEditar && !msg.isStreaming && !loading;
     const regenerar = () => {
         if (!puedeRegenerar) return;
@@ -281,7 +302,7 @@ export const ChatMessage = ({
     return (
         <div className="flex justify-start mb-0.5 w-full">
             <div className="w-full flex gap-3">
-                {/* Avatar Icon sutil */}
+                {/* Ícono de avatar discreto */}
                 {!isFixed && (
                     <div className="shrink-0 mt-1">
                         <div className="w-8 h-8 rounded-lg bg-[#3B82F6]/10 border border-[#3B82F6]/20 flex items-center justify-center">
@@ -291,7 +312,7 @@ export const ChatMessage = ({
                 )}
 
                 <div className="flex-1 flex flex-col min-w-0">
-                    {/* Header: IA de VicMar Data AI + Dot - SILENCIADO EN BARRA FIJA */}
+                    {/* Encabezado «IA de VicMar Data AI»; se oculta en el modo barra fija */}
                     {!isFixed && (
                         <div className="flex items-center gap-2 mb-0.5 px-1">
                             <span className="text-[13px] font-bold text-white/50 tracking-tight">IA de VicMar Data AI </span>
@@ -324,7 +345,7 @@ export const ChatMessage = ({
                                 </button>
                             )}
 
-                            {/* Tabs discreto si hay SQL o trazabilidad para mostrar — solo ADMINISTRADOR */}
+                            {/* Pestañas discretas si hay SQL o trazabilidad que mostrar; solo ADMINISTRADOR */}
                             {esAdministrador && !!(result?.sql?.text || result?.analysis?.steps?.length) && (
                                 <div className="ml-auto flex gap-1 p-0.5 bg-white/5 rounded-lg border border-white/10 overflow-x-auto no-scrollbar">
                                     {[
@@ -344,14 +365,14 @@ export const ChatMessage = ({
                         </div>
                     )}
 
-                    {/* Cuerpo del mensaje: Condicional si es barra fija o mensaje de chat normal */}
+                    {/* Cuerpo del mensaje: cambia según sea barra fija o mensaje normal */}
                     {!isFixed ? (
                         <div className="bg-[#1C2128] border border-[#30363D] rounded-xl px-3 py-1.5 shadow-sm" style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
 
-                            {/* Tab: Resultados (MD o Viz) */}
+                            {/* Pestaña Resultados (Markdown o visualización) */}
                             {activeTab === 'Resultados' && (
                                 <div className="space-y-1">
-                                    {/* Streaming indicator — puntos parpadeantes cuando la IA está pensando */}
+                                    {/* Indicador de streaming: puntos parpadeantes mientras la IA piensa */}
                                     {msg.isStreaming && !msg.content && (
                                         <div className="space-y-1.5">
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '2px 0' }}>
@@ -360,7 +381,7 @@ export const ChatMessage = ({
                                                 <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#3B82F6', animation: 'qa-pulse 1.2s ease-in-out 0.4s infinite' }} />
                                                 <style>{`@keyframes qa-pulse { 0%,80%,100%{opacity:.2;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }`}</style>
                                             </div>
-                                            {/* Etiqueta del motor mientras piensa: Pro razona antes de responder, así el usuario sabe que no se colgó */}
+                                            {/* Etiqueta del motor mientras piensa: Pro razona antes de responder y así el usuario sabe que no se colgó */}
                                             {msg.motor === 'pro' ? (
                                                 <p className="text-[11px] text-amber-300/80 uppercase tracking-[0.18em] font-black animate-pulse">Analizando en profundidad · Experto</p>
                                             ) : null}
@@ -417,12 +438,12 @@ export const ChatMessage = ({
                             )}
 
 
-                            {/* Tab: SQL — resaltado de sintaxis + copiar en un clic. Solo ADMINISTRADOR. */}
+                            {/* Pestaña SQL: resaltado de sintaxis y copia en un clic. Solo ADMINISTRADOR. */}
                             {esAdministrador && activeTab === 'Analisis Tecnico (SQL)' && (
                                 <SqlBlock sql={result?.sql?.text} />
                             )}
 
-                            {/* Tab: Trazabilidad (Modo Transparencia — Fase 1). Solo ADMINISTRADOR. */}
+                            {/* Pestaña Trazabilidad (modo transparencia). Solo ADMINISTRADOR. */}
                             {esAdministrador && activeTab === 'Trazabilidad' && (
                                 <div className="space-y-2">
                                     {result?.analysis?.summary && (
@@ -451,7 +472,7 @@ export const ChatMessage = ({
                             )}
                         </div>
                     ) : (
-                        /* MODO BARRA FIJA: Solo mostramos las preguntas rápidas sin el contenedor del mensaje */
+                        /* Modo barra fija: solo se muestran las preguntas rápidas, sin el contenedor del mensaje */
                         showQuickQuestions && msg.quickQuestions?.length > 0 && (
                             <div className="flex flex-wrap gap-2 pt-1 pb-2">
                                 {msg.quickQuestions.slice(0, 3).map((q, i) => (
@@ -473,7 +494,7 @@ export const ChatMessage = ({
                         )
                     )}
 
-                    {/* Pie de mensaje (Opcional - Aire) */}
+                    {/* Pie del mensaje */}
                     <div className="mt-0.5 flex items-center gap-4 px-1 opacity-20 hover:opacity-100 transition-opacity">
                         <span className="text-[12px] font-bold text-white/20 uppercase tracking-widest">VicMar Data AI V4.1</span>
                     </div>

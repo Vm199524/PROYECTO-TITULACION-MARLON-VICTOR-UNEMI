@@ -1,28 +1,30 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-MOBILE-03]
- * ============================================================================
- * ARCHIVO: ChatInputMobile.jsx
- * MÓDULO: UI / Mobile Interactions
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Interfaz de entrada táctil. Permite a los gerentes dictar u escribir
- * órdenes a la IA desde su celular de forma rápida, fluida y sin
- * perder el foco de los datos que están mirando.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Pegado obligatoriamente a la base de la pantalla táctil (`bottom-0`).
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Componente `textarea` que auto-expande su altura según el texto.
- * - Indicador superior flotante mostrando qué "Módulo de IA" está pensando.
- * - Corrección ortográfica al vuelo (Auto-Core) integrada silenciosamente.
- * ============================================================================
+ * @file Caja de entrada del chat en teléfonos. Muestra el módulo activo,
+ * aplica la autocorrección al escribir un espacio o «?» (con el aviso
+ * AUTO-CORE), envía con Enter (Shift+Enter agrega una línea) y cambia el
+ * botón de enviar por uno de cancelar mientras la consulta está en curso.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React from 'react';
 import { Loader2, Send, Square } from 'lucide-react';
 
+/**
+ * Renderiza el formulario de pregunta de la vista móvil.
+ * @param {object} props
+ * @param {string} props.prompt Texto actual.
+ * @param {function} props.setPrompt Actualiza el texto.
+ * @param {function} props.handleQuery Envía la pregunta (submit o Enter).
+ * @param {function} props.cancelQuery Cancela la consulta en curso.
+ * @param {boolean} props.loading Indica si hay una consulta en curso.
+ * @param {string|null} props.correctionHint Aviso de autocorrección visible.
+ * @param {function(string): {text: string, wasCorrected: boolean}} props.correct Autocorrección.
+ * @param {function} props.setCorrectionHint Muestra u oculta el aviso.
+ * @param {string|null} props.activeModule Módulo activo; si falta, muestra «ADN MAESTRO».
+ * @param {object} props.textareaRef Referencia a la caja de texto.
+ * @returns {JSX.Element} Formulario de entrada.
+ */
 export const ChatInputMobile = ({ prompt, setPrompt, handleQuery, cancelQuery, loading, correctionHint, correct, setCorrectionHint, activeModule, textareaRef }) => {
     return (
         <div className="px-2 pb-0 w-full relative z-20">

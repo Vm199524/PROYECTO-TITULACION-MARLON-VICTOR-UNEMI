@@ -1,21 +1,15 @@
 """
-core/session_state_store.py - Persistencia liviana del ESTADO de sesión
-(no de los recursos vivos) para sobrevivir un reinicio del backend.
+Persistencia liviana del estado de sesión para sobrevivir a un reinicio del backend.
 
-Sigue el mismo patrón híbrido que core/session_history_store.py: Redis como
-vía principal, con fallback a un archivo JSON local cuando Redis no está
-disponible. Así, aunque hoy el sistema corre en una sola instancia (sin
-Redis obligatorio), el reinicio del proceso backend ya no obliga al usuario
-a volver a seleccionar la empresa desde cero: el contexto (empresa activa,
-esquema ya sincronizado) se restaura solo.
+Guarda el contexto (empresa activa, esquema sincronizado), no los recursos
+vivos, para que el usuario no tenga que volver a elegir la empresa. Sigue el
+patrón híbrido de session_history_store.py: Redis como vía principal y un JSON
+local como respaldo. Por diseño no persiste conn_str (puede llevar PWD=...) ni
+api_key: al reconectar, el conector y el cliente de IA se reconstruyen con
+build_connection_string(..., windows_auth=True) y DEEPSEEK_API_KEY del entorno.
 
-IMPORTANTE — qué NO se persiste aquí, a propósito:
-    - conn_str: puede contener credenciales SQL en texto plano (PWD=...).
-    - api_key: llave del proveedor de IA.
-Ninguno de los dos se escribe a Redis ni a disco. Al reconectar tras un
-reinicio, el conector y el cliente IA se reconstruyen desde cero (mismo
-patrón que ya usa /api/bi/pulse: build_connection_string(..., windows_auth=True)
-+ variable de entorno DEEPSEEK_API_KEY), nunca reutilizando un secreto guardado.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -28,9 +22,9 @@ from cache.redis_manager import REDIS_STORE
 
 STATE_FILE = CACHE_DIR / "session_state.json"
 
-# Estado de sesión: se refresca en cada login/cambio de empresa, así que un
-# TTL corto-a-mediano es suficiente (evita acumular sesiones de usuarios que
-# ya no vuelven). 24 horas cubre sobra una jornada de trabajo con margen.
+# El estado se refresca en cada inicio de sesión o cambio de empresa, así que
+# basta un TTL corto o mediano que evite acumular sesiones de usuarios que no
+# vuelven. 24 horas cubren una jornada de trabajo con margen.
 SESSION_STATE_TTL = 60 * 60 * 24
 
 

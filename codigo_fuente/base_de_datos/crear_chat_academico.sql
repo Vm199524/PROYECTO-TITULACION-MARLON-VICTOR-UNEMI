@@ -1,25 +1,17 @@
 /*
- * crear_chat_academico.sql — Capa 1 de la arquitectura de seguridad BI.
+ * Almacén académico CHAT: esquema estrella, vistas VIS_* y login chat_reader.
  *
- * Reconstruye lo que la practica preprofesional dejo solo en su propio
- * servidor (base CHAT + SP_MODIFICA_VISTA_IA), esta vez como codigo
- * versionado, con dos cambios de fondo:
+ * Crea la base CHAT con tablas físicas (dim_* y fact_*) que puebla el ETL
+ * (backend/scripts/etl_academico.py), no vistas que lean en vivo la base operativa.
+ * Capa 1 de la seguridad del chat NL2SQL: cada vista VIS_* filtra por
+ * SESSION_CONTEXT(N'empresa_activa'), fijado en la misma conexión que ejecuta el
+ * SELECT; chat_reader es un login de solo lectura con SELECT únicamente sobre esas
+ * vistas y sin usuario en las bases operativas, así el SQL de la IA nunca corre con
+ * la cuenta sa. Es re-ejecutable (suelta y recrea los objetos). Uso, desde backend:
+ *   python scripts/run_sql_file.py ../base_de_datos/crear_chat_academico.sql
  *
- *   1. ETL FISICO: fact_matriculas/dim_* son tablas reales, pobladas por
- *      scripts/etl_academico.py — no vistas que leen en vivo de la base
- *      operativa.
- *   2. Login de solo lectura (chat_reader) exclusivo de CHAT: el motor de
- *      IA nunca ejecuta su SELECT final con la cuenta admin (sa) que uso el
- *      usuario para conectarse. Sin usuario mapeado en ALIM/UNEMI_PRUEBAS,
- *      chat_reader no puede ver la base operativa aunque quisiera.
- *
- * SP_MODIFICA_VISTA_IA se mantiene con la MISMA firma que ya espera
- * backend/main.py (`_activate_chat_views`): exec CHAT.dbo.SP_MODIFICA_VISTA_IA
- * '<empresa>'. Antes reapuntaba vistas a tablas de OTRA base; ahora filtra
- * las tablas fisicas de CHAT por empresa_codigo — mismo contrato, origen de
- * datos distinto.
- *
- * Uso: sqlcmd -S <host> -U sa -P <password> -C -i crear_chat_academico.sql
+ * Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+ * Proyecto de titulación · Universidad Estatal de Milagro · 2026
  */
 
 IF DB_ID('CHAT') IS NULL
@@ -29,16 +21,16 @@ GO
 USE CHAT;
 GO
 
--- El hecho se borra ANTES que cualquier dimension: tiene FK a las 6, asi
--- que si este script se re-ejecuta (idempotente, ver encabezado) y se
--- intenta soltar una dimension primero, SQL Server lo rechaza con
--- "referenced by a FOREIGN KEY constraint". Nunca cambiar este orden.
+-- Las tablas de hechos se sueltan ANTES que cualquier dimensión: tienen FK
+-- hacia ellas, y si el script se re-ejecuta e intenta soltar primero una
+-- dimensión, SQL Server lo rechaza con "referenced by a FOREIGN KEY
+-- constraint". Este orden no debe cambiar.
 IF OBJECT_ID('dbo.fact_prediccion_abandono', 'U') IS NOT NULL DROP TABLE dbo.fact_prediccion_abandono;
 IF OBJECT_ID('dbo.fact_cluster_carrera', 'U') IS NOT NULL DROP TABLE dbo.fact_cluster_carrera;
 IF OBJECT_ID('dbo.fact_matriculas', 'U') IS NOT NULL DROP TABLE dbo.fact_matriculas;
 IF OBJECT_ID('dbo.fact_evaluacion_modelo', 'U') IS NOT NULL DROP TABLE dbo.fact_evaluacion_modelo;
 IF OBJECT_ID('dbo.dim_carrera', 'U') IS NOT NULL DROP TABLE dbo.dim_carrera;
--- dim_alumno referencia a dim_empresa desde el Avance 2: se suelta antes.
+-- dim_alumno referencia a dim_empresa: se suelta antes que ella.
 IF OBJECT_ID('dbo.dim_alumno', 'U') IS NOT NULL DROP TABLE dbo.dim_alumno;
 GO
 
@@ -78,13 +70,13 @@ CREATE TABLE dbo.dim_estado_matricula (
 );
 
 -- Requerimiento "variables relevantes: carrera, sede, ciclo, rendimiento,
--- canal" (ver documentacion/tecnica/PREDICCION_ABANDONO.md #8): sede = campus/extensión
--- física (ej. Cuenca/Quito/Guayaquil en una IES multi-sede), canal = vía de
--- ingreso/modalidad (PRESENCIAL/DISTANCIA/EN LINEA). Instituciones de un
--- solo campus/modalidad simplemente cargan un único valor fijo aquí (ver
--- backend/etl/perfiles.py, valores_fijos) — el modelo no se rompe por tener
--- una sola sede, pero la columna existe desde ya para no requerir otra
--- migración de esquema cuando se conecte una IES multi-sede real.
+-- canal" (ver documentacion/tecnica/PREDICCION_ABANDONO.md, sección 3):
+-- sede = campus o extensión física (p. ej., Cuenca/Quito/Guayaquil en una IES
+-- multisede), canal = vía de ingreso o modalidad (PRESENCIAL/DISTANCIA/EN
+-- LINEA). Una institución de un solo campus o modalidad carga un literal fijo
+-- en el SELECT de su perfil (backend/etl/perfiles.py): el modelo funciona con
+-- una sola sede, y la columna existe para no requerir otra migración de
+-- esquema cuando se conecte una IES multisede real.
 IF OBJECT_ID('dbo.dim_sede', 'U') IS NOT NULL DROP TABLE dbo.dim_sede;
 CREATE TABLE dbo.dim_sede (
     sede_codigo  VARCHAR(20) PRIMARY KEY,
@@ -96,11 +88,11 @@ CREATE TABLE dbo.dim_canal (
     canal_codigo  VARCHAR(20) PRIMARY KEY
 );
 
--- Avance 2 (multi-institución real): la identidad de un alumno es
--- (institución, identificador). Antes `cedula` era UNIQUE global: dos
--- instituciones con un identificador coincidente se habrían fusionado en
--- una sola persona. dim_alumno se referencia desde fact_matriculas y
--- fact_prediccion_abandono, que ya se soltaron arriba (junto con dim_alumno).
+-- Multiinstitución: la identidad de un alumno es (institución,
+-- identificador). Un UNIQUE global sobre `cedula` fusionaría en una sola
+-- persona a dos alumnos de instituciones distintas con el mismo
+-- identificador. dim_alumno se referencia desde fact_matriculas y
+-- fact_prediccion_abandono, que se sueltan al inicio (junto con dim_alumno).
 CREATE TABLE dbo.dim_alumno (
     alumno_id          INT IDENTITY(1,1) PRIMARY KEY,
     empresa_codigo     VARCHAR(30) NOT NULL REFERENCES dbo.dim_empresa(empresa_codigo),
@@ -112,7 +104,7 @@ CREATE TABLE dbo.dim_alumno (
     CONSTRAINT UQ_dim_alumno_empresa_cedula UNIQUE (empresa_codigo, cedula)
 );
 
--- ── Hechos (grano: una fila por registro de matricula) ─────────────────
+-- ── Hechos (grano: una fila por registro de matrícula) ─────────────────
 IF OBJECT_ID('dbo.fact_matriculas', 'U') IS NOT NULL DROP TABLE dbo.fact_matriculas;
 CREATE TABLE dbo.fact_matriculas (
     fact_id           INT IDENTITY(1,1) PRIMARY KEY,
@@ -141,16 +133,14 @@ CREATE INDEX IX_fact_matriculas_panel ON dbo.fact_matriculas(empresa_codigo, alu
 GO
 
 -- ── VIS_ALUMNO: vista ESTÁTICA, aislada por SESSION_CONTEXT ─────────────
--- Auditoría 09/09/2026 (auditoría interna del 09/09/2026, hallazgo #2): la
--- version anterior de esta vista se recreaba con ALTER VIEW cada vez que
--- una empresa se activaba — un namespace COMPARTIDO y mutable, exactamente
--- el patron que ya causo una fuga de datos real documentada en
--- incidente de fuga de datos entre empresas del 27/07/2026 (27/07/2026). Con SESSION_CONTEXT() el
--- filtro de empresa vive aislado POR CONEXION fisica, no en un objeto
--- global: dos usuarios en empresas distintas ya no pueden pisarse, sin
--- importar que corran al mismo tiempo. El backend fija ese contexto y
--- ejecuta el SELECT en la MISMA conexion (ver
--- db_connector.py::execute_query_with_context) — nunca en pasos separados.
+-- La vista es fija: no se recrea con ALTER VIEW al activar cada empresa,
+-- porque eso la convertiría en un objeto global COMPARTIDO y mutable, el
+-- patrón que permite que un usuario lea los datos de otra empresa cuando
+-- dos consultas corren a la vez. Con SESSION_CONTEXT() el filtro de empresa
+-- vive aislado POR CONEXIÓN física: dos usuarios en empresas distintas no
+-- pueden pisarse aunque consulten al mismo tiempo. El backend fija ese
+-- contexto y ejecuta el SELECT en la MISMA conexión (ver
+-- db_connector.py::execute_query_with_context), nunca en pasos separados.
 IF OBJECT_ID('dbo.VIS_ALUMNO', 'V') IS NOT NULL DROP VIEW dbo.VIS_ALUMNO;
 GO
 CREATE VIEW dbo.VIS_ALUMNO AS
@@ -175,12 +165,12 @@ WHERE fm.empresa_codigo = CAST(SESSION_CONTEXT(N'empresa_activa') AS VARCHAR(30)
 GO
 
 -- ── SP_MODIFICA_VISTA_IA: se conserva SOLO por compatibilidad ──────────
--- backend/main.py::_activate_chat_views sigue invocando este SP con la
--- misma firma de siempre (exec CHAT.dbo.SP_MODIFICA_VISTA_IA '<empresa>').
--- Ya NO hace ningun ALTER VIEW ni cambia estado global: el aislamiento real
--- ahora lo pone SESSION_CONTEXT en la conexion que ejecuta el SELECT (ver
--- arriba). Aqui solo queda para no tener que tocar esa parte de main.py, y
--- de paso valida que la empresa exista.
+-- backend/main.py::_activate_chat_views invoca este SP con la firma
+-- exec CHAT.dbo.SP_MODIFICA_VISTA_IA '<empresa>'. No hace ningún ALTER VIEW
+-- ni cambia estado global: el aislamiento lo pone SESSION_CONTEXT en la
+-- conexión que ejecuta el SELECT (ver VIS_ALUMNO). Solo valida que la
+-- empresa exista; RAISERROR con severidad 10 es informativo y no corta el
+-- lote.
 IF OBJECT_ID('dbo.SP_MODIFICA_VISTA_IA', 'P') IS NOT NULL DROP PROCEDURE dbo.SP_MODIFICA_VISTA_IA;
 GO
 CREATE PROCEDURE dbo.SP_MODIFICA_VISTA_IA
@@ -194,13 +184,14 @@ END
 GO
 
 -- ── fact_prediccion_abandono: salida del modelo ML (ver backend/ml/) ────
--- Grano: 1 fila por alumno ACTIVO con su probabilidad de abandono mas
--- reciente. La puebla backend/ml/predecir_abandono.py (recarga completa por
--- empresa, mismo patron TRUNCATE+INSERT que fact_matriculas). Vive en CHAT
--- (no en UNEMI_PRUEBAS) porque es un resultado derivado, no dato operativo.
+-- Grano: 1 fila por alumno ACTIVO con su probabilidad de abandono más
+-- reciente. La puebla backend/ml/predecir_abandono.py con recarga completa
+-- por empresa (DELETE filtrado por empresa_codigo + INSERT, el mismo patrón
+-- del ETL de fact_matriculas). Vive en CHAT (no en UNEMI_PRUEBAS) porque es
+-- un resultado derivado, no un dato operativo.
 IF OBJECT_ID('dbo.fact_prediccion_abandono', 'U') IS NOT NULL DROP TABLE dbo.fact_prediccion_abandono;
 GO
--- Avance 2 (panel alumno-periodo): la predicción es "probabilidad de que
+-- Panel alumno-periodo: la predicción es "probabilidad de que
 -- el alumno abandone en el PRÓXIMO periodo", calculada con los datos hasta
 -- su periodo más reciente (fact_id_base = esa fila de fact_matriculas, que
 -- da carrera, sede, canal y semestre sin ambigüedad aunque un alumno tenga
@@ -247,8 +238,8 @@ CREATE INDEX IX_evaluacion_modelo_empresa ON dbo.fact_evaluacion_modelo(empresa_
 GO
 
 -- Misma estrategia de aislamiento que VIS_ALUMNO: filtro por SESSION_CONTEXT
--- fijado en la MISMA conexion que ejecuta el SELECT, nunca por un objeto
--- global mutable (ver comentario extenso arriba, hallazgo #2 de la auditoria).
+-- fijado en la MISMA conexión que ejecuta el SELECT, nunca por un objeto
+-- global mutable (ver el comentario de VIS_ALUMNO).
 IF OBJECT_ID('dbo.VIS_PREDICCION_ABANDONO', 'V') IS NOT NULL DROP VIEW dbo.VIS_PREDICCION_ABANDONO;
 GO
 CREATE VIEW dbo.VIS_PREDICCION_ABANDONO AS
@@ -277,12 +268,11 @@ WHERE empresa_codigo = CAST(SESSION_CONTEXT(N'empresa_activa') AS VARCHAR(30));
 GO
 
 -- ── Módulo 2: Benchmarking institucional (ver documentacion/tecnica/BENCHMARKING_INSTITUCIONAL.md) ──
--- Indicadores comparativos de fuentes EXTERNAS reales (CACES, SENESCYT,
--- prensa especializada citando SENESCYT/UNESCO/Banco Mundial — ver el doc
--- para las URLs exactas). Patrón "indicator fact" (EAV acotado): los
--- indicadores externos son heterogéneos, pocos, y de fuentes/años distintos
--- — no encajan en el modelo dimensional de matrículas de arriba, que es
--- para datos operativos propios de una sola institución.
+-- Indicadores comparativos de fuentes EXTERNAS (artículos académicos con
+-- DOI; el documento enlazado lista cada fuente). Patrón "indicator fact"
+-- (EAV acotado): los indicadores externos son heterogéneos, pocos y de
+-- fuentes y años distintos, así que no encajan en el modelo dimensional de
+-- matrículas, que es para datos operativos propios de una sola institución.
 IF OBJECT_ID('dbo.fact_benchmark_externo', 'U') IS NOT NULL DROP TABLE dbo.fact_benchmark_externo;
 IF OBJECT_ID('dbo.dim_institucion_externa', 'U') IS NOT NULL DROP TABLE dbo.dim_institucion_externa;
 GO
@@ -293,7 +283,7 @@ CREATE TABLE dbo.dim_institucion_externa (
     categoria_caces      VARCHAR(30) NULL,           -- ACREDITADA / NO ACREDITADA / EN PROCESO / NULL (no aplica, ej. UNESCO)
     fecha_evaluacion_caces DATE NULL
 );
--- Avance 2 (Lepori & Bornmann, 2026: comparar pares con pares): cada cifra
+-- Comparar pares con pares (Lepori y Bornmann, 2026): cada cifra
 -- declara QUÉ mide exactamente (definicion_indicador), el contexto que la
 -- hace comparable o no (pais, modalidad) y un nivel de comparabilidad
 -- explícito frente a la institución propia. Solo se cargan cifras
@@ -307,7 +297,7 @@ CREATE TABLE dbo.fact_benchmark_externo (
     anio                  SMALLINT NULL,
     definicion_indicador  NVARCHAR(300) NOT NULL,      -- ej. "retiros / matrículas módulo-presentación"
     pais                  NVARCHAR(60) NOT NULL,
-    modalidad             VARCHAR(20) NOT NULL,        -- PRESENCIAL / DISTANCIA / MIXTA
+    modalidad             VARCHAR(20) NOT NULL,        -- PRESENCIAL / DISTANCIA / MIXTA / NO_REPORTADA
     nivel_comparabilidad  VARCHAR(10) NOT NULL,        -- ALTA / MEDIA / BAJA
     fuente                NVARCHAR(300) NOT NULL,      -- cita APA corta: "Núñez-Naranjo (2024)"
     doi                   VARCHAR(100) NULL,
@@ -376,16 +366,15 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'chat_reader')
     CREATE USER chat_reader FOR LOGIN chat_reader;
 GO
--- OJO (auditoría 09/09/2026, hallazgo detectado en pruebas): db_datareader
--- le daba a chat_reader SELECT sobre TODO el esquema de CHAT, incluidas las
--- tablas físicas (fact_matriculas, dim_*) — y la IA a veces genera SQL
--- contra esas tablas en vez de VIS_ALUMNO, sin el filtro de empresa que
--- solo tiene la vista. Con una sola empresa cargada no se nota, pero en
--- cuanto exista una segunda, esa ruta se salta por completo el aislamiento
--- de SESSION_CONTEXT. chat_reader ahora solo puede leer VIS_ALUMNO — si la
--- IA insiste en consultar las tablas físicas, la consulta falla con
--- "permission denied" y el pipeline de autocorrección ya existente la
--- reintenta, en vez de dejarla pasar sin filtrar.
+-- chat_reader NO pertenece a db_datareader: ese rol da SELECT sobre TODO el
+-- esquema de CHAT, incluidas las tablas físicas (fact_matriculas, dim_*), y
+-- la IA a veces genera SQL contra esas tablas en vez de las vistas, sin el
+-- filtro de empresa que solo tienen las vistas. Con una sola empresa
+-- cargada no se nota, pero desde la segunda esa ruta se salta por completo
+-- el aislamiento de SESSION_CONTEXT. Por eso chat_reader solo puede leer
+-- las vistas VIS_*: si la IA consulta una tabla física, la consulta falla
+-- con "permission denied" y el pipeline de autocorrección la reintenta, en
+-- vez de devolver datos sin filtrar.
 IF IS_ROLEMEMBER('db_datareader', 'chat_reader') = 1
     ALTER ROLE db_datareader DROP MEMBER chat_reader;
 GRANT SELECT ON dbo.VIS_ALUMNO TO chat_reader;
@@ -396,9 +385,9 @@ GRANT SELECT ON dbo.VIS_EVALUACION_MODELO TO chat_reader;
 GO
 
 -- No se crea usuario para chat_reader en ALIM ni UNEMI_PRUEBAS: sin un
--- usuario mapeado (y con el usuario 'guest' deshabilitado, el default de
--- SQL Server), ese login sencillamente no puede conectarse a esas bases.
--- Se refuerza explicitamente por si 'guest' estuviera habilitado.
+-- usuario mapeado (y con el usuario 'guest' deshabilitado, valor por defecto
+-- de SQL Server), ese login no puede conectarse a esas bases. Se refuerza
+-- explícitamente revocando CONNECT a 'guest' por si estuviera habilitado.
 -- ALIM es una base operativa opcional: si no existe, el bloque se omite.
 IF DB_ID('ALIM') IS NOT NULL
     EXEC('USE ALIM; IF EXISTS (SELECT 1 FROM sys.database_principals WHERE name = ''guest'' AND authentication_type_desc <> ''NONE'') REVOKE CONNECT FROM guest;');
@@ -410,7 +399,8 @@ IF EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'guest' AND authen
     REVOKE CONNECT FROM guest;
 GO
 
--- Segunda institución (Avance 2): misma regla para su base operativa.
+-- Segunda institución (OULAD_PRUEBAS): misma regla para su base operativa;
+-- si la base no existe, el bloque se omite.
 IF DB_ID('OULAD_PRUEBAS') IS NOT NULL
     EXEC('USE OULAD_PRUEBAS; IF EXISTS (SELECT 1 FROM sys.database_principals WHERE name = ''guest'' AND authentication_type_desc <> ''NONE'') REVOKE CONNECT FROM guest;');
 GO

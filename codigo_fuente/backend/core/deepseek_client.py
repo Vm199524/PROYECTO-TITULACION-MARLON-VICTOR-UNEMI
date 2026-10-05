@@ -1,7 +1,14 @@
 """
-core/deepseek_client.py - Adaptador resiliente del motor IA.
-Mantiene compatibilidad con rutas de consulta y capa de sesion.
-Evita que una falla del proveedor IA tumbe autenticacion o backend.
+Adaptador resiliente del motor de IA.
+
+Es la fachada que usan las rutas de consulta y la capa de sesión sobre
+NL2SQLEngine. Inicializa el motor de forma diferida y, si falta toda clave de
+proveedor (DeepSeek, Gemini, Groq, NVIDIA NIM) o la carga falla, entra en modo
+seguro y responde degradado en lugar de tumbar la autenticación o el backend.
+Los saludos simples se responden al instante sin llamar al modelo.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -18,41 +25,41 @@ _GREETING_WORDS = {
     "buen dia", "buena tarde", "buena noche"
 } 
 
-# Palabras que indican que NO es solo un saludo, incluso si contiene palabras de saludo
+# Palabras que indican que no es solo un saludo, aunque el texto contenga palabras de saludo.
 _NON_GREETING_INDICATORS = {
     "consulta", "pregunta", "quiero", "necesito", "dime", "muestrame", "muestreme",
     "busco", "ayuda", "informacion", "datos", "reporte", "ver", "saber", "cuanto",
     "cuantos", "quien", "donde", "cuando", "por que", "cual", "cuales",
-    # NOTA: "que" y "como" se manejan por separado para no bloquear "que tal" y "como estas"
+    # "que" y "como" no se incluyen para no bloquear "que tal" ni "como estas".
 }
 
-# Frases de saludo cortas que DEBEN ser tratadas como saludos puros
+# Frases de saludo cortas que siempre se tratan como saludos puros.
 _SHORT_GREETINGS = {"que tal", "como estas", "como está", "cómo estás", "cómo está"}
 
 
 def _is_greeting(text: str) -> bool:
-    """
-    Detecta si el texto es únicamente un saludo natural.
-    Retorna False si el saludo viene acompañado de una consulta.
+    """Detecta si el texto es únicamente un saludo natural.
+
+    Devuelve False si el saludo viene acompañado de una consulta.
     """
     cleaned = (text or "").strip().lower().replace("!", "").replace(".", "").replace("?", "").replace(",", "").replace("¿", "")
     words = cleaned.split()
     if not words: 
         return False
     
-    # Verificar primero si es una frase de saludo corta conocida
+    # Primero se comprueba si es una frase de saludo corta conocida.
     if cleaned in _SHORT_GREETINGS:
         return True
     
-    # Si es muy largo (>6 palabras), probablemente no sea solo un saludo
+    # Con más de 6 palabras, probablemente no sea solo un saludo.
     if len(words) > 6:
         return False
     
-    # Verificar si contiene indicadores de consulta
+    # Si contiene indicadores de consulta, no es un saludo puro.
     if any(indicator in cleaned for indicator in _NON_GREETING_INDICATORS):
         return False
     
-    # Si contiene una palabra clave de saludo y es corto, lo tratamos como saludo instantaneo.
+    # Un texto corto con una palabra de saludo se trata como saludo instantáneo.
     if any(w in _GREETING_WORDS for w in words) and len(words) <= 4:
         return True
     
@@ -60,10 +67,11 @@ def _is_greeting(text: str) -> bool:
 
 
 class DeepSeekClient:
-    """
-    Cliente de IA con modo seguro:
-    - Si NL2SQLEngine está disponible, lo usa.
-    - Si falla la carga o falta API key, no rompe la app ni el login.
+    """Cliente de IA con modo seguro.
+
+    - Si NL2SQLEngine está disponible, delega en él.
+    - Si falla la carga o no hay ninguna clave de API, no rompe la aplicación
+      ni el inicio de sesión: responde con mensajes degradados.
     """
 
     def __init__(
@@ -89,12 +97,11 @@ class DeepSeekClient:
         self._try_init_engine()
 
     def _cascade_disponible(self) -> bool:
-        """
-        Antes esta clase exigía DEEPSEEK_API_KEY para arrancar el motor —
-        si faltaba, todo caía en modo seguro aunque hubiera otras llaves
-        configuradas. Ahora NL2SQLEngine trae su propia cascada de respaldo
-        (Gemini -> Groq -> NVIDIA NIM, ver core/nl2sql_engine.py), así que
-        basta con que UNA de las cuatro esté presente para intentar arrancar.
+        """Indica si hay al menos una clave de proveedor para arrancar el motor.
+
+        No se exige DEEPSEEK_API_KEY porque NL2SQLEngine trae su propia cascada
+        de respaldo (Gemini, Groq, NVIDIA NIM; ver core/nl2sql_engine.py), así
+        que basta con que una de las cuatro claves esté presente.
         """
         return bool(
             self._api_key
@@ -135,6 +142,7 @@ class DeepSeekClient:
             logger.exception("[AI SAFE MODE] Fallo al cargar NL2SQLEngine: %s", exc)
 
     def _safe_welcome(self) -> str:
+        """Devuelve un saludo de bienvenida según la hora del día."""
         hour = datetime.now().hour
         if hour < 12:
             greeting = "Buenos días"
@@ -145,18 +153,23 @@ class DeepSeekClient:
         return f"{greeting}, soy VicMar Data AI. ¿En qué puedo ayudarte hoy?"
 
     def set_schema(self, schema_text: str, semantic_relations: str | None = None, **kwargs) -> None:
+        """Guarda el esquema y las relaciones semánticas y los inyecta en el motor si está cargado.
+
+        Acepta `tables_dict` en kwargs, que se conserva para pasarlo al motor
+        también cuando se inicialice más tarde.
+        """
         self.schema_text = schema_text or ""
         if semantic_relations is not None:
             self.semantic_relations = semantic_relations or ""
         
-        # Opcionalmente guardamos el tables_dict si se provee
+        # Se guarda el tables_dict si se provee.
         tables_dict = kwargs.get("tables_dict")
         if tables_dict:
             self.tables_dict = tables_dict
             
         if self._engine and hasattr(self._engine, "set_schema"):
             try:
-                # Pasamos tables_dict si existe para que NL2SQLEngine lo use
+                # Se pasa tables_dict si existe para que NL2SQLEngine lo use.
                 self._engine.set_schema(
                     self.schema_text, 
                     self.semantic_relations,
@@ -166,12 +179,20 @@ class DeepSeekClient:
                 logger.warning("No se pudo inyectar schema al motor IA: %s", exc)
 
     def set_master_schema(self, master_schema_text: str) -> None:
+        """Guarda el texto del esquema maestro."""
         self.master_schema_text = master_schema_text or ""
 
     def update_context(self, schema: str, mapping: str = "") -> None:
+        """Actualiza el esquema y las relaciones; alias de set_schema por compatibilidad."""
         self.set_schema(schema, mapping)
 
     def _normalize_generate_sql_result(self, raw: Any) -> dict:
+        """Normaliza la respuesta del motor al contrato que esperan las rutas.
+
+        Una cadena se interpreta como respuesta conversacional (prefijo "CHAT:"),
+        un tipo inesperado se convierte en un aviso, y a un dict se le completan
+        las claves que falten. Toda respuesta sin SQL se marca como is_greeting.
+        """
         if isinstance(raw, str):
             if raw == "CHAT:STATIC_RESPONSE":
                 text = self._safe_welcome()
@@ -224,6 +245,15 @@ class DeepSeekClient:
         vistas_reales: str = "",
         modelo_forzado: str | None = None,
     ) -> tuple[dict, Optional[str]]:
+        """Genera el SQL y la explicación para una pregunta en lenguaje natural.
+
+        Responde sin llamar al modelo si la pregunta está vacía o es un saludo,
+        y con un mensaje de modo seguro si el motor no está disponible.
+
+        Returns:
+            (resultado, error): el resultado normalizado y None, o un dict vacío
+            y el mensaje de error del motor.
+        """
         text = (question or "").strip()
         if not text:
             return (
@@ -251,7 +281,7 @@ class DeepSeekClient:
                 None,
             )
 
-        # Para consultas reales, inicializamos el motor de forma diferida
+        # Para consultas reales, el motor se inicializa de forma diferida.
 
         self._try_init_engine()
         if not self._engine:
@@ -300,6 +330,7 @@ class DeepSeekClient:
         history: str = "",
         vistas_reales: str = "",
     ) -> tuple[dict, Optional[str]]:
+        """Genera el SQL con los reintentos del motor; si no están disponibles, usa generate_sql."""
         self._try_init_engine()
         if not self._engine or not hasattr(self._engine, "generate_sql_with_retry"):
             return self.generate_sql(
@@ -327,6 +358,10 @@ class DeepSeekClient:
             return {}, f"Error del motor IA: {exc}"
 
     def generate_correction(self, failed_sql: str, error_msg: str) -> dict:
+        """Pide al motor una corrección del SQL fallido (autocuración).
+
+        Si no hay motor o no devuelve SQL, devuelve el SQL original con un aviso.
+        """
         self._try_init_engine()
         if self._engine and hasattr(self._engine, "generate_correction"):
             try:
@@ -342,8 +377,11 @@ class DeepSeekClient:
         }
 
     def analyze_images(self, question: str, images_b64: list[str]) -> dict:
-        """FASE 4 — punto 6: delega al modelo Vision. En modo seguro (sin
-        motor cargado), avisa con claridad en vez de fallar en silencio."""
+        """Delega el análisis de imágenes en base64 al modelo de visión.
+
+        En modo seguro (sin motor cargado) avisa con claridad en lugar de
+        fallar en silencio.
+        """
         self._try_init_engine()
         if self._engine and hasattr(self._engine, "analyze_images"):
             try:
@@ -369,12 +407,11 @@ class DeepSeekClient:
         alias: str = "VM",
         empresa: str = "",
     ) -> dict:
-        """
-        Conversación directa con el modelo, sin esquema ni guardarraíl de alcance.
+        """Conversa directamente con el modelo, sin esquema ni guardarraíl de alcance.
 
-        Se usa ÚNICAMENTE cuando el pipeline confirmó que quien pregunta es el
-        desarrollador identificado con su seña (core/modo_desarrollador.py).
-        Para el resto de usuarios este método no se invoca nunca.
+        Se usa únicamente cuando el pipeline confirmó que quien pregunta es el
+        desarrollador identificado con su seña (core/modo_desarrollador.py);
+        para el resto de usuarios este método no se invoca.
         """
         self._try_init_engine()
         if self._engine and hasattr(self._engine, "chat_libre"):
@@ -399,15 +436,13 @@ class DeepSeekClient:
         }
 
     def responder_demo(self, question: str, dataset: dict, history: str = "") -> dict:
-        """
-        Responde preguntas de un usuario Invitado (rol GUEST) sobre el dataset
-        de demostración. Se usa cuando no hay ninguna base de datos real
-        conectada, así que NUNCA toca esquema, SQL ni conector.
+        """Responde preguntas del usuario Invitado (rol GUEST) sobre el dataset de demostración.
 
-        Doble red de seguridad para que el Invitado jamás se quede sin
-        respuesta: si el motor no inicializó (sin API key, por ejemplo), este
-        método arma igual un resumen determinista con los indicadores del
-        propio dataset — no depende de ninguna llamada externa.
+        Se usa cuando no hay ninguna base de datos real conectada, así que nunca
+        toca esquema, SQL ni conector. Si el motor no se inicializó (por
+        ejemplo, sin clave de API), arma un resumen determinista con los
+        indicadores del propio dataset, sin ninguna llamada externa, para que
+        el Invitado nunca se quede sin respuesta.
         """
         self._try_init_engine()
         if self._engine and hasattr(self._engine, "responder_demo"):
@@ -432,6 +467,7 @@ class DeepSeekClient:
         }
 
     def generate_final_analysis(self, question: str, columns: list, rows: list) -> dict:
+        """Devuelve una explicación y un análisis de negocio genéricos según haya o no filas."""
         if not rows:
             return {
                 "explanation": "No se encontraron registros para los criterios solicitados.",
@@ -457,11 +493,11 @@ class DeepSeekClient:
 
 
     def generate_error_narrative(self, question: str, sql_error: str) -> str:
-        """Genera un mensaje de error mas informativo y util para el usuario."""
+        """Traduce un error de SQL a un mensaje claro y accionable para el usuario."""
         _ = question
         error_lower = str(sql_error).lower()
         
-        # Detectar errores comunes y dar mensajes especificos
+        # Errores comunes con mensajes específicos.
         if "invalid column name" in error_lower or "unknown column" in error_lower:
             return (
                 "El campo que intentas consultar no existe en la base de datos actual. "
@@ -485,14 +521,12 @@ class DeepSeekClient:
                 "Intenta agregar filtros de fecha o reducir el alcance de tu pregunta."
             )
         elif "permission" in error_lower or "denied" in error_lower:
-            # Auditoría 09/09/2026: este mensaje decía "no tienes permisos con
-            # tu rol actual" — pero este error NO tiene nada que ver con el
-            # rol del usuario (ADMINISTRADOR incluido): es un límite de
-            # permisos interno de la conexión que ejecuta el SQL generado por
-            # la IA (ver auditoría interna del 09/09/2026 #2), que salta cuando la
-            # IA intenta consultar una tabla que esa conexión no puede leer.
-            # Confundir esto con "tu rol no alcanza" es un mensaje falso que
-            # manda al usuario a "contactar al administrador" sin motivo.
+            # Este error no tiene relación con el rol del usuario (incluido
+            # ADMINISTRADOR): es un límite de permisos interno de la conexión
+            # que ejecuta el SQL generado por la IA, y salta cuando la IA
+            # intenta leer una tabla que esa conexión no puede leer. Atribuirlo
+            # al rol sería un mensaje falso que enviaría al usuario a contactar
+            # al administrador sin motivo.
             return (
                 "No se pudo completar esa consulta por una restricción interna de acceso a datos "
                 "(no relacionada con tu usuario ni tu rol). Intenta reformular la pregunta de forma "

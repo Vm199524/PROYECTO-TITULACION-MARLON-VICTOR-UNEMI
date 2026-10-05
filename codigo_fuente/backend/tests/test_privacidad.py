@@ -1,13 +1,16 @@
 """
-Pruebas del RNF de privacidad (Avance 2; LOPDP, principio de minimización):
-ningún dato que identifique a un estudiante sale hacia un proveedor externo
-de IA. Ver core/privacidad.py.
+Pruebas del requisito no funcional de privacidad (core/privacidad.py).
 
-  1. La función de enmascarado reemplaza cédula/nombres/apellidos por un
-     seudónimo estable y oculta números con forma de cédula en otras columnas.
+Según la LOPDP (principio de minimización), ningún dato que identifique a un
+estudiante sale hacia un proveedor externo de IA:
+  1. El enmascarado reemplaza cédula/nombres/apellidos por un seudónimo estable
+     y oculta números con forma de cédula en otras columnas.
   2. Las cifras (lo único que el modelo necesita para redactar) no cambian.
-  3. Prueba de extremo a extremo: el CUERPO HTTP que narrativa_rapida envía al
+  3. De extremo a extremo: el CUERPO HTTP que narrativa_rapida envía al
      proveedor no contiene ninguna cédula ni nombre de las filas de entrada.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import json

@@ -1,9 +1,12 @@
 /**
- * Archivo: DashboardDesktop.jsx
- * Rol: layout principal de escritorio para la experiencia autenticada.
- * Recibe desde: App.jsx.
- * Se conecta con: DesktopHeader, SessionHistory, DataChannels, ChatArea,
- * SidebarFooter y otros bloques del dashboard.
+ * @file Diseño principal de escritorio (y tableta) para el usuario
+ * autenticado. Combina la barra lateral colapsable (navegación, opciones de
+ * administración solo para el rol ADMINISTRADOR e historial de sesiones), la
+ * cabecera DesktopHeader y el panel central que alterna entre el chat, las
+ * bases de datos, los indicadores (BentoDashboard) y la administración; además
+ * abre el modo de conversación por voz. Lo renderiza App.jsx.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useState } from 'react';
@@ -27,23 +30,34 @@ import { ChatArea } from '../components/ChatArea';
 import { MobileHeaderSection } from '../components/MobileHeaderSection';
 import { VoiceMode, modoVozDisponible } from '../components/VoiceMode';
 
+// Opciones de navegación disponibles para todos los roles.
 const NAV_ITEMS = [
     { id: 'canales', icon: Database, label: 'Bases de Datos' },
     { id: 'reportes', icon: FileChartColumn, label: 'Indicadores' },
     { id: 'nueva', icon: PlusCircle, label: 'Nueva Consulta' },
 ];
 
-// Solo para ADMINISTRADOR (Fase 5, 28/08/2026). El
-// backend YA exige este rol en cada endpoint /api/admin/* (_requiere_admin
-// en main.py) — ocultar estos ítems aquí es solo para no confundir a
-// alguien sin el rol con opciones que igual le devolverían 403; la
-// autorización real vive en el servidor, no en este arreglo.
+// Opciones solo para ADMINISTRADOR. El backend ya exige este rol en cada
+// endpoint /api/admin/* (_requiere_admin en main.py); ocultarlas aquí solo
+// evita mostrar opciones que devolverían 403. La autorización real está en
+// el servidor, no en este arreglo.
 const NAV_ITEMS_ADMIN = [
     { id: 'admin-usuarios', icon: Users, label: 'Usuarios' },
     { id: 'admin-nuevo-usuario', icon: UserPlus, label: 'Nuevo Usuario' },
     { id: 'admin-auditoria', icon: Shield, label: 'Auditoría' },
 ];
 
+/**
+ * Renderiza el tablero de escritorio.
+ * @param {object} props Estado y manejadores que comparte App.jsx: sesión y
+ *   rol (`userAuth`), conexión (`connInfo`, `availableDBs`, `handleConnect`,
+ *   `isConnectionReady`), chat (`chatHistory`, `prompt`, `motorIA`,
+ *   `handleQuery`, `cancelQuery`, `attachedImages`), historial de sesiones
+ *   (`sortedSessions`, `loadSession`, `renameSession`, `deleteSession`, etc.),
+ *   barra lateral (`isSidebarOpen`), `handleLogout`, `openQuantumCore` y el
+ *   pulso del tablero BI (`biPulse`).
+ * @returns {JSX.Element} Diseño de escritorio completo.
+ */
 export function DashboardView({
     isSidebarOpen, setIsSidebarOpen,
     chatHistory, setChatHistory,
@@ -70,9 +84,9 @@ export function DashboardView({
         loadSession(session);
     }, [loadSession]);
 
-    // Fase 3 — C2 (drill-down): un clic en una tarjeta o un punto de un
-    // gráfico de Reportes BI cambia al chat y lanza la pregunta de detalle
-    // correspondiente, reusando el mismo pipeline de consultas de siempre.
+    // Detalle (drill-down): un clic en una tarjeta o en un punto de un
+    // gráfico de Indicadores cambia al chat y lanza la pregunta de detalle,
+    // con el mismo flujo de consultas del chat.
     const handleDrillDown = React.useCallback((pregunta) => {
         if (!pregunta) return;
         setSidebarView('chat');
@@ -83,10 +97,8 @@ export function DashboardView({
             className="flex h-[100dvh] w-full overflow-hidden select-none"
             style={{ background: 'var(--bg-main)', fontFamily: 'var(--font-main)', color: 'var(--text-primary)' }}
         >
-            {/* ════════════════════════════════════
-                SIDEBAR ÚNICO — Estilo Minimalista Grok
-            ════════════════════════════════════ */}
-            {/* Seccion: sidebar desktop con navegacion, historial y footer. */}
+            {/* Barra lateral de escritorio, minimalista: navegación, historial
+                y pie. Mide 260 px abierta y 64 px colapsada. */}
             <aside
                 className="hidden lg:flex flex-col shrink-0 z-30 overflow-hidden"
                 style={{
@@ -97,7 +109,7 @@ export function DashboardView({
                     transition: 'width 0.20s ease, min-width 0.20s ease',
                 }}
             >
-                {/* Header Sidebar: Hamburger perfectamente alineado */}
+                {/* Cabecera de la barra lateral: botón para expandir o colapsar. */}
                 <div
                     className="shrink-0 flex items-center"
                     style={{ height: 50, justifyContent: isSidebarOpen ? 'flex-start' : 'center', paddingLeft: isSidebarOpen ? 16 : 0 }}
@@ -116,7 +128,7 @@ export function DashboardView({
                     )}
                 </div>
 
-                {/* Nav icons: Bajados un poco para equilibrar el espacio vertical */}
+                {/* Íconos de navegación, con un margen superior que equilibra el espacio vertical. */}
                 <nav className="flex flex-col pt-3 px-3 gap-0.5">
                     {NAV_ITEMS.map((item) => (
                         <NavButton
@@ -151,7 +163,7 @@ export function DashboardView({
                     )}
                 </nav>
 
-                {/* Contenido expandido sutil */}
+                {/* Contenido visible solo con la barra expandida: historial reciente. */}
                 <AnimatePresence>
                     {isSidebarOpen && (
                         <motion.div
@@ -189,7 +201,7 @@ export function DashboardView({
                 </div>
             </aside>
 
-            {/* Seccion: layout principal con header y panel central. */}
+            {/* Área principal: cabecera y panel central. */}
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
                 <div className="shrink-0 z-20">
                     <DesktopHeader
@@ -245,7 +257,7 @@ export function DashboardView({
                         />
                     </div>
 
-                    {/* Botón flotante de conversación por voz interactiva AURA */}
+                    {/* Botón flotante que abre la conversación por voz con AURA. */}
                     {(sidebarView === 'chat' || sidebarView === 'dashboard') && modoVozDisponible && !modoVozAbierto && (
                         <button
                             id="btn-open-aura-voice"
@@ -276,7 +288,7 @@ export function DashboardView({
                 </div>
             </main>
 
-            {/* Seccion: drawer movil lateral sobre el dashboard. */}
+            {/* Panel lateral deslizable para teléfonos, sobre el tablero. */}
             <AnimatePresence>
                 {isSidebarOpen && deviceType === 'mobile' && (
                     <>
@@ -329,13 +341,11 @@ export function DashboardView({
     );
 }
 
-// Regla visual (29/08/2026): todo encabezado de
-// sección del sidebar ("Navegación", "Administración", "Historial
-// Reciente") comparte exactamente el mismo tamaño, peso y tracking de
-// fuente — antes cada uno tenía su propio valor suelto (9px/10px,
-// 700/800, 0.1em/0.12em/0.14em) y se notaba a simple vista. Los que son
-// divisores independientes (no pegados a un botón, como "Navegación" sí lo
-// está al de colapsar el sidebar) van centrados con líneas a los lados.
+// Todos los encabezados de sección de la barra lateral ("Navegación",
+// "Administración", "Historial Reciente") comparten el mismo tamaño, peso y
+// espaciado de fuente para verse uniformes. Los que son divisores
+// independientes (no pegados a un botón, como "Navegación" lo está al de
+// colapsar la barra) van centrados con líneas a los lados.
 const SIDEBAR_SECTION_LABEL_STYLE = {
     fontSize: 10,
     fontWeight: 800,
@@ -344,6 +354,7 @@ const SIDEBAR_SECTION_LABEL_STYLE = {
     letterSpacing: '0.12em',
 };
 
+// Encabezado de sección centrado entre dos líneas.
 function SidebarSectionLabel({ children }) {
     return (
         <div className="flex items-center gap-2 px-1 py-1">
@@ -354,6 +365,7 @@ function SidebarSectionLabel({ children }) {
     );
 }
 
+// Botón de navegación: solo ícono (con title) si la barra está colapsada.
 function NavButton({ item, active, isSidebarOpen, onClick }) {
     return (
         <button

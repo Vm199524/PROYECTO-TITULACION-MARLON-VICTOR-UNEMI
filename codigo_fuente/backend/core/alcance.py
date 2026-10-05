@@ -1,43 +1,14 @@
 """
-alcance.py — Guardarrail de alcance conversacional de VicMar Data AI.
+Guardarraíl de alcance conversacional de VicMar Data AI.
 
-PROBLEMA QUE RESUELVE
----------------------
-La REGLA 8 del SYSTEM_PROMPT decia literalmente "Puedes responder CUALQUIER
-pregunta, no solo de negocio", y el motor inyectaba titulares de Google News
-en el prompt. Resultado: preguntar "como va la guerra entre Rusia y Ucrania"
-devolvia un boletin de noticias impecable... desde una herramienta de
-Inteligencia de Negocios conectada a la base de datos de un colegio.
+Frena de forma conservadora las preguntas claramente ajenas a los datos de la
+empresa (geopolítica, deportes, recetas, clima...) y responde con los módulos
+que la base activa sí tiene, deducidos del esquema real. También avisa cuando
+se pide un módulo que esa base no maneja. Ante la duda no bloquea y deja
+razonar a la IA; las preguntas meta sobre el sistema pasan intactas.
 
-Eso no es un error tecnico, es un error de producto: el usuario pierde la
-referencia de que puede y que no puede pedirle al sistema, y la empresa
-termina pagando tokens por responder noticias.
-
-QUE HACE ESTE MODULO
---------------------
-1. `modulos_disponibles()` — mira el esquema REAL ya cargado y deduce que
-   modulos de negocio tienen datos en ESA base. No es una lista fija: MONT
-   (institucion academica) expondra Alumnos y Ventas de servicios, mientras
-   que otra empresa expondra Compras, Nomina o Inventario. Si la tabla no
-   existe o esta vacia, el modulo no se menciona.
-
-2. `es_fuera_de_alcance()` — detecta de forma CONSERVADORA las preguntas
-   claramente ajenas al negocio (geopolitica, deportes, farandula, recetas,
-   clima...). Conservadora significa: ante la duda, NO bloquea y deja que la
-   IA razone. Un falso positivo (bloquear "margen de ventas") seria mucho
-   peor que un falso negativo.
-
-3. `respuesta_fuera_de_alcance()` — redacta el rechazo. Varia la frase de
-   entrada para que no suene a robot repitiendo el mismo texto, pero siempre
-   cierra con los modulos REALES de la base activa, que es lo unico que de
-   verdad orienta al usuario.
-
-LO QUE ESTE MODULO NO TOCA
---------------------------
-Las preguntas meta ("que te pregunte antes", "que empresa esta activa",
-"como funciona el sistema", "que puedo preguntarte") siguen pasando intactas
-a la IA: son utiles y ya funcionaban bien. Solo se frena lo que es
-inequivocamente ajeno a los datos de la empresa.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 from __future__ import annotations
@@ -46,11 +17,11 @@ import random
 import re
 import unicodedata
 
-# ─── Normalizacion ──────────────────────────────────────────────────────────
+# ─── Normalización ──────────────────────────────────────────────────────────
 
 
 def _normalizar(texto: str) -> str:
-    """Minusculas, sin tildes y sin signos. Base comun para todas las reglas."""
+    """Pasa a minúsculas y quita tildes y signos; es la base común de todas las reglas."""
     txt = str(texto or "").lower()
     txt = unicodedata.normalize("NFD", txt)
     txt = "".join(c for c in txt if unicodedata.category(c) != "Mn")
@@ -58,24 +29,23 @@ def _normalizar(texto: str) -> str:
     return re.sub(r"\s+", " ", txt).strip()
 
 
-# ─── 1. Modulos realmente disponibles en la base conectada ──────────────────
+# ─── 1. Módulos realmente disponibles en la base conectada ──────────────────
 
-# Cada modulo se reconoce por fragmentos que aparecen en el nombre de la
-# tabla o vista. El orden importa solo para la presentacion.
-# NOTA IMPORTANTE (bug real detectado 27/08/2026): `schema_resolver.py` filtra
-# el esquema crudo antes de que llegue aqui. Cuando una base tiene mas de 50
-# tablas (cualquier ERP completo), TODO lo que no empiece con "VIS_" se
-# descarta salvo una whitelist fija de tablas fisicas (`whitelist_bi` en
-# schema_resolver.py: tb_cabmov, tb_detmov, tb_cabmov1, tb_detmov1, tb_trabaj,
-# tb_cabrol, tb_detrol, tb_acutra, edu_alumno, edu_cursos, tb_client,
-# tb_provee, tb_item...). Eso significa que `cabecera_factura` o
+# Cada módulo se reconoce por fragmentos que aparecen en el nombre de la
+# tabla o vista. El orden importa solo para la presentación.
+# `schema_resolver.py` filtra el esquema crudo antes de que llegue aquí: cuando
+# una base tiene más de 50 tablas (cualquier ERP completo), todo lo que no
+# empiece con "VIS_" se descarta salvo una lista fija de tablas físicas
+# (`whitelist_bi` en schema_resolver.py: tb_cabmov, tb_detmov, tb_cabmov1,
+# tb_detmov1, tb_trabaj, tb_cabrol, tb_detrol, tb_acutra, edu_alumno,
+# edu_cursos, tb_client, tb_provee, tb_item...). Por eso `cabecera_factura` o
 # `V_Ventas_Cabecera` casi nunca llegan a `modulos_disponibles()`: lo que de
-# verdad ve este modulo es `tb_cabmov`/`tb_detmov`. Si las firmas solo buscan
-# palabras como "factura" o "venta", el modulo Ventas se declara inexistente
-# aunque la empresa SI facture — eso fue exactamente lo que le paso a MONT.
-# Por eso cada modulo tiene una lista adicional de nombres FISICOS exactos
-# (comparacion exacta, no substring, para no confundir tb_cabmov con
-# tb_cabmov1: son ventas y compras respectivamente).
+# verdad ve este módulo es `tb_cabmov`/`tb_detmov`. Si las firmas solo buscaran
+# palabras como "factura" o "venta", el módulo Ventas se declararía inexistente
+# aunque la empresa SÍ facture (como en MONT). Por eso cada módulo tiene una
+# lista adicional de nombres FÍSICOS exactos (comparación exacta, no
+# subcadena, para no confundir tb_cabmov con tb_cabmov1: son ventas y compras
+# respectivamente).
 _FIRMAS_MODULO: list[tuple[str, str, tuple[str, ...], tuple[str, ...]]] = [
     (
         "alumnos",
@@ -118,12 +88,15 @@ _FIRMAS_MODULO: list[tuple[str, str, tuple[str, ...], tuple[str, ...]]] = [
 
 def modulos_disponibles(schema_tables: dict | None) -> list[str]:
     """
-    Devuelve la descripcion de los modulos con datos REALES en la base activa.
+    Devuelve la descripción de los módulos con datos REALES en la base activa.
 
-    Se apoya en `row_count` SOLO para tablas fisicas: una tabla presente pero
-    vacia no cuenta como modulo disponible, porque prometerla al usuario solo
-    genera consultas que devuelven cero filas. En las vistas `row_count` no es
-    informativo (siempre llega en 0) y por eso nunca se usa para descartarlas.
+    No es una lista fija: MONT (institución académica) expone Alumnos y Ventas
+    de servicios, mientras que otra empresa expone Compras, Nómina o
+    Inventario. Se apoya en `row_count` SOLO para tablas físicas: una tabla
+    presente pero vacía no cuenta como módulo disponible, porque prometerla al
+    usuario solo genera consultas que devuelven cero filas. En las vistas
+    `row_count` no es informativo (siempre llega en 0) y por eso nunca se usa
+    para descartarlas.
     """
     if not schema_tables:
         return []
@@ -140,21 +113,19 @@ def modulos_disponibles(schema_tables: dict | None) -> list[str]:
             coincide_exacta = n_sin_guion in {fe.replace("_", "") for fe in firmas_exactas}
             if not (coincide_substr or coincide_exacta):
                 continue
-            # Si el descubrimiento marco la TABLA FISICA como vacia, no la
-            # ofrecemos: prometerla solo genera consultas que devuelven cero
+            # Si el descubrimiento marcó la TABLA FÍSICA como vacía, no se
+            # ofrece: prometerla solo genera consultas que devuelven cero
             # filas.
             #
-            # El descarte se limita a tablas a proposito. `row_count` viene de
-            # sys.partitions, que solo cubre tablas fisicas: en
+            # El descarte se limita a tablas a propósito. `row_count` viene de
+            # sys.partitions, que solo cubre tablas físicas: en
             # `db_connector._get_schema_from_information_schema` TODA vista se
-            # registra con `row_count: 0` por convencion, no porque este vacia.
-            # Bug real (28/08/2026): como el esquema de CHAT son justamente
-            # vistas (VIS_ALUMNO, cabecera_factura, rol_pago...), este filtro
-            # las descartaba todas, `modulos_disponibles()` devolvia solo lo
-            # que quedara en tablas fisicas, y `modulo_no_disponible()`
-            # respondia "esta base no maneja alumnos/ventas/compras/nomina" en
-            # TODAS las empresas, bloqueando la consulta antes de llegar al
-            # motor SQL.
+            # registra con `row_count: 0` por convención, no porque esté vacía.
+            # Como el esquema de CHAT son justamente vistas (VIS_ALUMNO,
+            # cabecera_factura, rol_pago...), aplicar el filtro a vistas las
+            # descartaría todas y `modulo_no_disponible()` respondería "esta
+            # base no maneja alumnos/ventas/compras/nómina" en TODAS las
+            # empresas, bloqueando la consulta antes de llegar al motor SQL.
             info_dict = info if isinstance(info, dict) else {}
             tipo = str(info_dict.get("type", "")).strip().upper()
             es_tabla_fisica = tipo in ("TABLA", "TABLE", "BASE TABLE")
@@ -167,7 +138,7 @@ def modulos_disponibles(schema_tables: dict | None) -> list[str]:
 
 
 def _texto_modulos(modulos: list[str]) -> str:
-    """Convierte la lista de modulos en vinetas listas para mostrar."""
+    """Convierte la lista de módulos en viñetas listas para mostrar."""
     if not modulos:
         return (
             "Todavía estoy sincronizando el esquema de esta base, así que aún no "
@@ -176,8 +147,14 @@ def _texto_modulos(modulos: list[str]) -> str:
     return "\n".join(f"• {m}" for m in modulos)
 
 
-# ─── 2. Deteccion conservadora de preguntas fuera de alcance ────────────────
+# ─── 2. Detección conservadora de preguntas fuera de alcance ────────────────
 
+# Una herramienta de BI conectada a la base de una empresa no debe responder
+# noticias ni temas generales: el usuario pierde la referencia de qué puede
+# pedirle al sistema y la empresa paga tokens por respuestas ajenas a sus
+# datos. Las preguntas meta ("qué te pregunté antes", "qué empresa está
+# activa", "qué puedo preguntarte") sí pasan a la IA: son útiles.
+#
 # Anclas de DOMINIO: sustantivos que solo tienen sentido dentro del negocio o
 # del propio sistema. Si aparece alguna, la pregunta NO se bloquea aunque
 # contenga una palabra "externa". Esto es lo que salva casos como
@@ -197,9 +174,9 @@ _ANCLAS_DOMINIO = (
     r"\bdashboard\b", r"\bkpi\b",
 )
 
-# Anclas DEBILES: verbos y cuantificadores que aparecen en consultas de negocio
-# pero tambien en cualquier pregunta cotidiana. "a cuanto esta el bitcoin"
-# lleva "cuanto" y no por eso es una consulta de negocio, asi que estas NO
+# Anclas DÉBILES: verbos y cuantificadores que aparecen en consultas de negocio
+# pero también en cualquier pregunta cotidiana. "a cuánto está el bitcoin"
+# lleva "cuánto" y no por eso es una consulta de negocio, así que estas NO
 # protegen frente a un tema externo; solo se usan para no ser agresivos con
 # preguntas neutras.
 _ANCLAS_DEBILES = (
@@ -208,11 +185,11 @@ _ANCLAS_DEBILES = (
     r"\bingresos?\b", r"\bgastos?\b", r"\bproductos?\b", r"\bpagos?\b",
 )
 
-# Marcadores externos: solo temas inequivocamente ajenos al negocio.
+# Marcadores externos: solo temas inequívocamente ajenos al negocio.
 # Deliberadamente NO se incluyen palabras ambiguas ("crisis", "mercado",
-# "tendencia", "crecimiento"), porque son vocabulario legitimo de BI.
+# "tendencia", "crecimiento"), porque son vocabulario legítimo de BI.
 _MARCADORES_EXTERNOS = (
-    # Geopolitica y actualidad
+    # Geopolítica y actualidad
     r"\bguerra\b", r"\bconflicto (?:en|entre)\b", r"\bnoticias?\b",
     r"\bultimas noticias\b", r"\bque pasa en el mundo\b", r"\bpolitica\b",
     r"\belecciones\b", r"\bpresidente\b", r"\bpresidenta\b",
@@ -223,7 +200,7 @@ _MARCADORES_EXTERNOS = (
     # Clima
     r"\bel clima\b", r"\bpronostico del tiempo\b", r"\bva a llover\b",
     r"\btemperatura de (?:hoy|mañana)\b",
-    # Deportes y espectaculo
+    # Deportes y espectáculo
     r"\bfutbol\b", r"\bmundial\b", r"\bpartido de\b", r"\bliga\b",
     r"\bpelicula\b", r"\bserie de netflix\b", r"\bcancion\b",
     r"\bcantante\b", r"\bartista\b", r"\bhoroscopo\b",
@@ -243,17 +220,18 @@ _RE_EXTERNOS = re.compile("|".join(_MARCADORES_EXTERNOS))
 
 def es_fuera_de_alcance(pregunta: str) -> bool:
     """
-    True solo cuando la pregunta es CLARAMENTE ajena a los datos de la empresa.
+    Indica si la pregunta es CLARAMENTE ajena a los datos de la empresa.
 
-    Regla de decision, en este orden:
-      1. Sin texto util -> no se bloquea (lo maneja el flujo de saludo).
+    Es conservadora: un falso positivo (bloquear "margen de ventas") es mucho
+    peor que un falso negativo. Regla de decisión, en este orden:
+      1. Sin texto útil -> no se bloquea (lo maneja el flujo de saludo).
       2. Si hay un ancla de DOMINIO -> NO se bloquea. El vocabulario del
-         negocio manda: "guerra de precios en ventas" es legitima.
+         negocio manda: "guerra de precios en ventas" es legítima.
       3. Si hay un marcador externo -> se bloquea.
       4. En cualquier otro caso -> no se bloquea y decide la IA.
 
     Los cuantificadores (`_ANCLAS_DEBILES`) NO participan en el paso 2 a
-    proposito: "a cuanto esta el bitcoin" contiene "cuanto" y aun asi debe
+    propósito: "a cuánto está el bitcoin" contiene "cuánto" y aun así debe
     bloquearse.
     """
     texto = _normalizar(pregunta)
@@ -264,7 +242,7 @@ def es_fuera_de_alcance(pregunta: str) -> bool:
     return bool(_RE_EXTERNOS.search(texto))
 
 
-# ─── 3. Redaccion del rechazo ───────────────────────────────────────────────
+# ─── 3. Redacción del rechazo ───────────────────────────────────────────────
 
 # Varias aperturas para que el rechazo no suene a plantilla fija repetida.
 _APERTURAS = (
@@ -282,11 +260,13 @@ def respuesta_fuera_de_alcance(
     semilla: str | None = None,
 ) -> str:
     """
-    Redacta el mensaje de rechazo con los modulos REALES de la base activa.
+    Redacta el mensaje de rechazo con los módulos REALES de la base activa.
 
+    Varía la frase de apertura para no sonar a plantilla, pero siempre cierra
+    con los módulos disponibles, que es lo que de verdad orienta al usuario.
     `semilla` (normalmente la propia pregunta) hace que la apertura elegida sea
-    estable para una misma pregunta: reformular la misma consulta no produce un
-    texto distinto cada vez, pero preguntas distintas si varian.
+    estable para una misma pregunta: repetir la misma consulta no produce un
+    texto distinto cada vez, pero preguntas distintas sí varían.
     """
     modulos = modulos_disponibles(schema_tables)
     nombre = (empresa or "").strip().upper()
@@ -304,11 +284,11 @@ def respuesta_fuera_de_alcance(
     )
 
 
-# ─── 4. Modulo pedido que esta base no tiene ────────────────────────────────
+# ─── 4. Módulo pedido que esta base no tiene ────────────────────────────────
 
-# Palabras que identifican de forma inequivoca el modulo al que apunta la
-# pregunta. Se usan SOLO para avisar cuando ese modulo no existe en la base
-# activa; nunca para bloquear una consulta de un modulo que si existe.
+# Palabras que identifican de forma inequívoca el módulo al que apunta la
+# pregunta. Se usan SOLO para avisar cuando ese módulo no existe en la base
+# activa; nunca para bloquear una consulta de un módulo que sí existe.
 _PISTAS_MODULO: dict[str, tuple[str, ...]] = {
     "alumnos": (r"\balumnos?\b", r"\bestudiantes?\b", r"\bmatricula\b"),
     "ventas": (r"\bventas?\b", r"\bfacturacion\b", r"\bfacturas? de venta\b"),
@@ -324,19 +304,19 @@ _ETIQUETA_MODULO = {clave: etiqueta for clave, etiqueta, _, _2 in _FIRMAS_MODULO
 
 def modulo_no_disponible(pregunta: str, schema_tables: dict | None) -> str | None:
     """
-    Devuelve el nombre del modulo pedido cuando esa base NO lo tiene.
+    Devuelve el nombre del módulo pedido cuando esa base NO lo tiene.
 
-    Caso real: en MONT (institucion academica) preguntar "total de compras por
-    proveedor" respondia "No se encontraron registros de compras", como si
-    fuera un problema de fechas o de filtros. No lo era: MONT sencillamente no
-    maneja compras. Decirlo de frente ahorra al usuario reformular tres veces
-    una pregunta que nunca va a tener respuesta.
+    Ejemplo: en MONT (institución académica), "total de compras por proveedor"
+    acabaría en "No se encontraron registros de compras", como si fuera un
+    problema de fechas o de filtros, cuando MONT sencillamente no maneja
+    compras. Decirlo de frente ahorra al usuario reformular varias veces una
+    pregunta que nunca va a tener respuesta.
 
     Es deliberadamente prudente y devuelve None (sin aviso) si:
       · no hay esquema cargado, o
-      · no se detecto NINGUN modulo -> la deteccion no es fiable en esa base y
-        no vamos a contradecir al motor, o
-      · la pregunta apunta a varios modulos y al menos uno si existe
+      · no se detectó NINGÚN módulo -> la detección no es fiable en esa base y
+        no se contradice al motor, o
+      · la pregunta apunta a varios módulos y al menos uno sí existe
         (ej. "margen entre ventas y compras" en una base que tiene ventas).
     """
     if not schema_tables:
@@ -358,7 +338,7 @@ def modulo_no_disponible(pregunta: str, schema_tables: dict | None) -> str | Non
     }
     if not pedidos:
         return None
-    # Si algo de lo pedido si existe, que siga el flujo normal.
+    # Si algo de lo pedido sí existe, que siga el flujo normal.
     if pedidos & claves_disponibles:
         return None
 
@@ -370,7 +350,7 @@ def respuesta_modulo_no_disponible(
     empresa: str | None,
     schema_tables: dict | None,
 ) -> str:
-    """Explica que ese modulo no existe en la base activa y ofrece los que sí."""
+    """Explica que ese módulo no existe en la base activa y ofrece los que sí."""
     nombre = (empresa or "").strip().upper()
     etiqueta = f"**{nombre}**" if nombre and nombre != "CHAT" else "la empresa activa"
     legible = _ETIQUETA_MODULO.get(modulo, modulo).split(" (")[0]
@@ -386,11 +366,11 @@ def respuesta_modulo_no_disponible(
 
 def bloque_alcance_para_prompt(empresa: str | None, schema_tables: dict | None) -> str:
     """
-    Fragmento que se inyecta en el SYSTEM_PROMPT.
+    Construye el fragmento de alcance que se inyecta en el SYSTEM_PROMPT.
 
-    Sirve como segunda linea de defensa: aunque el filtro deterministico no
-    reconozca un tema externo nuevo, el modelo ya sabe que su alcance esta
-    acotado y con que modulos concretos debe redirigir al usuario.
+    Sirve como segunda línea de defensa: aunque el filtro determinista no
+    reconozca un tema externo nuevo, el modelo ya sabe que su alcance está
+    acotado y con qué módulos concretos debe redirigir al usuario.
     """
     modulos = modulos_disponibles(schema_tables)
     nombre = (empresa or "").strip().upper() or "la empresa activa"

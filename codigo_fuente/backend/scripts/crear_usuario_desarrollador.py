@@ -1,5 +1,5 @@
 """
-crear_usuario_desarrollador.py — Alta de la cuenta protegida del desarrollador.
+Alta de la cuenta protegida del desarrollador.
 
 QUÉ HACE
 --------
@@ -30,6 +30,9 @@ USO
 
 Es idempotente: ejecutarlo dos veces no duplica la cuenta ni pierde el
 historial de accesos.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 from __future__ import annotations
@@ -70,6 +73,11 @@ def _guardar(config: dict) -> None:
 
 
 def main() -> int:
+    """Crea o actualiza la cuenta protegida y le registra la seña del modo desarrollador.
+
+    Returns:
+        0 si termina; 1 si el usuario está vacío o la contraseña es corta.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--usuario", default=USUARIO_POR_DEFECTO)
     parser.add_argument("--password", default=os.getenv("TRIPLEA_BOOTSTRAP_ADMIN_PASSWORD", ""),

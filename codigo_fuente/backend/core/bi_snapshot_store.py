@@ -1,20 +1,14 @@
 """
-Archivo: bi_snapshot_store.py
-Rol: almacén persistente de los snapshots del Pulso BI por empresa (Capa 2).
-Recibe desde: main.py (endpoint /api/bi/pulse y job de refresco).
-Se conecta con: la base CHAT del servidor (tabla propia [CHAT].[dbo].[tb_bi_snapshot])
-y con config.py (cadencias). NUNCA escribe en las bases ERP (solo lectura allí).
+Almacén persistente de snapshots del Pulso BI.
 
-Responsabilidades:
-  - Guardar/actualizar el snapshot JSON de una empresa (upsert vía SP).
-  - Marcar un fallo de captura para no reintentar en bucle empresas caídas.
-  - Leer el snapshot más reciente de una empresa junto con su marca de captura.
-  - Serializar los cálculos de pulso (las vistas de CHAT son un namespace
-    compartido: dos cálculos concurrentes se pisarían entre sí).
+Guarda en [CHAT].[dbo].[tb_bi_snapshot] el último pulso BI calculado por empresa
+para que main.py lo sirva sin recalcular (endpoint /api/bi/pulse y job de
+refresco). Solo escribe en su propia tabla de CHAT, nunca en las bases ERP.
+Si la tabla o los SP no están desplegados, las funciones responden «no hay
+snapshot» y el endpoint calcula en vivo sin romper nada.
 
-Degradación: si la tabla/SP aún no existen (script SQL no ejecutado), todas
-las funciones devuelven "no hay snapshot" y el endpoint calcula en vivo, sin
-romper nada.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import datetime as _dt
 import json
@@ -35,7 +29,8 @@ except Exception:  # pragma: no cover - import independiente durante tests
 logger = logging.getLogger(__name__)
 
 # Un único cálculo de pulso a la vez por proceso. Protege el namespace
-# compartido de vistas de CHAT que SP_MODIFICA_VISTA_IA re-apunta por empresa.
+# compartido de vistas de CHAT que SP_MODIFICA_VISTA_IA reapunta por empresa:
+# dos cálculos concurrentes se pisarían entre sí.
 PULSE_COMPUTE_LOCK = threading.Lock()
 
 _TABLA = "[CHAT].[dbo].[tb_bi_snapshot]"
@@ -56,8 +51,10 @@ def _safe_empresa(empresa: str) -> str:
 
 def guardar_snapshot(connector, empresa: str, payload: dict, duracion_ms: int = None) -> bool:
     """
-    Upsert del snapshot de una empresa en la tabla de CHAT vía SP.
-    Devuelve True si se persistió; False si falló (tabla/SP ausente, red, etc).
+    Guarda o actualiza el snapshot de una empresa mediante el SP de upsert.
+
+    Returns:
+        True si se persistió; False si falló (tabla o SP ausente, red, etc.).
     """
     nombre = _safe_empresa(empresa)
     if not nombre or not isinstance(payload, dict):
@@ -67,7 +64,8 @@ def guardar_snapshot(connector, empresa: str, payload: dict, duracion_ms: int = 
     try:
         cuerpo = json.dumps(payload, ensure_ascii=False, default=str)
         # Se guarda SIEMPRE en UTC (naive) para que la edad calculada con
-        # datetime.utcnow() sea correcta aunque el servidor SQL tenga otra TZ.
+        # datetime.utcnow() sea correcta aunque el servidor SQL tenga otra
+        # zona horaria.
         capturado = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
         with connector.engine.connect() as conn:
             conn.execute(
@@ -87,7 +85,12 @@ def guardar_snapshot(connector, empresa: str, payload: dict, duracion_ms: int = 
 
 
 def marcar_snapshot_fallido(connector, empresa: str) -> None:
-    """Incrementa intentos_fallidos de una empresa (best-effort)."""
+    """
+    Incrementa el contador de intentos fallidos de una empresa.
+
+    Nunca lanza errores. El contador evita que el refresco reintente en bucle
+    una empresa caída (ver necesita_refresco).
+    """
     nombre = _safe_empresa(empresa)
     if not nombre or connector is None or getattr(connector, "engine", None) is None:
         return
@@ -135,7 +138,7 @@ def leer_snapshot(connector, empresa: str):
 
 
 def edad_snapshot_segundos(capturado_en) -> float | None:
-    """Antigüedad del snapshot en segundos desde su captura. None si no hay dato."""
+    """Calcula la antigüedad del snapshot en segundos; devuelve None si no hay dato."""
     if capturado_en is None:
         return None
     try:
@@ -147,12 +150,13 @@ def edad_snapshot_segundos(capturado_en) -> float | None:
             capturado_en = capturado_en[:23]
         import datetime as _dt
 
-        # pyodbc suele entregar datetime ya; str es solo un salvavidas.
+        # pyodbc suele entregar un datetime; la rama de texto es solo un respaldo.
         if isinstance(capturado_en, str):
             capturado_en = _dt.datetime.fromisoformat(capturado_en)
         else:
-            # Si llegó un datetime "naive", asumimos hora del servidor (UTC-ish igual
-            # a time.time, que es epoch UTC) — consistente con cómo lo escribimos.
+            # Un datetime naive se interpreta como UTC, que es como lo guarda
+            # guardar_snapshot. Si trae zona horaria, se descarta (sin convertir)
+            # para poder restarlo contra utcnow().
             if capturado_en.tzinfo is not None:
                 capturado_en = capturado_en.replace(tzinfo=None)
         ahora = _dt.datetime.utcnow()
@@ -184,7 +188,12 @@ def listar_snapshots(connector):
 
 
 def necesita_refresco(connector, empresa: str, intervalo_seg: int = None) -> bool:
-    """True si la empresa no tiene snapshot o tiene más de `intervalo_seg`."""
+    """
+    Indica si el snapshot de la empresa falta o supera `intervalo_seg` de antigüedad.
+
+    Una empresa sin snapshot y con 5 o más fallos seguidos se omite, para no
+    insistir sobre una base caída.
+    """
     intervalo_seg = intervalo_seg if intervalo_seg is not None else BI_SNAPSHOT_REFRESH_SECONDS
     _, capturado, fallos = leer_snapshot(connector, empresa)
     if capturado is None:

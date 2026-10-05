@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Construye Matrices_Metodologicas_Avance1.xlsx con las 3 matrices de
-investigación:
-  1. Matriz de extracción de datos bibliográficos (25 referencias reales)
-  2. Matriz PRISMA (identificación -> cribado -> elegibilidad -> inclusión)
-  3. Matriz de consistencia / congruencia (coherencia interna del trabajo)
+Generador de las matrices metodológicas en Excel.
+
+Construye documentacion/matrices/Matrices_Metodologicas_Avance1.xlsx con cuatro hojas:
+  1. Extracción de datos bibliográficos (33 fuentes citadas en el documento).
+  2. Selección de estudios tipo PRISMA (identificación -> cribado -> elegibilidad -> inclusión).
+  3. Consistencia / congruencia (coherencia interna del trabajo).
+  4. Coherencia entre la literatura citada y el código del prototipo.
+Las cifras de resultados se leen de los artefactos del backend, no se escriben a mano.
+Uso: python _build_matrices.py
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import glob
 import json
@@ -16,8 +23,10 @@ from openpyxl.utils import get_column_letter
 
 OUT = str(Path(__file__).resolve().parents[1] / "matrices" / "Matrices_Metodologicas_Avance1.xlsx")
 
-# Avance 2: las cifras de resultados se leen de los artefactos del sistema
-# (misma fuente que _build_avance2.py), nunca se escriben a mano.
+# Las cifras de resultados se leen de los artefactos del sistema (misma
+# fuente que _build_avance2.py), nunca se escriben a mano. De las corridas
+# NL2SQL se toma la más reciente que esté completa (40 preguntas y 8
+# adversariales).
 _BACK = Path(__file__).resolve().parents[2] / "codigo_fuente" / "backend"
 _MU = json.loads((_BACK / "ml/models/UNEMI_PRUEBAS/metrics.json").read_text(encoding="utf-8"))
 _MO = json.loads((_BACK / "ml/models/OULAD_UK/metrics.json").read_text(encoding="utf-8"))
@@ -28,6 +37,7 @@ _NL = [r for r in _NL if r["preguntas"] >= 40 and r["adversariales"] >= 8][-1]
 
 
 def _n(x, d=3):
+    """Formatea un número con `d` decimales y coma decimal."""
     return f"{x:.{d}f}".replace(".", ",")
 
 HEADER_FILL = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
@@ -43,6 +53,10 @@ ROW_FILL_B = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="so
 
 
 def style_header_row(ws, row, ncols):
+    """Aplica el estilo de encabezado a las `ncols` primeras celdas de la fila `row`.
+
+    Relleno azul, texto blanco en negrita, centrado y borde fino.
+    """
     for c in range(1, ncols + 1):
         cell = ws.cell(row=row, column=c)
         cell.fill = HEADER_FILL
@@ -52,6 +66,12 @@ def style_header_row(ws, row, ncols):
 
 
 def write_table(ws, start_row, headers, rows, col_widths):
+    """Escribe una tabla en la hoja a partir de la fila `start_row`.
+
+    Da estilo al encabezado, alterna el color de las filas, fija el ancho de
+    cada columna e inmoviliza los paneles bajo el encabezado para que siga
+    visible al desplazarse.
+    """
     style_header_row(ws, start_row, len(headers))
     for c, h in enumerate(headers, start=1):
         ws.cell(row=start_row, column=c, value=h)
@@ -463,7 +483,7 @@ for r in range(5, 5 + len(DATA_3)):
     ws3.row_dimensions[r].height = 150
 
 # ══════════════════════════════════════════════════════════════════════════
-# HOJA 4 — Coherencia literatura ↔ código (Avance 2)
+# HOJA 4 — Coherencia literatura ↔ código
 # ══════════════════════════════════════════════════════════════════════════
 ws4 = wb.create_sheet("4. Coherencia literatura-código")
 ws4["A1"] = "Matriz de coherencia entre la literatura citada y el código del prototipo"

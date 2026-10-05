@@ -1,5 +1,12 @@
 """
-api/routes_quantum_core.py - Endpoints de observabilidad y feedback de Quantum Core.
+Rutas de contexto y retroalimentación del motor Quantum Core.
+
+Devuelven el resumen de capacidades de la base activa (dominios, vistas,
+entidades y módulos, filtrados por los módulos del rol) y registran la
+valoración que el usuario da a cada respuesta de la IA.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -16,12 +23,18 @@ router = APIRouter()
 
 
 class FeedbackRequest(BaseModel):
+    """Valoración de una respuesta: id de la consulta, veredicto y nota opcional."""
     query_id: str
     verdict: str
     note: str = ""
 
 
 def _build_context_overview(session, target_db: str, allowed_modules: list = None) -> dict:
+    """Arma el resumen de contexto de `target_db`: KPIs, áreas, módulos y preguntas sugeridas.
+
+    Parte de la instantánea de capacidades de MirrorManager y quita los módulos
+    y áreas que el rol no tiene habilitados.
+    """
     mirror = MirrorManager(session.connector)
     schema = resolve_schema_for_db(session, target_db)
     snapshot = mirror.get_capability_snapshot(target_db, schema)
@@ -93,6 +106,10 @@ async def quantum_core_overview(
     force_refresh: bool = Query(False),
     current_user: dict = Depends(get_token_data),
 ):
+    """Devuelve el resumen de Quantum Core de la sesión del usuario autenticado.
+
+    Sin `force_refresh` sirve la versión en caché o una versión ligera.
+    """
     user_id = current_user.get("sub")
     session = SESSION_STORE.get_session(user_id)
     return build_quantum_core_overview(session=session, force_refresh=force_refresh)
@@ -104,6 +121,11 @@ async def context_overview(
     force_refresh: bool = Query(False),
     current_user: dict = Depends(get_token_data),
 ):
+    """Devuelve dominios, KPIs, áreas y preguntas sugeridas de la base activa.
+
+    Requiere usuario autenticado con una conexión activa; responde 400 si no
+    hay conexión o base activa. El resultado se filtra por los módulos del rol.
+    """
     _ = force_refresh
     user_id = current_user.get("sub")
     session = SESSION_STORE.get_session(user_id)
@@ -115,7 +137,7 @@ async def context_overview(
         raise HTTPException(status_code=400, detail="No hay base activa para construir el contexto.")
 
     # El JWT guarda los módulos del rol en "modules" (ver login). Se leen ambas
-    # claves por compatibilidad con tokens viejos.
+    # claves por compatibilidad con tokens emitidos con el formato anterior.
     allowed_modules = current_user.get("modules", current_user.get("allowed_modules", [])) or []
     return _build_context_overview(session, effective_db, allowed_modules=allowed_modules)
 
@@ -125,6 +147,11 @@ async def quantum_core_feedback(
     req: FeedbackRequest,
     current_user: dict = Depends(get_token_data),
 ):
+    """Registra la valoración de una respuesta de la IA. Cualquier usuario autenticado.
+
+    Raises:
+        HTTPException: 400 si el veredicto no es approved, rejected ni needs_review.
+    """
     verdict = (req.verdict or "").strip().lower()
     if verdict not in {"approved", "rejected", "needs_review"}:
         raise HTTPException(status_code=400, detail="Veredicto invalido.")

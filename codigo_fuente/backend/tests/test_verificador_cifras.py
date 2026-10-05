@@ -1,7 +1,14 @@
 """
-Pruebas de core/verificador_cifras.py: la explicación que ve el usuario no
-puede citar cifras que el resultado no respalda (casos reales detectados por
-eval/evaluar_nl2sql.py el 25/09/2026).
+Pruebas del verificador de cifras (core/verificador_cifras.py).
+
+La explicación que ve el usuario no puede citar cifras que el resultado de la
+consulta no respalda ni dejar marcadores sin rellenar. Los casos provienen de
+la evaluación NL2SQL (eval/evaluar_nl2sql.py) y cubren cifras escritas por el
+modelo antes de ejecutar, formatos numéricos distintos y el resumen
+determinista, que solo cita el resultado.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os

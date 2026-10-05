@@ -1,19 +1,12 @@
 /**
- * ConnectionCard.jsx — Tarjeta visual de conexión al servidor SQL.
- *
- * Responsabilidades (únicas):
- *   1. Formulario de conexión: host, auth, credenciales, driver ODBC.
- *   2. Botones de acción: Conectar, Cancelar, Explorar, Catálogo.
- *   3. Estado de UI local: show/hide password, dropdown de servidores
- *      recientes, carga de drivers ODBC desde el backend.
- *   4. Panel de bases descubiertas con CompanySelector.
- *
- * Todo el estado de negocio (isConnecting, connectError, companies,
- * switchingDatabase, etc.) viene de DataChannels como props.
- * Este componente NO dispara peticiones de negocio por cuenta propia.
- *
- * Extraído de DataChannels.jsx (27/07/2026) para reducir ese archivo
- * de ~870 líneas a <220 líneas de orquestación pura.
+ * @file Tarjeta de conexión al servidor SQL Server de «Orígenes de Datos». Contiene el
+ * formulario (servidor, autenticación, credenciales y driver ODBC), los botones Conectar,
+ * Cancelar, Explorar y Catálogo, y el panel de bases descubiertas con CompanySelector.
+ * Solo guarda estado visual propio (contraseña visible, desplegable de servidores,
+ * drivers leídos de /api/drivers); el estado de negocio llega por props desde
+ * DataChannels y el componente no dispara peticiones de negocio por su cuenta.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -41,6 +34,29 @@ import { CompanySelector } from '../CompanySelector';
 import { apiGet } from '../../services/api';
 import { normalizeSqlServerHost } from '../../utils/sqlServer';
 
+/**
+ * Muestra el formulario de conexión, sus acciones y la lista de bases descubiertas.
+ *
+ * @param {object} props
+ * @param {object} [props.connInfo={}] - Datos de conexión actuales.
+ * @param {string[]} [props.recentServers=[]] - Servidores usados antes en este navegador.
+ * @param {object[]} [props.knownServers=[]] - Servidores autorizados del despliegue.
+ * @param {Function} props.onSelectKnownServer - Rellena el formulario con un servidor autorizado.
+ * @param {boolean} [props.isConnecting=false] - Si hay una conexión en curso.
+ * @param {string} [props.connectError=''] - Mensaje de error de la última conexión.
+ * @param {boolean} [props.connectSuccess=false] - Si la última conexión tuvo éxito.
+ * @param {string[]} [props.discoveredDatabases=[]] - Bases encontradas en el servidor.
+ * @param {object[]} [props.companyRows=[]] - Empresas para el selector (código y nombre comercial).
+ * @param {string} [props.switchingDatabase=''] - Base a la que se está cambiando.
+ * @param {Function} props.onFieldChange - Actualiza un campo; recibe `(campo, valor)`.
+ * @param {Function} props.onAuthTypeChange - Cambia el tipo de autenticación.
+ * @param {Function} props.onConnect - Inicia la conexión.
+ * @param {Function} props.onCancel - Cancela la conexión en curso.
+ * @param {Function} props.onExplore - Vuelve a explorar las bases.
+ * @param {Function} props.onLoadCatalog - Recarga el catálogo de empresas.
+ * @param {Function} props.onSelectDatabase - Conecta con la base elegida.
+ * @returns {JSX.Element} Tarjeta de conexión.
+ */
 export function ConnectionCard({
     connInfo = {},
     recentServers = [],
@@ -71,7 +87,7 @@ export function ConnectionCard({
     const serverInputRef = useRef(null);
     const recentDropdownRef = useRef(null);
 
-    // Cargar drivers ODBC disponibles desde el backend al montar
+    // Carga los drivers ODBC disponibles desde el backend al montar.
     useEffect(() => {
         apiGet('/drivers').then(res => {
             if (res.data?.drivers?.length > 0) {
@@ -81,10 +97,10 @@ export function ConnectionCard({
                     onFieldChange?.('driver', res.data.recommended || res.data.drivers[0]);
                 }
             }
-        }).catch(() => { /* silent */ });
+        }).catch(() => { /* silencioso */ });
     }, []);
 
-    // Cerrar dropdown de recientes si se hace click afuera
+    // Cierra el desplegable de recientes al hacer clic fuera.
     useEffect(() => {
         const handler = (e) => {
             if (recentDropdownRef.current && !recentDropdownRef.current.contains(e.target)) {
@@ -95,7 +111,7 @@ export function ConnectionCard({
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    // ── Derived values ────────────────────────────────────────────────
+    // ── Valores derivados ─────────────────────────────────────────────
     const isConnected = Boolean(connInfo.host);
     const authMode = String(connInfo.auth_type || '').trim();
     const showSqlCredentialFields = authMode !== 'Windows Authentication';
@@ -103,10 +119,10 @@ export function ConnectionCard({
 
     return (
         <div className="relative shadow-2xl group">
-            {/* Fondo Bento Independiente (Sin recortes por overflow) */}
+            {/* Fondo independiente, para que el overflow no lo recorte */}
             <div className="absolute inset-0 rounded-[32px] border border-cyan-500/20 bg-gradient-to-br from-[#0a1628] via-[#070f1e] to-[#050b18] -z-10 shadow-2xl" />
 
-            {/* ── Card Header ─────────────────────────────────────────── */}
+            {/* ── Encabezado ─────────────────────────────────────────── */}
             <div className="flex items-center gap-4 px-6 py-4 border-b border-white/[0.06]">
                 <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20">
                     <Server size={22} className="text-cyan-400" />
@@ -135,10 +151,10 @@ export function ConnectionCard({
                 )}
             </div>
 
-            {/* ── Connection Form ──────────────────────────────────────── */}
+            {/* ── Formulario de conexión ──────────────────────────────────────── */}
             <div className="px-6 py-5 space-y-3">
 
-                {/* Row 1: Tipo de servidor */}
+                {/* Fila 1: tipo de servidor */}
                 <div>
                     <label className="flex items-center gap-2 mb-2 text-[12px] font-black uppercase tracking-[0.22em] text-white/35">
                         <Database size={11} />
@@ -149,7 +165,7 @@ export function ConnectionCard({
                     </select>
                 </div>
 
-                {/* Row 2: Nombre del servidor */}
+                {/* Fila 2: nombre del servidor */}
                 <div>
                     <label className="flex items-center gap-2 mb-2 text-[12px] font-black uppercase tracking-[0.22em] text-white/35">
                         <Server size={11} />
@@ -239,7 +255,7 @@ export function ConnectionCard({
                     </div>
                 </div>
 
-                {/* Row 3: Autenticación */}
+                {/* Fila 3: autenticación */}
                 <div>
                     <label className="flex items-center gap-2 mb-2 text-[12px] font-black uppercase tracking-[0.22em] text-white/35">
                         <Shield size={11} />
@@ -267,7 +283,7 @@ export function ConnectionCard({
                     </div>
                 </div>
 
-                {/* Row 4: Credenciales SQL (condicional) */}
+                {/* Fila 4: credenciales SQL (condicional) */}
                 <AnimatePresence>
                     {showSqlCredentialFields && (
                         <motion.div
@@ -318,7 +334,7 @@ export function ConnectionCard({
                     )}
                 </AnimatePresence>
 
-                {/* Row 5: Driver ODBC (colapsado por defecto) */}
+                {/* Fila 5: driver ODBC (colapsado por defecto) */}
                 <details className="group">
                     <summary className="flex items-center gap-2 cursor-pointer text-[12px] font-black uppercase tracking-[0.22em] text-white/30 hover:text-white/50 transition-colors select-none list-none">
                         <ChevronDown size={11} className="group-open:rotate-180 transition-transform" />
@@ -365,7 +381,7 @@ export function ConnectionCard({
                     </div>
                 </details>
 
-                {/* Error / Success feedback */}
+                {/* Mensaje de error o de éxito */}
                 <AnimatePresence>
                     {connectError && (
                         <motion.div
@@ -391,10 +407,10 @@ export function ConnectionCard({
                     )}
                 </AnimatePresence>
 
-                {/* ── Action buttons ──────────────────────────────────── */}
+                {/* ── Botones de acción ──────────────────────────────────── */}
                 <div className="flex gap-3 pt-1">
 
-                    {/* SPLIT BUTTON: Conectar ║ Cancelar */}
+                    {/* Botón dividido: Conectar ║ Cancelar */}
                     <div
                         className="flex-1 flex h-12 rounded-xl overflow-hidden shadow-lg"
                         style={{
@@ -441,7 +457,7 @@ export function ConnectionCard({
                         </button>
                     </div>
 
-                    {/* SECONDARY: Explorar Bases */}
+                    {/* Secundario: Explorar Bases */}
                     <div className="relative group/exp">
                         <button
                             type="button"
@@ -460,7 +476,7 @@ export function ConnectionCard({
                         </div>
                     </div>
 
-                    {/* TERTIARY: Catálogo de Empresas */}
+                    {/* Terciario: Catálogo de Empresas */}
                     <div className="relative group/cat">
                         <button
                             type="button"
@@ -480,7 +496,7 @@ export function ConnectionCard({
                     </div>
                 </div>
 
-                {/* Espaciador físico compacto */}
+                {/* Espaciador compacto */}
                 <div className="h-6" />
 
                 {/* ── Panel de bases descubiertas ──────────────────────── */}
@@ -492,9 +508,9 @@ export function ConnectionCard({
                             exit={{ opacity: 0, height: 0 }}
                             className="border-t border-white/[0.04] pt-8 mb-32"
                         >
-                            {/* Selector buscable: reemplaza la cuadrícula de 22 botones.
-                                Con esa cantidad de empresas, barrer la pantalla con la vista
-                                era más lento que escribir tres letras. */}
+                            {/* Selector con buscador en lugar de una cuadrícula de botones:
+                                con una veintena de empresas, escribir tres letras es más
+                                rápido que recorrer la pantalla con la vista. */}
                             <div className="w-full px-10 pb-16">
                                 <div className="mx-auto w-full max-w-2xl">
                                     <div className="mb-3 flex items-center justify-between">

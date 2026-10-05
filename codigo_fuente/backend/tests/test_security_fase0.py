@@ -1,10 +1,15 @@
 """
-tests/test_security_fase0.py — Suite de seguridad (Fase 0).
-Cubre: verify_password (bcrypt estricto), validate_query (security.py)
-y validate_readonly / sanitize_pipeline (core/sql_sanitizer.py).
-Incluye casos de evasión conocidos.
+Pruebas de seguridad de contraseñas y de consultas de solo lectura.
 
+Cubren verify_password (bcrypt estricto: una contraseña guardada en texto plano
+nunca se acepta), validate_query (security.py) y validate_readonly /
+sanitize_pipeline (core/sql_sanitizer.py), incluidos casos de evasión
+conocidos como la inyección encadenada y los comentarios que esconden una
+sentencia de escritura.
 Ejecutar: pytest tests/test_security_fase0.py -v
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import sys
 from pathlib import Path
@@ -33,8 +38,8 @@ class TestVerifyPassword:
         assert verify_password("clave-incorrecta", h) is False
 
     def test_texto_plano_almacenado_rechazado(self):
-        # Regresión crítica: antes un password almacenado en texto plano
-        # era aceptado por el fallback. Ahora debe rechazarse SIEMPRE.
+        # Una contraseña almacenada en texto plano debe rechazarse SIEMPRE:
+        # no existe un camino alternativo que la compare sin hash.
         assert verify_password("admin@123", "admin@123") is False
 
     def test_hash_invalido_rechazado(self):
@@ -44,11 +49,11 @@ class TestVerifyPassword:
     def test_valores_none_o_vacios(self):
         assert verify_password(None, None) is False
         assert verify_password("clave", "") is False
-        assert verify_password("", get_password_hash("")) is True  # vacia hasheada es valida
+        assert verify_password("", get_password_hash("")) is True  # la cadena vacía con hash es válida
 
 
 # ─────────────────────────────────────────────
-# security.validate_query — guardrail read-only
+# security.validate_query — guardarraíl de solo lectura
 # ─────────────────────────────────────────────
 
 class TestValidateQuery:

@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-etl_benchmarking.py — pipeline de integración de referentes EXTERNOS de
-abandono al warehouse (CHAT.dbo.dim_institucion_externa /
-fact_benchmark_externo).
+Carga de los referentes externos de abandono al almacén CHAT.
 
-Criterio de fuentes (Avance 2): solo cifras publicadas en fuentes
-académicas con DOI y verificadas en el texto completo del artículo (tabla o
-párrafo exacto anotado en `definicion_indicador`). Se retiraron las cifras
-tomadas de prensa: una nota periodística no es una fuente verificable para
-un trabajo de titulación. Cada fila declara además QUÉ mide exactamente, en
+Integra los referentes EXTERNOS de abandono al warehouse
+(CHAT.dbo.dim_institucion_externa / fact_benchmark_externo).
+
+Criterio de fuentes: solo cifras publicadas en fuentes académicas con DOI y
+verificadas en el texto completo del artículo (tabla o párrafo exacto
+anotado en `definicion_indicador`). No se aceptan cifras de prensa: una nota
+periodística no es una fuente verificable para un trabajo de titulación.
+Cada fila declara además QUÉ mide exactamente, en
 qué país y modalidad, y su nivel de comparabilidad con la institución propia
 (Lepori & Bornmann, 2026: comparar pares con pares):
     ALTA   mismo país y nivel (pregrado)
@@ -23,6 +24,9 @@ documentacion/tecnica/BENCHMARKING_INSTITUCIONAL.md.
 Uso:
     cd backend
     python -m etl.etl_benchmarking
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -42,10 +46,18 @@ NIVELES = {'ALTA', 'MEDIA', 'BAJA'}
 
 
 def conectar() -> pyodbc.Connection:
+    """Abre la conexión administrativa a la base CHAT."""
     return conectar_admin('CHAT')
 
 
 def cargar_csv(path: Path) -> list[dict]:
+    """Lee el CSV de referentes y valida cada fila antes de cargar nada.
+
+    Raises:
+        ValueError: si a una fila le falta una columna obligatoria, si su
+            nivel_comparabilidad no es ALTA, MEDIA o BAJA, o si la fuente o
+            su URL contienen "expreso" (cifra de prensa).
+    """
     with open(path, encoding='utf-8-sig', newline='') as f:
         filas = list(csv.DictReader(f))
     for i, fila in enumerate(filas, 2):
@@ -60,6 +72,7 @@ def cargar_csv(path: Path) -> list[dict]:
 
 
 def main() -> int:
+    """Recarga por completo dim_institucion_externa y fact_benchmark_externo desde el CSV."""
     print(f"Leyendo {CSV_PATH} ...")
     filas = cargar_csv(CSV_PATH)
     print(f"  {len(filas)} referentes externos.")
@@ -70,6 +83,7 @@ def main() -> int:
     cur.execute("DELETE FROM dbo.dim_institucion_externa")
     conn.commit()
 
+    # Cada institución se inserta una sola vez aunque aporte varios indicadores.
     vistas: set[str] = set()
     for f in filas:
         codigo = f['institucion_codigo'].strip()

@@ -1,23 +1,12 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-VIZ-01]
- * ============================================================================
- * ARCHIVO: DataVisualizer.jsx
- * MÓDULO: UI / Data Rendering Engine
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Sub-motor de renderizado numérico. Toma listas agnósticas de datos del 
- * backend y las transforma en elementos comprensibles y elegantes.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Llamado dinámicamente desde `ChatMessage.jsx` cuando se detecta que
- * la respuesta incluye datos estructurados (tablas, gráficos, cifras exactas).
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Selección algorítmica de la mejor vista (Gráfico de Barras vs Tabla Clásica).
- * - Componente KPI para mostrar montos individuales enormes con explicaciones.
- * - Invoca a vistas altamente especializadas como Roles de Pago (`PayslipView.jsx`).
- * ============================================================================
+ * @file Visualizador de resultados de consulta. Convierte las filas que devuelve el
+ * backend en la vista más adecuada: KPI de valor único, gráfico ApexCharts (barras,
+ * línea, área, pastel, radar) con alternador de tipo, tabla con búsqueda, orden,
+ * paginación y totales, o roles de pago (PayslipView). Exporta la tabla a Excel
+ * (/api/query/exportar-tabla-excel, con CSV de respaldo) y el gráfico con su tabla a
+ * PDF. Lo usa ChatMessage cuando la respuesta trae datos estructurados.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useRef, useState } from 'react';
@@ -39,18 +28,16 @@ const PAGE_SIZE = 15;
 const cleanCellText = (value) => String(value ?? '').replace(/[\u200B]/g, '');
 
 // Limpia un valor para exportar SIN convertirlo a texto: los números deben
-// seguir llegando al Excel como números (con formato de miles) y no como
-// strings, que es lo que pasaba con el CSV plano. Solo se quita el marcador
-// invisible de ApexCharts de los textos.
+// llegar al Excel como números (con formato de miles) y no como cadenas. Solo
+// se quita de los textos el marcador invisible de ApexCharts.
 const limpiarValorExport = (v) => (typeof v === 'string' ? cleanCellText(v) : v);
 
-// Exportación a Excel profesional (29/08/2026): antes
-// esto descargaba un CSV plano; ahora se genera un libro .xlsx con el mismo
-// formato profesional (cabecera azul, bordes, filas alternadas, auto-filtro)
-// que la sección de Indicadores, vía /api/query/exportar-tabla-excel. Los
-// datos reales (filtrados/ordenados) se envían al backend, que solo les
-// aplica el formato de Excel. Si el endpoint no responde, se cae al CSV de
-// siempre para que la descarga nunca se pierda.
+// Exportación a Excel: genera un libro .xlsx con el mismo formato profesional
+// (cabecera azul, bordes, filas alternadas, autofiltro) que la sección de
+// Indicadores, vía /api/query/exportar-tabla-excel. Los datos reales
+// (filtrados y ordenados) se envían al backend, que solo les aplica el
+// formato. Si el endpoint no responde, se descarga un CSV para que la
+// exportación nunca se pierda.
 const exportarTablaExcel = async (columns, rows, filaTotales) => {
     const body = {
         columns: columns.map((c) => formatHeader(c)),
@@ -90,6 +77,7 @@ const CHART_TYPE_OPTIONS = [
     { id: 'radar', label: 'Radar', Icon: RadarIcon },
 ];
 
+// Botonera para cambiar el tipo de gráfico.
 const ChartTypeSwitch = ({ activeType, onChange }) => (
     <div
         className="flex items-center gap-0.5 p-0.5 bg-white/5 rounded-lg border border-white/10"
@@ -115,6 +103,16 @@ const ChartTypeSwitch = ({ activeType, onChange }) => (
     </div>
 );
 
+/**
+ * Muestra el resultado de una consulta como KPI, gráfico, tabla o roles de pago,
+ * según el tipo sugerido y la forma de los datos.
+ *
+ * @param {object} props
+ * @param {object} props.result - Resultado normalizado: `rows`, `columns` y
+ *   `visualization_type` ('table', 'bar', 'line', 'pie', 'area', 'radar', 'kpi',
+ *   'value' o 'payslip').
+ * @returns {JSX.Element|null} La visualización, o null si no hay filas.
+ */
 export const DataVisualizer = ({ result }) => {
     // El usuario puede sobreescribir localmente el tipo de gráfico sugerido
     // por la IA (visualization_type) sin volver a consultar al backend.
@@ -126,12 +124,12 @@ export const DataVisualizer = ({ result }) => {
     const [sortConfig, setSortConfig] = useState(null); // { key, direction }
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Exportación "experta" (PDF listo para imprimir): imagen del gráfico
-    // seleccionado + su tabla de datos en un solo documento. El ref apunta
-    // siempre al <Chart> que esté montado en ese momento (solo uno a la vez),
-    // y usamos su propio motor de export (dataURI de ApexCharts) en vez de
-    // html2canvas — ApexCharts ya sabe rasterizar su propio SVG sin depender
-    // de que el navegador entienda cada función de color CSS que use Tailwind.
+    // Exportación a PDF lista para imprimir: imagen del gráfico seleccionado y
+    // su tabla de datos en un solo documento. El ref apunta siempre al <Chart>
+    // montado en ese momento (solo uno a la vez) y se usa el exportador propio
+    // de ApexCharts (dataURI) en vez de html2canvas: ApexCharts rasteriza su
+    // propio SVG sin depender de que el navegador entienda cada función de
+    // color CSS que usa Tailwind.
     const chartRef = useRef(null);
     const [pdfExporting, setPdfExporting] = useState(false);
     const [pdfError, setPdfError] = useState('');
@@ -140,7 +138,7 @@ export const DataVisualizer = ({ result }) => {
     if (!result || !result.rows || result.rows.length === 0) return null;
     const { rows, columns, visualization_type: type } = result;
 
-    // Normalizar datos: Convertir array de arrays a array de objetos para Recharts
+    // Normaliza los datos: convierte el arreglo de arreglos en arreglo de objetos.
     const data = React.useMemo(() => {
         if (!rows || !columns) return [];
         
@@ -154,7 +152,8 @@ export const DataVisualizer = ({ result }) => {
                 obj = { ...row };
             }
 
-            // Normalización Inteligente: Asegurar que los números sean números para evitar sumas de strings
+            // Convierte a número los valores numéricos (salvo identificadores) para
+            // no sumar cadenas.
             Object.keys(obj).forEach(key => {
                 const val = obj[key];
                 if (val !== null && val !== undefined && typeof val !== 'number') {
@@ -167,7 +166,8 @@ export const DataVisualizer = ({ result }) => {
                 }
             });
 
-            // Hack para que Recharts/ApexCharts dibujen elementos con nombres idénticos:
+            // Se añade a la primera columna un marcador invisible distinto por fila
+            // para que los gráficos no fusionen elementos con nombres idénticos:
             const dataKeyX = columns[0];
             if (obj[dataKeyX]) {
                 obj[dataKeyX] = String(obj[dataKeyX]) + '\u200B'.repeat(index);
@@ -179,9 +179,9 @@ export const DataVisualizer = ({ result }) => {
 
     if (type === 'payslip') return <PayslipView data={rows} columns={columns} />;
 
-    // --- RENDERIZADO DE VALOR ÚNICO (KPI) ---
+    // --- Valor único (KPI) ---
     const isSingleResult = data.length === 1 && (Array.isArray(data[0]) ? data[0].length <= 2 : Object.keys(data[0] || {}).length <= 2);
-    // Solo forzar KPI si el tipo es 'value', 'kpi' o si es un resultado único y NO se pidió un gráfico específico
+    // Se fuerza el KPI si el tipo es 'value' o 'kpi', o si es un resultado único y no se pidió un gráfico específico.
     const chartTypes = ['bar', 'line', 'pie', 'area', 'radar'];
     if (type === 'value' || type === 'kpi' || (isSingleResult && type !== 'table' && !chartTypes.includes(type))) {
         const valToDisplay = Array.isArray(data[0])
@@ -241,21 +241,21 @@ export const DataVisualizer = ({ result }) => {
         dataKeyY = columns[1];
     }
 
-    // Preparar datos para ApexCharts
+    // Datos para ApexCharts.
     const categories = data.map(item => formatAxisName(item[dataKeyX]));
-    // Usar parseNum (inteligente con separadores latam) para que el pie/donut
-    // reciba siempre floats correctos y no sume valores inflados.
+    // parseNum entiende los separadores latinoamericanos, así el pastel o la
+    // dona recibe siempre números correctos y no suma valores inflados.
     const seriesData = data.map(item => {
         const raw = item[dataKeyY];
         if (typeof raw === 'number') return isFinite(raw) ? raw : 0;
         const n = parseNum(raw);
         return isNaN(n) ? 0 : n;
     });
-    // Suma total de la serie mostrada — evita que el usuario tenga que sumar
-    // barra por barra a mano.
+    // Suma total de la serie mostrada, para que el usuario no tenga que sumar
+    // barra por barra.
     const totalGrafico = seriesData.reduce((acc, v) => acc + v, 0);
 
-    // --- LÓGICA DE GRÁFICOS (Ahora con ApexCharts para un look Premium) ---
+    // --- Gráficos (ApexCharts) ---
     const renderChart = () => {
         const chartType = chartOverride || type || 'bar';
 
@@ -331,17 +331,17 @@ export const DataVisualizer = ({ result }) => {
                 y: { formatter: (val) => formatValue(val) },
                 style: { fontSize: '12px' },
                 custom: function({ series, seriesIndex, dataPointIndex, w }) {
-                    // Lógica ultra-robusta para extraer datos (ApexCharts varía según el tipo de gráfico)
+                    // Extrae los datos de forma tolerante: la estructura de ApexCharts varía según el tipo de gráfico.
                     let val = 0;
                     let label = 'Dato';
                     
                     try {
                         if (w.config.chart.type === 'donut' || w.config.chart.type === 'pie') {
-                            // En Donut/Pie, series es un array plano de valores
+                            // En dona y pastel, series es un arreglo plano de valores
                             val = series[seriesIndex] ?? w.globals.series[seriesIndex] ?? 0;
                             label = w.globals.labels[seriesIndex] ?? 'Dato';
                         } else {
-                            // En Barras/Lineas, series es un array de objetos con data
+                            // En barras y líneas, series es un arreglo de objetos con data
                             val = series[seriesIndex][dataPointIndex] ?? 0;
                             label = w.globals.labels[dataPointIndex] ?? 'Dato';
                         }
@@ -350,7 +350,7 @@ export const DataVisualizer = ({ result }) => {
                         label = 'Dato';
                     }
                     
-                    // Limpiar el marcador invisible de duplicados (\u200B)
+                    // Quita el marcador invisible de duplicados (\u200B)
                     const cleanLabel = String(label).replace(/[\u200B]/g, '').trim();
                     const formattedVal = formatValue(val);
 
@@ -494,7 +494,7 @@ export const DataVisualizer = ({ result }) => {
                                     label: 'TOTAL',
                                     color: '#94a3b8',
                                     formatter: (w) => {
-                                        // Cálculo robusto del total
+                                        // Total tolerante a valores no numéricos
                                         const totals = w.globals.seriesTotals || [];
                                         const total = totals.reduce((a, b) => (parseFloat(a) || 0) + (parseFloat(b) || 0), 0);
                                         return formatValue(total);
@@ -513,7 +513,7 @@ export const DataVisualizer = ({ result }) => {
 
     const isChartCompatible = columns.length >= 2 || (type === 'bar' || type === 'line' || type === 'pie');
 
-    // --- DATA GRID: búsqueda + orden + paginación sobre `data` ---
+    // --- Tabla: búsqueda, orden y paginación sobre `data` ---
     const normalizedSearch = searchFilter.trim().toLowerCase();
     const filteredRows = normalizedSearch
         ? data.filter((row) => columns.some((c) => cleanCellText(row[c]).toLowerCase().includes(normalizedSearch)))
@@ -536,10 +536,9 @@ export const DataVisualizer = ({ result }) => {
         : filteredRows;
 
     // Columnas que NUNCA deben sumarse aunque su valor sea numérico: son
-    // identificadores o fechas, no cantidades. Bug real reportado por el
-    // usuario (29/08/2026): la tabla sumaba la columna "Fecha" (años como
-    // 2026 tratados como número) y "Numero Factura" en la fila TOTAL,
-    // produciendo cifras sin ningún sentido ("10.140", "1.089.98868.671.229").
+    // identificadores o fechas, no cantidades. Sumar «Fecha» (años tratados
+    // como número) o «Número Factura» en la fila TOTAL produce cifras sin
+    // sentido.
     const NO_SUMABLE_COL = /fecha|numero|número|factura|documento|c[oó]digo|\bid\b|a[ñn]o\b|c[eé]dula|\bruc\b|tel[eé]fono|\bnit\b|\bdni\b/i;
 
     // Total por columna al pie de la tabla (respeta el filtro de búsqueda
@@ -582,12 +581,10 @@ export const DataVisualizer = ({ result }) => {
         });
     };
 
-    // Exportación experta: un PDF con la imagen del gráfico seleccionado
-    // arriba y su tabla de datos completa abajo, listo para imprimir o
-    // adjuntar a un correo. Antes solo existía el CSV de datos crudos —
-    // esto es lo que se pidió como "rider" del gráfico.
-    // jspdf/jspdf-autotable se cargan bajo demanda (solo si el usuario
-    // realmente exporta) para no engordar el bundle inicial del chat.
+    // Exportación a PDF: la imagen del gráfico seleccionado arriba y su tabla
+    // de datos completa abajo, lista para imprimir o adjuntar a un correo.
+    // jspdf y jspdf-autotable se cargan bajo demanda (solo si el usuario
+    // exporta) para no engordar el paquete inicial del chat.
     const exportarGraficoPdf = async () => {
         if (pdfExporting) return;
         setPdfExporting(true);
@@ -598,14 +595,12 @@ export const DataVisualizer = ({ result }) => {
                 throw new Error('El gráfico todavía no está listo para exportar.');
             }
 
-            // El chart usa background:'transparent' en pantalla (se ve sobre el
-            // fondo oscuro de la tarjeta). Pero al rasterizar a PNG con dataURI(),
-            // "transparente" se aplana a BLANCO — así el texto gris claro de los
-            // ejes (pensado para verse sobre oscuro) quedaba casi invisible sobre
-            // ese blanco inesperado. Antes de capturar, le damos un fondo oscuro
-            // sólido de verdad (no la página del PDF: el PNG mismo), y lo
-            // devolvemos a transparente apenas terminamos para no afectar la
-            // vista en pantalla.
+            // El gráfico usa background: 'transparent' en pantalla (se ve sobre el
+            // fondo oscuro de la tarjeta), pero al rasterizar a PNG con dataURI()
+            // lo transparente se aplana a BLANCO y el texto gris claro de los ejes
+            // queda casi invisible. Antes de capturar se le da un fondo oscuro
+            // sólido al propio PNG y, al terminar, se devuelve a transparente para
+            // no afectar la vista en pantalla.
             let imgURI;
             try {
                 await chartInstance.updateOptions(
@@ -613,7 +608,7 @@ export const DataVisualizer = ({ result }) => {
                     false,
                     false,
                 );
-                await new Promise((r) => setTimeout(r, 120)); // settle: ApexCharts re-renderiza el SVG antes de rasterizar
+                await new Promise((r) => setTimeout(r, 120)); // espera a que ApexCharts vuelva a dibujar el SVG antes de rasterizar
                 ({ imgURI } = await chartInstance.dataURI({ scale: 2 }));
             } finally {
                 await chartInstance.updateOptions(
@@ -634,13 +629,11 @@ export const DataVisualizer = ({ result }) => {
             const margin = 40;
 
             // El gráfico usa texto gris claro (foreColor) pensado para el fondo
-            // oscuro de la app. Sobre una página blanca de PDF, esos ejes y
-            // valores quedaban prácticamente invisibles — el bug reportado
-            // ("no se ven los valores de X"). En vez de re-tematizar cada
-            // variante de ApexCharts (bar/line/pie/radar, cada una con sus
-            // propios colores), pintamos la página del PDF del mismo tono
-            // oscuro de la app: el gráfico se ve exactamente igual que en
-            // pantalla, sin perder legibilidad.
+            // oscuro de la aplicación; sobre una página blanca de PDF, los ejes y
+            // valores serían casi invisibles. En vez de cambiar el tema de cada
+            // variante de ApexCharts (barras, línea, pastel, radar), la página
+            // del PDF se pinta del mismo tono oscuro: el gráfico se ve igual que
+            // en pantalla, sin perder legibilidad.
             const bg = [15, 23, 42]; // #0f172a
             doc.setFillColor(...bg);
             doc.rect(0, 0, pageWidth, pageHeight, 'F');
@@ -659,15 +652,11 @@ export const DataVisualizer = ({ result }) => {
 
             const tableColumns = columns.map((c) => formatHeader(c));
             const tableRows = sortedRows.map((row) => columns.map((c) => formatValue(row[c], c)));
-            // NOTA: aquí antes había un callback `didDrawPage` que repintaba el
-            // fondo oscuro en cada página. Ese hook se dispara DESPUÉS de que
-            // la página (imagen + título + filas de esa página) ya se dibujó,
-            // así que el rectángulo se pintaba ENCIMA de todo, tapando el
-            // gráfico y el título — quedaba solo un fondo oscuro vacío. Se
-            // quita: la única pintura de fondo necesaria es la de más arriba,
-            // hecha ANTES de dibujar nada (cubre el caso normal de una sola
-            // página; si la tabla llegara a ocupar una segunda página, esa
-            // seguiría naciendo blanca, pero es un caso raro con estos datos).
+            // No se usa `didDrawPage` para repintar el fondo en cada página: ese
+            // callback se dispara DESPUÉS de dibujar la página, así que el
+            // rectángulo taparía el gráfico y el título. Basta con el fondo
+            // pintado arriba, ANTES de dibujar nada; si la tabla ocupara una
+            // segunda página, esta quedaría blanca (caso raro con estos datos).
             const autoTableOptions = {
                 startY: 72 + imgHeight + 24,
                 margin: { left: margin, right: margin },
@@ -675,7 +664,7 @@ export const DataVisualizer = ({ result }) => {
                 body: tableRows,
                 styles: { fontSize: 8, cellPadding: 4, fillColor: bg, textColor: 255, lineColor: [51, 65, 85] },
                 headStyles: {
-                    fillColor: [14, 122, 74], // emerald
+                    fillColor: [14, 122, 74], // esmeralda
                     textColor: 255,
                     fontStyle: 'bold',
                     cellPadding: { top: 6, right: 4, bottom: 6, left: 4 },
@@ -700,10 +689,10 @@ export const DataVisualizer = ({ result }) => {
 
     return (
         <div className="w-full mt-3 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
-            {/* Gráfico Principal - Método de Fondo Independiente para Seguridad Total */}
+            {/* Gráfico principal, con fondo independiente del contenido */}
             {isChartCompatible && type !== 'table' && type !== 'value' && (
                 <div className="w-full relative p-3 group">
-                    {/* Fondo Bento con Curvas (Independiente del contenido) */}
+                    {/* Fondo redondeado, independiente del contenido */}
                     <div className="absolute inset-0 bg-[#0f172a]/40 rounded-[32px] border border-white/5 backdrop-blur-md shadow-2xl -z-10" />
                     
                     {/* Brillo de borde superior */}
@@ -744,9 +733,9 @@ export const DataVisualizer = ({ result }) => {
                 </div>
             )}
 
-            {/* Tabla Detallada - Método de Fondo Independiente */}
+            {/* Tabla detallada, con fondo independiente del contenido */}
             <div className="relative shadow-2xl">
-                {/* Fondo Bento */}
+                {/* Fondo de la tarjeta */}
                 <div className="absolute inset-0 bg-black/15 rounded-[32px] border border-white/5 backdrop-blur-sm -z-10" />
                 
                 <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between gap-3 flex-wrap bg-white/[0.01]">
@@ -769,9 +758,8 @@ export const DataVisualizer = ({ result }) => {
                             />
                         </div>
 
-                        {/* Exportar a Excel: datos reales (filtrados/ordenados), con
-                            el mismo formato profesional de la sección de Indicadores
-                            (29/08/2026 — antes era CSV plano). */}
+                        {/* Exportar a Excel: datos reales (filtrados y ordenados), con
+                            el mismo formato profesional de la sección de Indicadores. */}
                         <button
                             type="button"
                             onClick={async () => {
@@ -892,8 +880,6 @@ export const DataVisualizer = ({ result }) => {
         </div>
     );
 };
-
-// --- SUB-COMPONENTE: ChatMessage (COMPLETO CON VIZSWITCH) ---
 
 
 

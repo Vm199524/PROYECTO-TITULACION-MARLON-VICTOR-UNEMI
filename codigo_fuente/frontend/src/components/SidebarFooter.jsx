@@ -1,25 +1,19 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-SIDEBAR-05]
- * ============================================================================
- * ARCHIVO: SidebarFooter.jsx
- * MÓDULO: UI / Structural Spacers
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Pie de página estructural auxiliar. Originalmente pensado para mostrar
- * datos de versión o información legal de VicMar Data AI.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Extremo inferior del menú lateral (`DashboardDesktop.jsx`).
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Actualmente configurado para retornar `null` (oculto voluntariamente).
- * - Reservado para futuras expansiones arquitectónicas de la interfaz.
- * ============================================================================
+ * @file Pie del menú lateral de escritorio. Ocupa el extremo inferior de la barra
+ * lateral de DashboardDesktop y hoy no muestra contenido: queda reservado para
+ * datos de versión o avisos legales.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React from 'react';
 
+/**
+ * Renderiza el pie del menú lateral. Por ahora no dibuja nada; DashboardDesktop le
+ * pasa `maskedHost`, `showHost` y `setShowHost`, que el componente no usa.
+ *
+ * @returns {null} Nada que renderizar.
+ */
 export function SidebarFooter() {
     return null;
 }

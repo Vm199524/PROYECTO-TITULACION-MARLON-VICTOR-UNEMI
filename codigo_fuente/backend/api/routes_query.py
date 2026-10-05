@@ -1,7 +1,15 @@
 """
-api/routes_query.py - Orquestador NL2SQL con aislamiento por sesion.
-Aplica seguridad server-side, cache y autocuracion en un flujo unico.
-Protege el acceso por token y modulo antes de ejecutar cualquier SQL.
+Orquestador de consultas en lenguaje natural (NL2SQL).
+
+Atiende /api/query y su variante en streaming: aplica en el servidor los
+guardarraíles de empresa, alcance y módulos del rol; prueba en orden la caché de
+respuesta completa, la caché semántica, las métricas certificadas y el banco de
+preguntas, y solo entonces genera SQL con la IA, lo sanea, lo ejecuta contra las
+vistas de CHAT (con autocorrección) y redacta la respuesta. También expone las
+rutas de imágenes (modelo de visión), voz (FAL AI) y memoria aprendida.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -16,12 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def _log_query_error(origen: str, prompt: str = "", empresa: str = "", detalle: str = "", traza: str = "") -> None:
-    """Traza persistente de errores de consulta a debug/query_error.log.
+    """Anexa a debug/query_error.log una línea JSON por error de consulta.
 
-    El log de uvicorn va a la consola del lanzador (oculta), por lo que un
-    fallo en /query/stream quedaba sin rastro para diagnosticar. Aquí se
-    anexa una línea JSON por error con la pregunta, la empresa y el traceback
-    completo, de modo que el siguiente fallo sea reproducible sin pantalla.
+    Guarda la pregunta, la empresa y el traceback completo. El log de uvicorn
+    va a la consola del lanzador, que está oculta; sin este archivo, un fallo
+    en /query/stream no dejaría rastro para diagnosticarlo.
     """
     try:
         ruta = DEBUG_DIR / "query_error.log"
@@ -64,7 +71,7 @@ from security import get_token_data
 from core.mirror_manager import MirrorManager
 from core.semantic_processor import SemanticProcessor
 
-# Inicializar Procesador Semantico Global
+# Procesador semántico compartido: caché de SQL por empresa y motor, y traductor de intención.
 SEMANTIC_PROC = SemanticProcessor()
 
 # TTL del caché de RESPUESTA COMPLETA (Redis). Deliberadamente corto: a
@@ -75,13 +82,6 @@ SEMANTIC_PROC = SemanticProcessor()
 # arriesgar mostrar cifras de negocio "congeladas" como si fueran en vivo.
 FULL_RESPONSE_CACHE_TTL = 300
 
-# Archivo: routes_query.py
-# Rol: pipeline principal de /api/query.
-# Recibe desde: App.jsx cuando el usuario envia una pregunta desde ChatInput.jsx.
-# Coordina con: session_manager, question_bank, sql_sanitizer, query_cache,
-# chat_mapping y el cliente IA guardado en la sesion.
-# Entrega: SQL, filas, narrativa, visualizacion y trazas operativas.
-
 router = APIRouter()
 
 
@@ -89,21 +89,21 @@ def _vista_confiable_o_none(
     candidatos: tuple[str, ...], nombre_generico: str, connector, active_company_code: str
 ) -> str | None:
     """
-    Nombre de vista a usar para `nombre_generico` (ej. "cabecera_factura"),
-    solo si además se confirma en vivo que pertenece a la empresa activa.
+    Devuelve la vista de CHAT a usar para `nombre_generico` (p. ej. "cabecera_factura"),
+    solo si se confirma en vivo que pertenece a la empresa activa.
 
-    Dos verificaciones, ambas necesarias (regla fija: Reportes BI/chat solo
-    muestran datos de la empresa activa):
-      1. ¿Cuál de `candidatos` existe HOY en CHAT? (detectar_vista_connector) —
-         cierra el bug del 28/08/2026 donde "cabecera_factura" ya no existe en
-         el servidor y solo existe "Ventas"/"Compras".
-      2. ¿Esa vista apunta HOY a la base física de `active_company_code`?
-         (vista_aislada_para_empresa) — cierra el otro bug del mismo día: CHAT
-         es un namespace compartido, y aunque el nombre exista, puede estar
-         apuntando a OTRA empresa por una activación concurrente.
+    Exige dos verificaciones, porque Reportes BI y el chat solo muestran datos
+    de la empresa activa:
+      1. Cuál de `candidatos` existe hoy en CHAT (detectar_vista_connector):
+         el nombre real puede variar en el servidor (p. ej. "Ventas" y
+         "Compras" en lugar de "cabecera_factura").
+      2. Que esa vista apunte hoy a la base física de `active_company_code`
+         (vista_aislada_para_empresa): CHAT es un namespace compartido y,
+         aunque el nombre exista, una activación concurrente puede dejarla
+         apuntando a otra empresa.
 
-    Devuelve None si cualquiera de las dos falla — el llamador debe tratarlo
-    como si la métrica hubiese fallado (nunca ejecutar "a ciegas").
+    Devuelve None si cualquiera falla; el llamador debe tratarlo como una
+    métrica fallida y nunca ejecutar "a ciegas".
     """
     vista_real = detectar_vista_connector(connector, candidatos, target_db="CHAT")
     if not vista_real:
@@ -114,14 +114,14 @@ def _vista_confiable_o_none(
 
 
 class HistoryItem(BaseModel):
-    """Fragmento de historial enviado por frontend para contexto de IA."""
+    """Mensaje del historial que envía el frontend como contexto para la IA."""
 
     type: str = ""
     content: str = ""
 
 
 class QueryRequest(BaseModel):
-    """Contrato estricto para consultas NL2SQL."""
+    """Contrato de entrada de /query y /query/stream."""
 
     prompt: str
     module: str | None = None
@@ -130,17 +130,16 @@ class QueryRequest(BaseModel):
     selected_company_name: str = ""
     selected_company_short_name: str = ""
     bi_context: dict | None = None
-    # Selector manual de motor (30/08/2026): "", "flash", "pro" o un
-    # proveedor puntual. Vacío = comportamiento por defecto
-    # (Flash siempre). Se revalida en el servidor contra
-    # `current_user["modelos_permitidos"]` — el valor que mande el cliente
-    # nunca se usa a ciegas (mismo principio que ya aplicó el blindaje de
-    # SQL/trazabilidad: la única fuente de verdad de permisos es el backend).
+    # Selector manual de motor: "", "flash", "pro" o un proveedor puntual;
+    # vacío usa Flash. Se revalida en el servidor contra los modelos
+    # permitidos del usuario (_validar_motor_ia): el valor que envía el
+    # cliente nunca se usa a ciegas, porque la única fuente de verdad de los
+    # permisos es el backend.
     motor_ia: str = ""
 
 
 class VisionQueryRequest(BaseModel):
-    """FASE 4 — punto 6: contrato para preguntas con imágenes adjuntas.
+    """Contrato de /query/vision: pregunta con imágenes adjuntas.
 
     `images` son data URLs completas (data:image/<tipo>;base64,....), tal
     como las produce FileReader.readAsDataURL() en el navegador.
@@ -160,11 +159,13 @@ class SpeakRequest(BaseModel):
 
 
 def _normalize_module(module: str | None) -> str:
+    """Normaliza el nombre de un módulo a mayúsculas sin espacios alrededor."""
     return (module or "").strip().upper()
 
 
 def _normalize_text(text: str) -> str:
-    raw = (text or "").strip().lower()
+    """Normaliza texto para compararlo: minúsculas, sin tildes ni signos y con espacios simples."""
+    raw =(text or "").strip().lower()
     raw = unicodedata.normalize("NFD", raw)
     raw = "".join(ch for ch in raw if unicodedata.category(ch) != "Mn")
     raw = re.sub(r"[^a-z0-9\s]", " ", raw)
@@ -173,10 +174,12 @@ def _normalize_text(text: str) -> str:
 
 
 def _normalize_col_name(name: str) -> str:
+    """Normaliza un nombre de columna y le quita los espacios."""
     return _normalize_text(name or "").replace(" ", "")
 
 
 def _is_missing_meta_value(value) -> bool:
+    """Indica si un valor de la ficha está vacío o es un marcador sin dato (-, 0, null, n/a...)."""
     if value is None:
         return True
     text = str(value).strip()
@@ -184,6 +187,10 @@ def _is_missing_meta_value(value) -> bool:
 
 
 def _find_col_index(columns: list[str], aliases: tuple[str, ...]) -> int:
+    """Devuelve el índice de la última columna que coincide con algún alias, o -1.
+
+    Busca primero coincidencia exacta y luego parcial, siempre con nombres normalizados.
+    """
     if not columns:
         return -1
     normalized = [_normalize_col_name(c) for c in columns]
@@ -198,7 +205,8 @@ def _find_col_index(columns: list[str], aliases: tuple[str, ...]) -> int:
 
 
 def _extract_first_cedula(columns: list[str], rows: list) -> str | None:
-    idx = _find_col_index(columns, ("cedula", "identificacion", "cedulaid", "id"))
+    """Devuelve la primera cédula no vacía del resultado, o None."""
+    idx =_find_col_index(columns, ("cedula", "identificacion", "cedulaid", "id"))
     if idx < 0 or not rows:
         return None
     for row in rows:
@@ -210,6 +218,15 @@ def _extract_first_cedula(columns: list[str], rows: list) -> str | None:
 
 
 def _enrich_payslip_metadata(connector, columns: list[str], rows: list) -> tuple[list[str], list] | None:
+    """Completa un rol de pago con los datos de la ficha del trabajador.
+
+    Busca en ficha_trabajador por la primera cédula del resultado y agrega o
+    rellena Nombres, Cargo, Área, Tipo Contrato y Fecha Ingreso (solo las
+    celdas vacías).
+
+    Returns:
+        Tupla (columnas, filas) enriquecida, o None si no hay cédula o ficha.
+    """
     if not rows:
         return None
 
@@ -264,6 +281,7 @@ def _enrich_payslip_metadata(connector, columns: list[str], rows: list) -> tuple
 
 
 def _is_dynamic_payroll_query(prompt: str) -> bool:
+    """Indica si la pregunta pide el sueldo más alto o más bajo de la nómina."""
     norm = _normalize_text(prompt)
     payroll_scope = any(token in norm for token in ("rol", "nomina", "pago", "payslip", "ficha"))
     salary_scope = any(token in norm for token in ("sueldo", "salario", "remuneracion"))
@@ -272,6 +290,7 @@ def _is_dynamic_payroll_query(prompt: str) -> bool:
 
 
 def _should_force_payslip(prompt: str) -> bool:
+    """Indica si la pregunta pide el rol de pago de una persona concreta y no un agregado de nómina."""
     norm = _normalize_text(prompt)
     payroll_scope = any(token in norm for token in ("rol", "pago", "payslip", "ficha"))
     person_scope = any(token in norm for token in ("trabajador", "empleado", "colaborador", "persona"))
@@ -295,11 +314,13 @@ def _should_force_payslip(prompt: str) -> bool:
 
 
 def _is_stock_query(prompt: str) -> bool:
+    """Indica si la pregunta es sobre stock, inventario o punto de reorden."""
     norm = _normalize_text(prompt)
     return any(token in norm for token in ("stock", "inventario", "reorden", "punto de reorden"))
 
 
 def _schema_has_inventory_support(schema_dict: dict) -> bool:
+    """Indica si el esquema tiene alguna tabla de inventario, productos o bodega."""
     inventory_tokens = ("inventario", "producto", "productos", "item", "items", "bodega", "stock")
     for table_name in schema_dict:
         norm_table = _normalize_text(table_name)
@@ -309,6 +330,7 @@ def _schema_has_inventory_support(schema_dict: dict) -> bool:
 
 
 def _find_schema_table(schema_dict: dict, aliases: tuple[str, ...]) -> str | None:
+    """Devuelve la tabla del esquema cuyo nombre normalizado coincide con algún alias, o None."""
     alias_norm = {_normalize_text(alias).replace(" ", "") for alias in aliases}
     for table_name in schema_dict:
         candidate = _normalize_text(table_name).replace(" ", "")
@@ -318,6 +340,7 @@ def _find_schema_table(schema_dict: dict, aliases: tuple[str, ...]) -> str | Non
 
 
 def _find_schema_column(schema_dict: dict, table_name: str | None, aliases: tuple[str, ...]) -> str | None:
+    """Devuelve la columna de `table_name` que coincide con algún alias, o None."""
     if not table_name:
         return None
     alias_norm = {_normalize_col_name(alias) for alias in aliases}
@@ -329,6 +352,7 @@ def _find_schema_column(schema_dict: dict, table_name: str | None, aliases: tupl
 
 
 def _quote_identifier(name: str) -> str:
+    """Encierra un identificador T-SQL entre corchetes, escapando los corchetes de cierre."""
     return f"[{str(name or '').replace(']', ']]')}]"
 
 
@@ -336,6 +360,7 @@ _DB_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def _safe_db_identifier(name: str | None) -> str:
+    """Devuelve el nombre de base si solo tiene caracteres seguros; si no, cadena vacía."""
     candidate = str(name or "").strip()
     if not candidate or not _DB_IDENTIFIER_RE.fullmatch(candidate):
         return ""
@@ -343,7 +368,12 @@ def _safe_db_identifier(name: str | None) -> str:
 
 
 def _probe_db_metadata_access(connector, target_db: str | None) -> tuple[str, str]:
-    """Valida acceso minimo de lectura a la BD objetivo para explicar fallos de metadata."""
+    """Comprueba el acceso mínimo de lectura a la base objetivo para explicar fallos de metadatos.
+
+    Returns:
+        Tupla (código, mensaje): ok, invalid_db, no_connector,
+        permission_denied, db_unavailable, auth_failed o probe_error.
+    """
     safe_db = _safe_db_identifier(target_db)
     if not safe_db:
         return "invalid_db", "El identificador de la base activa no es valido."
@@ -366,6 +396,7 @@ def _probe_db_metadata_access(connector, target_db: str | None) -> tuple[str, st
 
 
 def _extract_person_tokens(prompt: str) -> list[str]:
+    """Extrae hasta cinco palabras de la pregunta que probablemente forman el nombre de una persona."""
     stopwords = {
         "muestrame", "muestrame", "muestrame", "muestrame", "muestrame", "muestrame",
         "muestrame", "muestrame", "muestreme", "muestrame", "mostrar", "quiero", "ver",
@@ -382,6 +413,7 @@ def _extract_person_tokens(prompt: str) -> list[str]:
 
 
 def _is_inactive_status(value: str | None) -> bool:
+    """Indica si un estado laboral corresponde a un trabajador inactivo."""
     if not value:
         return False
     norm = _normalize_text(value)
@@ -397,6 +429,11 @@ def _is_inactive_status(value: str | None) -> bool:
 
 
 def _lookup_employee_status(connector, schema_dict: dict, prompt: str) -> dict | None:
+    """Busca en la ficha de personal al trabajador nombrado en la pregunta.
+
+    Returns:
+        {name, status} del trabajador encontrado (prioriza los activos), o None.
+    """
     ficha_table = _find_schema_table(schema_dict, ("ficha_trabajador", "V_Ficha_Maestra"))
     if not ficha_table:
         return None
@@ -454,6 +491,13 @@ def _lookup_employee_status(connector, schema_dict: dict, prompt: str) -> dict |
 
 
 def _build_no_rows_narrative(prompt: str, connector, schema_dict: dict) -> tuple[str, str]:
+    """Redacta la respuesta cuando una consulta no devuelve filas, según el tema y el año de la pregunta.
+
+    En preguntas de nómina explica si el trabajador figura como inactivo.
+
+    Returns:
+        Tupla (explicación, lectura_de_negocio).
+    """
     norm = _normalize_text(prompt)
     payroll_scope = any(token in norm for token in ("rol", "nomina", "pago", "payslip", "ficha"))
     if payroll_scope:
@@ -541,22 +585,18 @@ def _build_no_rows_narrative(prompt: str, connector, schema_dict: dict) -> tuple
 
 
 
-# Tope de palabras para que un mensaje pueda considerarse "probe de
-# capacidades". Defecto detectado en pruebas (30/08/2026): "en una
-# interacción le envié un mensaje largo y me respondió por defecto".
+# Tope de palabras para que un mensaje pueda considerarse una pregunta sobre
+# las capacidades del sistema ("probe de capacidades"). Los marcadores se
+# buscan como subcadena y varios son fragmentos sueltos ("detecta", "alcance",
+# "que base", "puedes ver", "conectado a", "puedo consultar"): en un mensaje de
+# varios párrafos casi siempre aparece alguno, y el pipeline respondería con el
+# catálogo de áreas de negocio sin atender lo que se pidió. La heurística final
+# (que/cual + informacion/datos + tiene/hay) también coincide por pura
+# estadística en un texto largo.
 #
-# La causa era este detector. Sus marcadores se buscan como SUBCADENA, y varios
-# son fragmentos sueltos ("detecta", "alcance", "que base", "puedes ver",
-# "conectado a", "puedo consultar"). En un mensaje de tres párrafos es casi
-# seguro que aparezca alguno, así que el pipeline cortaba de inmediato y
-# devolvía el catálogo de áreas de negocio — la "respuesta por defecto" — sin
-# haber leído nada de lo que el usuario realmente pidió. La heurística final
-# (que/cual + informacion/datos + tiene/hay) lo empeoraba: en un texto largo
-# esas tres palabras coinciden por pura estadística.
-#
-# Un mensaje largo NUNCA es un probe: quien quiere saber qué puede consultar lo
+# Un mensaje largo nunca es un probe: quien quiere saber qué puede consultar lo
 # pregunta en una línea. Si es largo, es una instrucción concreta y tiene que
-# llegar a la IA completa.
+# llegar completa a la IA.
 _MAX_PALABRAS_PROBE = 25
 
 # Marcadores ambiguos: valen solo en mensajes cortos, porque son fragmentos que
@@ -676,6 +716,7 @@ def _is_capability_probe(prompt: str) -> bool:
 
 
 def _is_business_role_probe(prompt: str) -> bool:
+    """Indica si la pregunta es sobre el giro o rol de negocio de la empresa."""
     norm = _normalize_text(prompt)
     markers = (
         "rol de negocio",
@@ -693,6 +734,7 @@ def _is_business_role_probe(prompt: str) -> bool:
 
 
 def _build_business_role_response(snapshot: dict, company_label: str) -> dict:
+    """Arma la respuesta sobre el giro de negocio a partir de los dominios detectados en el esquema."""
     ready_areas = [area for area in snapshot.get("areas", []) if area.get("status") == "ready"]
     ready_names = [str(area.get("name") or "").strip() for area in ready_areas if area.get("name")]
     entities_count = int(snapshot.get("metrics", {}).get("entities_count", 0) or 0)
@@ -807,6 +849,7 @@ def _build_capability_response(snapshot: dict, company_label: str) -> dict:
 
 
 def _infer_response_status(payload: dict) -> str:
+    """Deduce el estado de la respuesta (error, guardrail, success o no_data) a partir del payload."""
     explanation = _normalize_text(payload.get("explanation", ""))
     rows = payload.get("rows")
     if payload.get("error"):
@@ -830,22 +873,18 @@ _CAMPOS_PRIVADOS_SQL = (
 
 def _redactar_campos_privados(payload: dict, current_user: dict) -> dict:
     """
-    Quita SQL y trazabilidad del payload para cualquier rol que no sea
+    Quita el SQL y la trazabilidad del payload para cualquier rol que no sea
     ADMINISTRADOR.
 
-    Bug real (30/08/2026, defecto grave detectado en pruebas): hasta
-    esta fecha, CUALQUIER usuario logueado (CONTABILIDAD, RRHH, LOGISTICA,
-    Invitado) recibía el SQL completo y el `agent_log` en la respuesta de
-    `/query`. El frontend solo OCULTABA la pestaña "SQL"/"Cómo se calculó" con
-    CSS — el payload de red seguía trayendo todo, visible con cualquier
-    inspector de red del navegador (F12 → Network). Ocultar un botón no es
-    control de acceso: el dato tiene que dejar de viajar, no solo dejar de
-    mostrarse.
+    Ocultar la pestaña "SQL"/"Cómo se calculó" en el frontend no es control
+    de acceso: el payload seguiría viajando completo y cualquier usuario
+    (CONTABILIDAD, RRHH, LOGISTICA, Invitado) lo vería con el inspector de red
+    del navegador. El dato tiene que dejar de enviarse, no solo de mostrarse.
 
-    Se llama SIEMPRE desde `finalize_response`, el único punto por donde
+    Se llama siempre desde `finalize_response`, el único punto por donde
     salen todas las respuestas de `/query` (IA, caché, métricas certificadas,
-    guardarraíles) — así que basta este único punto para cubrir el endpoint
-    completo, incluido `/query/stream` (que reenvía el mismo payload).
+    guardarraíles); así cubre el endpoint completo, incluido `/query/stream`,
+    que reenvía el mismo payload.
     """
     if str(current_user.get("role") or "").strip().upper() == "ADMINISTRADOR":
         return payload
@@ -881,6 +920,7 @@ def _validar_motor_ia(motor_pedido: str, current_user: dict) -> tuple[str, str |
 
 
 def _safe_record_query_event(event: dict) -> None:
+    """Registra el evento de la consulta sin dejar que un fallo del registro afecte la respuesta."""
     try:
         record_query_event(event)
     except Exception:
@@ -904,10 +944,12 @@ _CTA_INVITADO = [
 
 
 def _construir_datos_demo(prompt: str, dataset: dict) -> dict | None:
-    """Arma rows/columns/visualization_type deterministas desde DEMO_DATASET
-    para las preguntas típicas del Invitado (incluyendo el botón "Ver una
-    demostración..."). Si la pregunta no calza con ningún patrón, retorna
-    None y el Invitado sigue viendo solo texto (comportamiento actual)."""
+    """Arma columnas, filas y tipo de gráfico deterministas desde DEMO_DATASET.
+
+    Cubre las preguntas típicas del Invitado, incluido el botón "Ver una
+    demostración...". Si la pregunta no calza con ningún patrón devuelve None
+    y el Invitado recibe solo texto.
+    """
     norm = _normalize_text(prompt)
     ventas = dataset.get("ventas") or []
     compras = dataset.get("compras") or []
@@ -915,11 +957,9 @@ def _construir_datos_demo(prompt: str, dataset: dict) -> dict | None:
     empleados = dataset.get("empleados") or []
     productos = dataset.get("productos") or []
 
-    # Disparador del botón "Ver una demostración con datos de ejemplo":
-    # vista por defecto pedida por el usuario — torta de ventas por mes 2026.
-    # El resto de tipos de gráfica (barras/línea/área/radar) ya están
-    # disponibles en el selector integrado de DataVisualizer.jsx — no hace
-    # falta generarlos aparte.
+    # Botón "Ver una demostración con datos de ejemplo": torta de ventas por
+    # mes. Los demás tipos de gráfica (barras, línea, área, radar) están en el
+    # selector de DataVisualizer.jsx, así que no hace falta generarlos aparte.
     if "demostracion" in norm or "demostración" in norm:
         return {"columns": ["mes", "total"], "rows": ventas, "visualization_type": "pie"}
 
@@ -1057,39 +1097,37 @@ def _responder_invitado(req, prompt: str, current_user: dict, finalize_response)
 
 def get_router() -> APIRouter:
     """
-    Factory del router.
-    Mantiene una sola instancia declarativa para `main.py`.
+    Registra las rutas de consulta en el router del módulo y lo devuelve para
+    que main.py lo monte bajo /api.
     """
 
     @router.post("/query")
     def execute_query(req: QueryRequest, current_user: dict = Depends(get_token_data)):
         """
-        ORDEN DE INGENIERÍA: SISTEMA MULTI-TENANT, CACHÉ SEMÁNTICO Y TRADUCTOR HUMANO
-        Pipeline principal con arquitectura Stateless.
+        Responde una pregunta en lenguaje natural sobre la empresa activa.
+
+        Requiere usuario autenticado con sesión. Orden del pipeline: Invitado
+        (demostración) → guardarraíles de empresa, seña de desarrollador,
+        saludo, alcance y módulos del rol → caché de respuesta completa →
+        activación de CHAT → caché semántica → métrica certificada → banco de
+        preguntas → generación con IA, saneamiento, ejecución con
+        autocorrección y verificación de cifras. Toda respuesta sale por
+        `finalize_response`.
         """
         started_at = time.perf_counter()
         agent_log: list[str] = []
         query_id = f"qc_{uuid.uuid4().hex[:12]}"
-        # Enlazados aquí (antes de definir finalize_response) para que el
-        # closure siempre encuentre estos nombres, incluso en los caminos de
-        # retorno temprano (ej. capability probe) que aún no llegan al punto
-        # donde se resuelve el conector real ni la empresa activa.
-        #
-        # Bug real (30/08/2026): `selected_company_code` faltaba en esta
-        # lista. `finalize_response` la usa en `_safe_record_query_event`, y
-        # el rol Invitado (`_responder_invitado`) llama a `finalize_response`
-        # ANTES de que la sección "1. ARQUITECTURA STATELESS" la asigne más
-        # abajo — así que CUALQUIER mensaje de un usuario Invitado, incluido
-        # un simple "hola", crasheaba con
-        # "NameError: cannot access free variable 'selected_company_code'".
-        # Mismo patrón, misma solución: se enlaza aquí para que el closure
-        # nunca dependa de qué camino se tomó para llegar a él.
+        # Se enlazan antes de definir finalize_response para que el closure
+        # siempre encuentre estos nombres, incluso en los retornos tempranos
+        # (Invitado, guardarraíles) que salen antes de resolver el conector y
+        # la empresa activa. Sin esto, cualquier mensaje de un Invitado
+        # fallaría con "NameError: cannot access free variable
+        # 'selected_company_code'" al registrar el evento.
         connector = None
         active_company_code = ""
         db_label = ""
         selected_company_code = ""
-        
-        # FunciOn auxiliar para finalizar respuestas de forma consistente
+
         def finalize_response(
             payload: dict,
             *,
@@ -1101,6 +1139,13 @@ def get_router() -> APIRouter:
             rows_data=None,
             error_msg: str = "",
         ):
+            """Punto único de salida de todas las respuestas de /query.
+
+            Aplica el bloqueo de integridad de vistas no aisladas, registra el
+            evento de la consulta, dispara el aprendizaje en segundo plano y,
+            al final, quita el SQL y la trazabilidad para los roles que no son
+            ADMINISTRADOR.
+            """
             response_payload = dict(payload)
             response_payload.setdefault("query_id", query_id)
             resolved_rows = response_payload.get("rows") if rows_data is None else rows_data
@@ -1108,52 +1153,37 @@ def get_router() -> APIRouter:
             response_payload.setdefault("status", resolved_status)
             duration_ms = round((time.perf_counter() - started_at) * 1000, 1)
 
-            # ── Bloqueo de integridad (Fase 3 — C1, dinámico desde 14/08/2026) ──
-            # Se revisa aquí, en el único punto por donde pasan TODAS las
+            # ── Bloqueo de integridad ──
+            # Se revisa aquí, en el único punto por donde pasan todas las
             # respuestas (métrica certificada, caché e IA), para que ninguna
             # ruta pueda entregar un dato de talento humano sin pasar por
             # este control.
             #
-            # Antes esto era un interruptor global: si ficha_trabajador o
-            # rol_pago aparecían en el SQL, se bloqueaba para TODAS las
-            # empresas por igual. Confirmado el 14/08/2026: para AGRINAG
-            # (la única empresa cuyos datos SÍ viven en la base "RRHH") el
-            # dato es correcto — bloquearlo también ahí era un falso
-            # positivo. Ahora se verifica en vivo, por empresa: se lee la
-            # definición ACTUAL de la vista y se compara contra la base
-            # conectada en este momento (vista_aislada_para_empresa). Si en
-            # el futuro se corrige el SP o se filtra por empresa, el
-            # desbloqueo ocurre solo, sin tocar este código.
+            # La verificación es en vivo y por empresa: se lee la definición
+            # actual de la vista y se compara con la base conectada en este
+            # momento (vista_aislada_para_empresa). Un bloqueo global por
+            # aparecer ficha_trabajador o rol_pago en el SQL sería un falso
+            # positivo para la empresa cuyos datos sí viven en la base "RRHH";
+            # y si se corrige el SP o se filtra por empresa, el desbloqueo
+            # ocurre solo, sin tocar este código.
             sql_para_revisar = sql_text or str(response_payload.get("sql") or "")
             vistas_en_riesgo = vistas_no_aisladas_en_sql(sql_para_revisar)
             if vistas_en_riesgo:
-                # Bug real detectado en pruebas internas (28/08/2026): la
-                # primera versión de este blindaje bloqueaba con "no pude
-                # construir la consulta" CUALQUIER pregunta que tocara una
-                # vista de la lista de riesgo (que incluye Ventas, Compras y
-                # VIS_ALUMNO, NO solo nómina) en cuanto la pregunta no fuera
-                # de nómina — sin comprobar antes si esa vista estaba
-                # realmente aislada. Resultado: casi ninguna pregunta de
-                # ventas/compras llegaba a responderse, aunque la vista
-                # estuviera perfectamente aislada para la empresa activa.
-                # El orden correcto es: primero confirmar en vivo cuáles
-                # vistas NO están aisladas ahora mismo; si ninguna, no hay
-                # nada que bloquear.
+                # Primero se confirma en vivo cuáles de estas vistas no están
+                # aisladas ahora mismo; si ninguna, no hay nada que bloquear.
+                # La lista de riesgo incluye Ventas, Compras y VIS_ALUMNO, no
+                # solo nómina: bloquear sin verificar dejaría sin respuesta
+                # casi toda pregunta de ventas o compras.
                 #
-                # CAUSA RAÍZ CONFIRMADA (29/08/2026, reportada por el usuario
-                # como "la IA no da información"): este chequeo leía la
-                # definición de la vista con `target_db=db_label`, y db_label
-                # es la base FÍSICA de la empresa (ej. "MONT"), no CHAT — pero
-                # las vistas viven en CHAT. execute_query con target_db hace
-                # `USE [MONT]`, así que OBJECT_ID('Ventas') devolvía NULL ahí y
-                # la vista se marcaba "no aislada" SIEMPRE: la IA generaba bien,
-                # ejecutaba bien, obtenía datos reales, y este bloque los tiraba
-                # para responder con el aviso pregrabado de sincronización.
-                # La verificación debe correr contra CHAT (target_db="CHAT"),
-                # igual que _vista_confiable_o_none y mirror_manager. La
-                # seguridad NO cambia: si la vista de CHAT apunta a otra empresa
-                # (condición de carrera real), sus referencias no son subconjunto
-                # de la empresa activa y el bloqueo sigue aplicando.
+                # La verificación corre contra CHAT (target_db="CHAT"), donde
+                # viven las vistas, igual que _vista_confiable_o_none y
+                # mirror_manager. Con la base física de la empresa (p. ej.
+                # "MONT"), execute_query haría `USE [MONT]`, OBJECT_ID('Ventas')
+                # devolvería NULL y toda vista se marcaría como no aislada,
+                # descartando datos correctos. La seguridad no cambia: si la
+                # vista de CHAT apunta a otra empresa (condición de carrera),
+                # sus referencias no son subconjunto de la empresa activa y el
+                # bloqueo sigue aplicando.
                 no_aisladas = [
                     v for v in vistas_en_riesgo
                     if not vista_aislada_para_empresa(connector, v, active_company_code, target_db="CHAT")
@@ -1233,30 +1263,20 @@ def get_router() -> APIRouter:
             raise HTTPException(status_code=401, detail="Sesion invalida.")
 
         # ══════════════════════════════════════════════════════════════════
-        # 0. USUARIO INVITADO (rol GUEST) — Demo Mode autocontenido
+        # 0. USUARIO INVITADO (rol GUEST): demostración autocontenida
         # ══════════════════════════════════════════════════════════════════
-        # Se intercepta AQUÍ, ANTES de leer `req.selected_company_code` o
-        # tocar `session.context_db`/`session.connector`. Es deliberado: un
-        # Invitado nunca debe depender de qué empresa haya seleccionada en el
-        # navegador para poder usar la demostración.
+        # Se intercepta aquí, antes de leer `req.selected_company_code` o
+        # tocar `session.context_db`/`session.connector`: un Invitado nunca
+        # debe depender de la empresa seleccionada en el navegador.
         #
-        # Bug real (30/08/2026): la primera versión de Demo Mode activaba
-        # `active_company_code = "DEMO"` a mitad del pipeline, después de la
-        # validación de conector. Un `connInfo.selected_company_code` residual
-        # en el navegador (de una sesión anterior, de otro usuario, en la
-        # MISMA pestaña) se colaba en la petición y desviaba el flujo hacia
-        # `_prepare_chat_for_query` contra una empresa real, que fallaba con
-        # "Este servidor no cuenta con el módulo de inteligencia activado" —
-        # un error técnico sin sentido para alguien que solo quiere ver una
-        # demostración. La lección: el modo Invitado no puede compartir NADA
-        # del pipeline de conexión real; tiene que ser una rama aparte,
-        # completa, resuelta antes de que el resto del código exista.
-        #
-        # También cumple el requisito: "el mensaje de bloqueo está
-        # bien, pero solo debe desactivarse para invitado, que pueda usar el
-        # área de consulta" — el Invitado nunca llega a la validación de
-        # módulos (2.06) ni a ningún bloqueo: cualquier pregunta que escriba
-        # se responde, siempre, con la demostración.
+        # Si compartiera el pipeline de conexión real, un
+        # `connInfo.selected_company_code` residual en el navegador (de otra
+        # sesión en la misma pestaña) podría desviarlo hacia
+        # `_prepare_chat_for_query` contra una empresa real y mostrarle un
+        # error técnico sin sentido. Por eso es una rama aparte, completa y
+        # resuelta antes que todo lo demás. El Invitado tampoco llega a la
+        # validación de módulos (2.06) ni a ningún bloqueo: cualquier pregunta
+        # se responde con la demostración.
         if str(current_user.get("role") or "").strip().upper() == "GUEST":
             return _responder_invitado(req, prompt, current_user, finalize_response)
 
@@ -1266,24 +1286,20 @@ def get_router() -> APIRouter:
             selected_company_code = str(session.context_db).strip().upper()
         if selected_company_code and selected_company_code != getattr(session, "context_db", ""):
             session.context_db = selected_company_code
-            # FASE 3 — C3: reflejar el cambio de empresa en el estado persistido.
+            # Refleja el cambio de empresa en el estado persistido.
             SESSION_STORE.persist(user_id)
         selected_company_name = (req.selected_company_name or "").strip()
         db_label = selected_company_code or getattr(session, "context_db", "") or "CHAT"
 
-        # ── Guardrail: nunca responder con el contexto de conexión "master" ──
-        # Auditoría 09/09/2026 — bug real reproducido: el botón "Conectar" del
-        # frontend SIEMPRE conecta primero a `master` para poder explorar las
-        # bases del servidor (ver DataChannels.jsx::handleConnectButton), y
-        # limpia `selected_company_code` a propósito para forzar al usuario a
-        # elegir una empresa después. Si el usuario le pregunta algo al chat
-        # ANTES de elegir empresa, no había ningún candado: el motor caía a
-        # `session.context_db` (= "MASTER", lo último realmente conectado) y
-        # respondía con lo que sea que esté visible sin filtrar en CHAT (ej.
-        # `dim_estado_matricula`, una tabla compartida) — dando la impresión
-        # falsa de que "no hay datos de alumnos" cuando sí los hay, solo que
-        # en otra empresa. La IA no estaba mintiendo: respondía bien para un
-        # contexto que nunca debió ser el activo.
+        # ── Guardarraíl: nunca responder con el contexto de conexión "master" ──
+        # El botón "Conectar" del frontend conecta primero a `master` para
+        # explorar las bases del servidor (ver
+        # DataChannels.jsx::handleConnectButton) y limpia
+        # `selected_company_code` para obligar a elegir una empresa. Sin este
+        # candado, una pregunta hecha antes de elegir empresa caería a
+        # `session.context_db` ("MASTER") y se respondería con lo que CHAT
+        # muestre sin filtrar (p. ej. `dim_estado_matricula`, una tabla
+        # compartida), dando la impresión falsa de que no hay datos.
         if db_label.strip().upper() in ("MASTER", "TEMPDB", "MODEL", "MSDB", ""):
             return finalize_response({
                 "explanation": (
@@ -1299,19 +1315,18 @@ def get_router() -> APIRouter:
         # ══════════════════════════════════════════════════════════════════
         # 2.0 SEÑA DE DESARROLLADOR ("soy VM") — core/modo_desarrollador.py
         # ══════════════════════════════════════════════════════════════════
-        # Va ANTES que todo lo demás (saludos, alcance, probe de capacidades)
+        # Va antes que todo lo demás (saludos, alcance, probe de capacidades)
         # porque es la única puerta que puede cambiar cómo se atiende el resto
         # del mensaje. El módulo decide si quien escribe tiene derecho a la
         # seña; aquí solo se ejecuta lo que él autorice.
         #
-        # Historia: el 30/08/2026 la IA "reconoció" esta seña y prometió
-        # privilegios que no existían — era texto del modelo, no una acción del
-        # sistema. Además pidió una tabla de la base de datos donde escribir la
-        # configuración. El registro vive en un archivo local del backend
-        # justamente para no tocar las bases reales de las empresas: este
-        # sistema es de SOLO LECTURA sobre ellas, y el modo desarrollador NO
-        # cambia eso (sigue vigente el sanitizador que rechaza todo lo que no
-        # sea SELECT). Lo único que se levanta es el guardarraíl CONVERSACIONAL.
+        # El reconocimiento lo hace el sistema y no el modelo: si quedara en
+        # manos de la IA, esta podría prometer privilegios que no existen. El
+        # registro vive en un archivo local del backend para no escribir en
+        # las bases de las empresas: el sistema es de solo lectura sobre ellas
+        # y el modo desarrollador no cambia eso (el sanitizador sigue
+        # rechazando todo lo que no sea SELECT). Lo único que se levanta es el
+        # guardarraíl conversacional.
         from core import modo_desarrollador as dev
 
         _rol_usuario = str(current_user.get("role") or "")
@@ -1395,11 +1410,10 @@ def get_router() -> APIRouter:
         # 2. SALUDOS DINÁMICOS (Prioridad Alta - No requieren SQL)
         from core.deepseek_client import _is_greeting
         if _is_greeting(prompt):
-            # Mostramos el nombre comercial JUNTO al código de base. Antes se
-            # mostraba solo uno de los dos, y como el encabezado de la pantalla
-            # muestra el otro, el usuario leía "DELPYG S.A." arriba y "ALIM" en
-            # el saludo, creyendo razonablemente que eran empresas distintas
-            # cuando son la misma. Mostrar ambos elimina esa ambigüedad.
+            # Se muestra el nombre comercial junto al código de la base: el
+            # encabezado de la pantalla muestra uno de los dos, y si el saludo
+            # mostrara solo el otro ("DELPYG S.A." arriba y "ALIM" en el
+            # saludo) parecerían empresas distintas.
             if selected_company_name and selected_company_code and \
                     selected_company_name.upper() != selected_company_code.upper():
                 company_info = f"{selected_company_name} ({selected_company_code})"
@@ -1412,16 +1426,15 @@ def get_router() -> APIRouter:
                 "visualization_type": "text"
             })
 
-        # 2.05 GUARDARRAIL DE ALCANCE (antes que cualquier otro atajo).
+        # 2.05 GUARDARRAÍL DE ALCANCE (antes que cualquier otro atajo).
         #
-        # Va DELIBERADAMENTE antes del probe de capacidades. El probe busca la
-        # subcadena "puedo consultar", asi que "¿puedo consultar sobre la guerra
-        # de Rusia?" lo disparaba y el sistema contestaba muy amablemente con el
-        # catalogo de tablas, sin decir en ningun momento que ese tema no lo
-        # cubre. El usuario se quedaba sin la unica respuesta que importaba.
+        # Va a propósito antes del probe de capacidades, que busca la
+        # subcadena "puedo consultar": "¿puedo consultar sobre la guerra de
+        # Rusia?" lo dispararía y la respuesta sería el catálogo de tablas,
+        # sin decir que ese tema está fuera de alcance.
         #
-        # Tambien va antes que el catalogo de metricas y que la IA: si el tema
-        # es ajeno al negocio, no hay metrica que valga ni token que gastar.
+        # También va antes que el catálogo de métricas y que la IA: si el tema
+        # es ajeno al negocio, no hay métrica que aplique ni tokens que gastar.
         from core.alcance import (
             es_fuera_de_alcance,
             modulo_no_disponible,
@@ -1463,13 +1476,14 @@ def get_router() -> APIRouter:
         )
 
         if _tiene_restriccion:
-            # Intentar detectar qué módulo pide el usuario, con la misma lógica
-            # que _filter_questions_by_module. Si lo detecta y NO está permitido,
-            # bloquear con una respuesta que enumera qué SÍ puede.
+            # Se detecta qué módulo pide el usuario por palabras clave, con una
+            # lógica similar a _filter_questions_by_module. Si lo detecta y no
+            # está permitido, se bloquea con una respuesta que enumera lo que sí
+            # puede consultar.
             _norm_prompt = _normalize_text(prompt)
             _modulos_detectados = {}
 
-            # Mapeo de palabras clave a módulos (mismo que en _filter_questions_by_module)
+            # Palabras clave por módulo (más amplias que las de _filter_questions_by_module)
             _keywords_modulo = {
                 "RRHH": ["trabajador", "empleado", "nomina", "rol pago", "recurso humano"],
                 "FINANZAS": ["asiento", "balance", "contab", "cuenta", "ingreso", "egreso", "flujo caja"],
@@ -1482,7 +1496,7 @@ def get_router() -> APIRouter:
                 if any(p in _norm_prompt for p in palabras):
                     _modulos_detectados[mod] = True
 
-            # Si detectó un módulo y NO está permitido, bloquear
+            # Módulo detectado y no permitido: se bloquea.
             if _modulos_detectados:
                 _modulo_pedido = list(_modulos_detectados.keys())[0]
                 if _modulo_pedido not in _modulos_permitidos:
@@ -1501,40 +1515,25 @@ def get_router() -> APIRouter:
                         "agent_log": [f"Bloqueo de módulo: pedido {_modulo_pedido}, permitidos {_modulos_permitidos}"],
                     })
 
-        # NOTA (27/08/2026): el aviso de "modulo inexistente en esta base" se
-        # movio mas abajo, despues de _prepare_chat_for_query(). Antes usaba
-        # `_esquema` = session.schema_dict, que es el esquema RAW de la base
-        # fisica de la empresa (capturado en /api/connect y filtrado por
-        # schema_resolver.py) — ahi los nombres son tb_cabmov/tb_detmov, no
-        # las vistas de CHAT (Ventas, Compras, VIS_ALUMNO...). El guardarraíl
-        # comparaba contra ese esquema raw y por eso declaraba a MONT sin
-        # modulo de Ventas aunque MONT si factura: la arquitectura real de
-        # este sistema es "TODO fluye por SP_MODIFICA_VISTA_IA" (ver mas abajo),
-        # asi que el guardarraíl debe usar el MISMO esquema de CHAT que usa la
-        # IA para generar el SQL, no un esquema distinto capturado antes.
+        # El aviso de "módulo inexistente en esta base" va más abajo, después
+        # de _prepare_chat_for_query(): debe usar el mismo esquema de CHAT que
+        # la IA usa para generar el SQL, porque toda consulta fluye por
+        # SP_MODIFICA_VISTA_IA. session.schema_dict es el esquema crudo de la
+        # base física (tb_cabmov/tb_detmov en lugar de Ventas, Compras,
+        # VIS_ALUMNO...) y haría parecer que una empresa no tiene un módulo
+        # que sí tiene (p. ej. MONT sin Ventas aunque sí factura).
 
-        # NOTA (30/08/2026 — "expertos me recomendaron
-        # que no puede haber respuestas grabadas con mucho tecnicismo,
-        # siempre la IA tiene que responder"):
-        #
-        # Aquí existía un intercepto que, para preguntas tipo "¿qué puedo
-        # consultar?", devolvía un texto ARMADO A MANO con f-strings
-        # ("En SONG tengo mapeadas 214 entidades. No identifiqué dominios
-        # espejo estándar...") en vez de dejar que la IA respondiera. Sonaba
-        # a jerga interna del sistema, no a un asistente conversando.
-        #
-        # `_is_capability_probe()` sigue existiendo (se usa más abajo para
-        # otras cosas y tiene sus propias pruebas), pero ya NO corta el flujo
-        # aquí: estas preguntas ahora bajan como cualquier otra hasta la
-        # generación real con el modelo (sección 5, "GENERACIÓN CON IA"),
-        # que ya recibe el esquema real y el bloque `{alcance}` con los
-        # módulos disponibles (REGLA 8 del SYSTEM_PROMPT ya cubre
-        # explícitamente estas preguntas meta). El mensaje técnico
-        # "Tuve un problema técnico al procesar tu pregunta con la IA..."
-        # (más abajo, en el manejo de `gen_error`) es el ÚNICO que debe
-        # aparecer, y solo si el motor de IA falla de verdad.
+        # Las preguntas del tipo "¿qué puedo consultar?" no se interceptan con
+        # un texto armado a mano, que sonaría a jerga interna y no a un
+        # asistente: bajan como cualquier otra hasta la generación con IA
+        # (sección 5), que recibe el esquema real y el bloque `{alcance}` con
+        # los módulos disponibles (la REGLA 8 del SYSTEM_PROMPT cubre estas
+        # preguntas). `_is_capability_probe()` se conserva porque tiene sus
+        # propias pruebas. El mensaje "Tuve un problema técnico al procesar tu
+        # pregunta con la IA..." (manejo de `gen_error`) solo debe aparecer si
+        # el motor de IA falla de verdad.
 
-        # 3. VALIDACIÓN DE CONECTOR (Necesario para consultas de datos)
+        # 3. VALIDACIÓN DE CONECTOR (necesario para consultar datos)
         connector = session.connector
         if not connector:
              raise HTTPException(
@@ -1543,39 +1542,35 @@ def get_router() -> APIRouter:
              )
 
         # ═══════════════════════════════════════════════════════════════════════════════════
-        # 🔄 ACTIVACIÓN: Preparar vistas CHAT (SP_MODIFICA_VISTA_IA → SELECT en CHAT)
+        # ACTIVACIÓN: preparar las vistas de CHAT (SP_MODIFICA_VISTA_IA → SELECT en CHAT)
         # ═══════════════════════════════════════════════════════════════════════════════════
-        # ARQUITECTURA DEL INGENIERO: TODO fluye por SP_MODIFICA_VISTA_IA.
-        # El SP configura las vistas de CHAT para la empresa seleccionada,
-        # y luego la IA genera el SELECT directamente contra esas vistas.
-        # db_label SIEMPRE = "CHAT". No hay bypass hacia la BD original.
+        # Toda consulta fluye por SP_MODIFICA_VISTA_IA: el SP configura las
+        # vistas de CHAT para la empresa seleccionada y la IA genera el SELECT
+        # directamente contra ellas. db_label es "CHAT", salvo que el SP falle
+        # (ver la regla de aislamiento más abajo).
         from main import _prepare_chat_for_query, execute_chat_query
         active_company_code = selected_company_code or getattr(session, "context_db", "") or (getattr(connector, "database", "") if connector else "") or "CHAT"
 
-        # 2.5 CACHÉ DE RESPUESTA COMPLETA (Redis, aislado por empresa, TTL corto)
-        # Clave = pregunta + active_company_code — NUNCA db_label, que casi
-        # siempre es el "CHAT" compartido entre todas las empresas. Usar
-        # active_company_code es el mismo aislamiento que ya usa SEMANTIC_PROC
-        # y evita repetir la fuga de datos entre empresas ya documentada y
-        # corregida (incidente de fuga de datos entre empresas del 27/07/2026). En un hit, nos
-        # ahorramos incluso la preparación de vistas CHAT y la ida a la BD.
-        # Resuelto AQUÍ (antes de cualquier atajo: caché, métrica certificada,
-        # banco de preguntas) para poder saltarlos todos cuando el usuario
-        # eligió un motor a propósito: elegir un motor debe hacer que ese
-        # motor trabaje directo, sin mezclarse (defecto corregido el
-        # 30/08/2026: esos atajos ignoraban en silencio el motor elegido).
+        # 2.5 CACHÉ DE RESPUESTA COMPLETA (Redis, aislada por empresa, TTL corto)
+        # Clave = motor + pregunta + active_company_code, nunca db_label, que
+        # casi siempre es el "CHAT" compartido por todas las empresas: usarlo
+        # filtraría respuestas entre empresas. Es el mismo aislamiento que usa
+        # SEMANTIC_PROC. Con un acierto se evita incluso preparar las vistas de
+        # CHAT e ir a la base.
+        # El motor se valida aquí, antes de cualquier atajo (caché, métrica
+        # certificada, banco de preguntas), para poder saltarlos cuando el
+        # usuario eligió un motor a propósito: ese motor debe trabajar directo
+        # y los atajos ignorarían la elección.
         _motor_validado, _aviso_motor = _validar_motor_ia(req.motor_ia, current_user)
         if _aviso_motor:
             agent_log.append(_aviso_motor)
 
-        # Memoria propia por motor (30/08/2026): la clave incluye el motor
-        # elegido, así que Flash, Pro y cada proveedor nunca se
-        # sirven la respuesta cacheada de otro — cada uno tiene su propia
-        # memoria persistente. Preguntar lo mismo otro día, con el MISMO
-        # motor, responde en segundos sin volver a generar nada; con OTRO
-        # motor, no encuentra nada y genera de cero. Sigue siendo la IA la
-        # que respondió esa memoria (nunca un texto enlatado): solo se evita
-        # regenerar lo que ya se generó antes.
+        # Memoria propia por motor: la clave incluye el motor elegido, así que
+        # Flash, Pro y cada proveedor nunca se sirven la respuesta cacheada de
+        # otro. Repetir la pregunta con el mismo motor responde en segundos;
+        # con otro motor se genera de cero. La respuesta guardada sigue siendo
+        # la que generó la IA (nunca un texto enlatado): solo se evita
+        # regenerarla.
         _clave_motor = _motor_validado or "flash"
         full_cache_hit = get_cached(f"{_clave_motor}::{prompt}", active_company_code)
         if full_cache_hit and isinstance(full_cache_hit, dict) and full_cache_hit.get("rows"):
@@ -1606,29 +1601,23 @@ def get_router() -> APIRouter:
                 "agent_log": agent_log + ["CHAT no disponible en este servidor"]
             }, status="error", error_msg="CHAT_NOT_AVAILABLE")
 
-        # REGLA DE ORO DE AISLAMIENTO:
-        # Si SP_MODIFICA_VISTA_IA falló para esta empresa (sp_status != "OK"), las vistas
-        # en CHAT no se reapuntaron. Para garantizar datos 100% reales y aislados,
-        # conmutamos el target de consulta directamente a la BD de la empresa.
+        # REGLA DE AISLAMIENTO:
+        # Si SP_MODIFICA_VISTA_IA falló para esta empresa (sp_status != "OK"),
+        # las vistas de CHAT no se reapuntaron; para no arriesgar datos de otra
+        # empresa, la consulta se dirige a la base de la propia empresa.
         use_chat_views = (str(sp_status or "").strip().upper() == "OK")
         if use_chat_views:
             db_label = "CHAT"
             effective_schema = chat_schema_dict
         else:
-            # ORDEN ARQUITECTÓNICO (14/08/2026): la ruta correcta es siempre
-            # CHAT → vistas. Las vistas ya traen los datos limpios, filtrados
-            # por la empresa activa y en pocas entidades — por eso responden
-            # rápido. Recorrer tabla por tabla la base física de la empresa NO
-            # es una alternativa aceptable: son cientos de tablas con nombres
-            # crípticos (tb_cabmov, tb_detmov...), la IA tiene que adivinar
-            # relaciones, y el esquema resultante es tan grande que degrada
-            # tanto la latencia como la calidad de la respuesta.
-            #
-            # Antes, si SP_MODIFICA_VISTA_IA no devolvía OK, este bloque hacía
-            # get_schema() de TODA la base de la empresa y se lo entregaba a la
-            # IA. Ahora se mantienen las vistas de CHAT como esquema (que es lo
-            # que la IA sabe consultar) y solo se cambia la base destino a la
-            # de la empresa para no arriesgar datos de otra compañía.
+            # Se mantienen las vistas de CHAT como esquema (es lo que la IA sabe
+            # consultar) y solo cambia la base destino. Las vistas traen los
+            # datos limpios, filtrados por empresa y en pocas entidades, por eso
+            # responden rápido. Entregar a la IA el esquema completo de la base
+            # física no es una alternativa: son cientos de tablas con nombres
+            # crípticos (tb_cabmov, tb_detmov...), la IA tendría que adivinar
+            # relaciones y un esquema tan grande degrada tanto la latencia como
+            # la calidad de la respuesta.
             db_label = active_company_code
             agent_log.append(
                 f"⚠️ SP_MODIFICA_VISTA_IA no confirmó OK para {active_company_code}. "
@@ -1637,18 +1626,17 @@ def get_router() -> APIRouter:
             )
             effective_schema = chat_schema_dict or (session.schema_dict or {})
 
-        # 2.06 MODULO INEXISTENTE EN ESTA BASE.
-        # Pedir compras en un colegio devolvia "No se encontraron registros",
-        # que suena a problema de fechas o de filtros y empuja al usuario a
-        # reformular una pregunta que nunca va a tener respuesta. Si el modulo
-        # no existe, se dice claro y se ofrece lo que si hay.
+        # 2.06 MÓDULO INEXISTENTE EN ESTA BASE.
+        # Pedir compras en un colegio devolvería "No se encontraron registros",
+        # que suena a un problema de fechas o de filtros y empuja a reformular
+        # una pregunta que nunca tendrá respuesta. Si el módulo no existe, se
+        # dice claro y se ofrece lo que sí hay.
         #
-        # Usa `effective_schema` (las vistas de CHAT ya activadas arriba por
-        # SP_MODIFICA_VISTA_IA para `active_company_code`), NO el esquema raw
-        # de la base fisica de la empresa. Bug real (27/08/2026): con el
-        # esquema raw, MONT aparecia sin modulo de Ventas porque sus tablas
-        # fisicas son tb_cabmov/tb_detmov (sin la palabra "venta" ni
-        # "factura"), aunque la vista CHAT.dbo.Ventas si tiene sus datos.
+        # Usa `effective_schema` (las vistas de CHAT ya activadas por
+        # SP_MODIFICA_VISTA_IA para `active_company_code`), no el esquema crudo
+        # de la base física: ahí MONT parecería no tener Ventas, porque sus
+        # tablas son tb_cabmov/tb_detmov (sin "venta" ni "factura" en el
+        # nombre), aunque la vista CHAT.dbo.Ventas sí tiene sus datos.
         _modulo_ausente = modulo_no_disponible(prompt, effective_schema)
         if _modulo_ausente:
             return finalize_response({
@@ -1659,31 +1647,21 @@ def get_router() -> APIRouter:
                 "agent_log": agent_log + [f"Módulo '{_modulo_ausente}' no existe en la base activa (esquema CHAT)"],
             })
 
-        # 4. CACHÉ SEMÁNTICO (Aislado estrictamente por empresa Y por motor)
+        # 4. CACHÉ SEMÁNTICA (aislada por empresa y por motor)
         cached_result = SEMANTIC_PROC.get_cached_query(
             prompt, db_label, company_code=active_company_code, motor=_clave_motor
         )
         if cached_result:
             sql_to_run = cached_result["sql"]
 
-            # Blindaje (29/08/2026): defecto detectado en pruebas — un
-            # SQL cacheado que usa [Ventas]/[Compras] (nada de nómina) seguía
-            # devolviendo el aviso de bloqueo cada vez que se repetía la
-            # pregunta, porque esas vistas seguían sin estar aisladas para la
-            # empresa activa EN ESE MOMENTO (condición de carrera de CHAT).
-            # Sin este chequeo, esa MISMA entrada de caché se queda repitiendo
-            # el mismo bloqueo para siempre — nunca se le da a la IA la
-            # oportunidad de generar de nuevo con una vista que sí esté
-            # disponible ahora. Se descarta el acierto de caché (no se
-            # ejecuta ni se muestra) y se cae al flujo normal de generación.
-            #
-            # Nota (29/08/2026): la "condición de carrera" era el síntoma; la
-            # causa raíz de que SIEMPRE se viera como no aislada era el mismo
-            # target_db equivocado del bloqueo de finalize_response (se leía
-            # OBJECT_DEFINITION en la base física de la empresa, donde la
-            # vista de CHAT no existe). Corregido a target_db="CHAT": un SQL
-            # cacheado con la vista apuntando a la empresa activa vuelve a
-            # acertar, y solo se descarta si HOY apunta realmente a otra parte.
+            # Si el SQL cacheado toca vistas que ahora mismo no están aisladas
+            # para la empresa activa (condición de carrera de CHAT), se
+            # descarta el acierto (no se ejecuta ni se muestra) y se sigue con
+            # la generación normal. Sin este chequeo, esa entrada repetiría el
+            # mismo bloqueo para siempre sin dar a la IA la oportunidad de usar
+            # una vista disponible. La verificación corre contra CHAT
+            # (target_db="CHAT"), donde viven las vistas: un SQL cacheado con la
+            # vista apuntando a la empresa activa sigue sirviendo.
             vistas_riesgo_cache = vistas_no_aisladas_en_sql(sql_to_run)
             cache_comprometido = vistas_riesgo_cache and any(
                 not vista_aislada_para_empresa(connector, v, active_company_code, target_db="CHAT")
@@ -1713,40 +1691,27 @@ def get_router() -> APIRouter:
                 else:
                     agent_log.append(f"SQL de caché falló: {err}. Procediendo con IA...")
 
-        # 4.5 MÉTRICAS CERTIFICADAS (Fase 1 — Capa Semántica con Fallback Físico)
+        # 4.5 MÉTRICAS CERTIFICADAS (capa semántica con respaldo en tablas físicas)
         # Se salta si el usuario eligió un motor a propósito: esas fórmulas
         # fijas ignorarían su elección.
         metric_hit = resolver_metrica(prompt) if not _motor_validado else None
         if metric_hit:
             metric_sql = metric_hit["sql"]
 
-            # Bug real (28/08/2026): "total de ventas
-            # por meses" y el resto de métricas de ventas/compras fallaban con
-            # "objeto no válido" en CUALQUIER empresa que no fuera MONT (y a
-            # veces ni en MONT). Causa: el SQL de estas métricas tiene escrito
-            # literalmente "cabecera_factura"/"cabecera_compra", pero esas
-            # vistas NO EXISTEN hoy en CHAT — confirmado por el usuario con el
-            # árbol de vistas real del servidor: lo que existe es "Ventas" y
-            # "Compras". CHAT es un namespace compartido por todo el servidor,
-            # así que el nombre correcto puede variar con el tiempo — por eso
-            # se detecta en vivo en cada consulta (core/vista_resolver.py) en
-            # vez de sustituir por otro nombre fijo, que solo movería el mismo
-            # problema a la próxima vez que el servidor cambie.
-            # Defecto detectado en pruebas (29/08/2026): Indicadores SÍ
-            # mostraba Ventas de mayo 2026 para AGGO, pero el chat decía "no
-            # encontré una vista de ventas sincronizada" para la MISMA
-            # empresa — un experto viendo eso concluye, con razón, que el
-            # sistema no funciona. Causa: cuando cabecera_factura/compra
-            # existen en CHAT pero esta verificación en vivo no las confirma
-            # aisladas para la empresa activa AHORA MISMO (condición de
-            # carrera de CHAT, no un problema de la empresa), el chat se
-            # rendía y derivaba a la IA sin más. Indicadores (mirror_manager.
-            # get_bi_pulse, tarjeta "Balance Comercial") YA resuelve esto
-            # exactamente así: cuando la vista de CHAT no es confiable, cae a
-            # las tablas FÍSICAS de la propia empresa (tb_cabmov/tb_detmov,
-            # el ERP común a todas) en vez de rendirse — y por eso Indicadores
-            # "nunca falla". Se replica aquí el mismo criterio: la IA pasa a
-            # usar el mismo fallback físico, no otro camino distinto.
+            # El SQL de estas métricas nombra literalmente "cabecera_factura" y
+            # "cabecera_compra", pero el nombre real de esas vistas en CHAT
+            # puede variar (en el servidor actual son "Ventas" y "Compras"),
+            # porque CHAT es un namespace compartido por todo el servidor. Por
+            # eso se detecta en vivo en cada consulta (core/vista_resolver.py)
+            # en lugar de fijar otro nombre, que solo movería el problema al
+            # próximo cambio del servidor.
+            #
+            # Si la vista existe pero no se confirma aislada para la empresa
+            # activa ahora mismo (condición de carrera de CHAT), no se abandona
+            # la métrica: igual que Indicadores (mirror_manager.get_bi_pulse,
+            # tarjeta "Balance Comercial"), se cae a las tablas físicas de la
+            # propia empresa (tb_cabmov/tb_detmov, el ERP común a todas). Así
+            # el chat y los Indicadores no se contradicen para la misma empresa.
             necesita_fallback_fisico = not use_chat_views
             if use_chat_views and db_label.upper() == "CHAT":
                 sql_lower = metric_sql.lower()
@@ -1766,19 +1731,17 @@ def get_router() -> APIRouter:
                         necesita_fallback_fisico = True
 
             if necesita_fallback_fisico:
-                # Base física destino: la de la empresa activa siempre — si
-                # el SP falló globalmente `db_label` YA es esa base; si solo
-                # esta vista puntual no es confiable, `db_label` sigue siendo
-                # "CHAT" y hay que apuntar a `active_company_code` en su lugar
-                # (exactamente como hace Indicadores: nunca las tablas físicas
-                # de OTRA empresa).
+                # Base física destino: siempre la de la empresa activa. Si el
+                # SP falló globalmente, `db_label` ya es esa base; si solo esta
+                # vista no es confiable, `db_label` sigue siendo "CHAT" y hay
+                # que apuntar a `active_company_code` (como hace Indicadores:
+                # nunca las tablas físicas de otra empresa).
                 db_fisica_fallback = active_company_code if db_label.upper() == "CHAT" else db_label
                 if "cabecera_factura" in metric_sql.lower():
                     v1_subquery = f"(SELECT mov_nummov AS NumeroFactura, mov_fecha AS Fecha, det_subtot AS Total, det_nomart AS Producto FROM [{db_fisica_fallback}].[dbo].[tb_cabmov] INNER JOIN [{db_fisica_fallback}].[dbo].[tb_detmov] ON mov_codcia = det_codcia AND mov_nummov = det_cabece WHERE mov_tipo='FA' AND mov_estado<>'AN') AS cabecera_factura"
                     metric_sql = re.sub(r"\bcabecera_factura\b", v1_subquery, metric_sql, flags=re.IGNORECASE)
-                # Mismo fallback para compras — antes solo existía para ventas,
-                # así que "total de compras por mes" con el SP caído quedaba sin
-                # cubrir aunque el caso sea idéntico.
+                # Mismo respaldo para compras (p. ej. "total de compras por mes"
+                # con el SP caído).
                 if "cabecera_compra" in metric_sql.lower():
                     v1_subquery_compra = f"(SELECT mov_nummov AS NumeroFactura, mov_fecha AS Fecha, det_subtot AS Total, det_nomart AS Producto FROM [{db_fisica_fallback}].[dbo].[tb_cabmov] INNER JOIN [{db_fisica_fallback}].[dbo].[tb_detmov] ON mov_codcia = det_codcia AND mov_nummov = det_cabece WHERE mov_tipo='CO' AND mov_estado<>'AN') AS cabecera_compra"
                     metric_sql = re.sub(r"\bcabecera_compra\b", v1_subquery_compra, metric_sql, flags=re.IGNORECASE)
@@ -1795,19 +1758,18 @@ def get_router() -> APIRouter:
             )
             if m_valid:
                 m_cols, m_rows, m_err = execute_chat_query(connector, metric_sql, db_label, empresa=active_company_code)
-                # Resultado vacío o escalar nulo/cero → esta empresa puede no tener
-                # estos datos o usar otras etiquetas. Dejamos que el flujo de IA
-                # investigue y construya una narrativa útil, en vez de un "0" seco.
+                # Resultado vacío o escalar nulo/cero: la empresa puede no tener
+                # estos datos o usar otras etiquetas. Se deja que la IA
+                # investigue y redacte algo útil, en lugar de un "0" seco.
                 m_es_vacio = (not m_rows) or (
                     len(m_rows) == 1 and len(m_rows[0]) == 1
                     and (m_rows[0][0] is None or str(m_rows[0][0]).strip() in ("0", "0.0", "0,0", "None", ""))
                 )
                 if m_err:
-                    # Antes este caso no dejaba ningún rastro: si la vista que
-                    # usa la métrica no existe en esta empresa (ej. VIS_ALUMNO
-                    # fuera de una institución educativa), la métrica fallaba en
-                    # silencio y el usuario solo veía el resultado de la IA, sin
-                    # forma de saber que una métrica certificada se había caído.
+                    # Se deja rastro en agent_log y en el log: si la vista que
+                    # usa la métrica no existe en esta empresa (p. ej. VIS_ALUMNO
+                    # fuera de una institución educativa), la métrica fallaría
+                    # en silencio y no habría forma de saber que se cayó.
                     agent_log.append(
                         f"Métrica certificada {metric_hit['id']} falló en BD ({m_err}). Derivando a IA."
                     )
@@ -1824,16 +1786,11 @@ def get_router() -> APIRouter:
                         f"📌 Métrica certificada: {metric_hit['id']} (afinidad {metric_hit['score']})"
                     )
 
-                    # Por requisito explícito (30/08/2026): el texto
-                    # que ve como respuesta NUNCA puede ser la descripción
-                    # fija del catálogo repetida siempre igual — eso es
-                    # "pregrabado" y ya no está permitido como camino
-                    # normal. El SQL sigue siendo el certificado (número
-                    # 100% exacto, eso NO cambia); lo que cambia es que la
-                    # IA redacta la explicación usando los datos REALES que
-                    # esa consulta devolvió. Tope de 8s: si la IA no
-                    # responde a tiempo, recién ahí se usa la descripción
-                    # fija del catálogo como respaldo — nunca antes.
+                    # El SQL es el certificado (el número es exacto), pero la
+                    # explicación la redacta la IA con los datos reales que
+                    # devolvió la consulta, no la descripción fija del
+                    # catálogo repetida siempre igual. Si la IA no responde en
+                    # 8 s, se usa esa descripción como respaldo.
                     from core.narrativa_rapida import narrar_resultado_rapido, proveedores_desde_config
 
                     texto_respaldo = (
@@ -1858,8 +1815,8 @@ def get_router() -> APIRouter:
                         "explanation": explicacion_metrica,
                         "visualization_type": metric_hit["visualization_type"],
                         # La procedencia (de dónde salió el número, no cómo se
-                        # redactó la explicación) vive aquí — en "Cómo se
-                        # calculó" — no en la respuesta principal.
+                        # redactó la explicación) va en "Cómo se calculó", no
+                        # en la respuesta principal.
                         "business_analysis": (
                             f"### Procedencia del dato\n"
                             f"**{metric_hit['nombre']}** — {metric_hit['descripcion']}\n\n"
@@ -1896,10 +1853,9 @@ def get_router() -> APIRouter:
                 # activa, devolver de inmediato si hay datos reales; si no,
                 # dejar que continúe el flujo normal de IA).
                 bank_sql = bank_hit["sql_hint"]
-                # Mismo criterio que la métrica certificada (ver comentario
-                # extenso ahí): si la vista de CHAT no es confiable AHORA
-                # MISMO, se cae a las tablas físicas de la empresa activa —
-                # igual que Indicadores — en vez de rendirse.
+                # Mismo criterio que la métrica certificada: si la vista de
+                # CHAT no es confiable ahora mismo, se cae a las tablas físicas
+                # de la empresa activa, igual que Indicadores.
                 necesita_fallback_fisico_bank = not use_chat_views
                 if use_chat_views and db_label.upper() == "CHAT":
                     sql_lower_bank = bank_sql.lower()
@@ -1941,10 +1897,10 @@ def get_router() -> APIRouter:
                         agent_log.append(f"📚 Banco de preguntas: atajo directo {bank_id}")
 
                         # Mismo criterio que la métrica certificada: el SQL es
-                        # el atajo preconfigurado (número garantizado), pero
-                        # el TEXTO lo redacta la IA sobre los datos reales —
-                        # nunca la frase fija del banco repetida siempre
-                        # igual. Respaldo de 8s si la IA no responde a tiempo.
+                        # el atajo preconfigurado (número garantizado), pero el
+                        # texto lo redacta la IA sobre los datos reales, no la
+                        # frase fija del banco. Respaldo si la IA no responde
+                        # en 8 s.
                         from core.narrativa_rapida import narrar_resultado_rapido, proveedores_desde_config
 
                         texto_respaldo_bank = bank_hit.get("explanation", "")
@@ -2001,23 +1957,22 @@ def get_router() -> APIRouter:
             prompt_for_ai = f"(Intención detectada: {intent_hint}). {prompt}"
 
         # 4.6 PISTAS DE MÉTRICAS PARA EL LLM (si no hubo ejecución directa)
-        # Inyectamos las fórmulas certificadas más afines para que el LLM
-        # las use en lugar de inventar SQL desde cero.
+        # Se inyectan las fórmulas certificadas más afines para que el LLM las
+        # use en lugar de inventar el SQL desde cero.
         metric_hints = hints_para_prompt(prompt)
         if metric_hints:
             agent_log.append("Capa semántica: fórmulas certificadas inyectadas al prompt del LLM")
             prompt_for_ai = f"{prompt_for_ai}\n\n{metric_hints}"
 
-        # 5. GENERACIÓN CON IA (Si no hubo caché)
+        # 5. GENERACIÓN CON IA (si no hubo caché)
         client = session.client
-        # NOTA: effective_schema ya fue establecido desde CHAT en paso 3, no lo sobrescribimos
-        # effective_schema se usa para el contexto del IA
+        # effective_schema ya viene de CHAT (paso 3) y es el contexto que recibe la IA.
         
         if not client:
             raise HTTPException(status_code=400, detail="Cliente IA no disponible para esta empresa.")
 
         if not effective_schema and connector:
-            # Emergency: intentar fetch r\u00e1pido de esquema si a\u00fan no se sincronic\u00f3
+            # Emergencia: lectura r\u00e1pida del esquema si a\u00fan no se sincroniz\u00f3.
             try:
                 emergency_schema = connector.get_schema(database_override=db_label, empresa=active_company_code) or {}
                 if emergency_schema:
@@ -2034,49 +1989,45 @@ def get_router() -> APIRouter:
             raise HTTPException(status_code=400, detail="Esquema no disponible. Espera un momento y vuelve a intentarlo.")
 
         # ═══════════════════════════════════════════════════════════════════════════════════
-        # ✅ SCHEMA REAL DE CHAT (no plantillas)
+        # ESQUEMA REAL DE CHAT (sin plantillas)
         # ═══════════════════════════════════════════════════════════════════════════════════
-        # Ahora que CHAT está activado (SP_MODIFICA_VISTA_IA ejecutado),
-        # el effective_schema contiene las vistas REALES de CHAT para esta empresa.
-        # La IA generará SQL consultando DIRECTAMENTE estas vistas (ej: SELECT * FROM VIS_ALUMNO)
-        # NO usa templates precacheadas.
-        
-        # Preparar schema como contexto para la IA
+        # Con CHAT activado (SP_MODIFICA_VISTA_IA ejecutado), effective_schema
+        # contiene las vistas reales de CHAT para esta empresa. La IA genera
+        # SQL que consulta directamente esas vistas (p. ej. SELECT * FROM
+        # VIS_ALUMNO), sin plantillas precacheadas.
+
+        # Esquema como contexto para la IA
         if not chat_schema_text:
             schema_entities = list(effective_schema.keys()) if effective_schema else []
             chat_schema_text = f"Vistas CHAT disponibles ({len(schema_entities)}): {', '.join(schema_entities[:15])}"
 
         agent_log.append(f"📊 Schema de CHAT cargado: {len(effective_schema)} tablas/vistas")
         
-        # Pasar schema real (texto + tablas) a la IA
+        # Esquema real (texto + tablas) para la IA
         client.set_schema(chat_schema_text, tables_dict=effective_schema)
         agent_log.append("Schema CHAT activado — IA consultará vistas dinámicas")
 
-        # ── VISTAS REALES DETECTADAS EN VIVO (28/08/2026) ─────────────────────
-        # El BI ya detecta en vivo qué vista de CHAT usar (vista_resolver +
-        # aislamiento por empresa); el chat (IA generativa) no lo hacía, y por
-        # eso la IA inventaba cabecera_factura/cabecera_compra (nombres que ya
-        # no existen en el servidor) o usaba tb_cabmov/tb_detmov (lentas o
-        # vacías para varias empresas). Se confirma en vivo el nombre REAL y se
-        # le pasa por escrito al prompt, igual que el BI.
+        # ── VISTAS REALES DETECTADAS EN VIVO ──────────────────────────────────
+        # Igual que el BI (vista_resolver + aislamiento por empresa), se
+        # confirma en vivo el nombre real de las vistas de ventas y compras y
+        # se le pasa por escrito al prompt. Sin esto la IA usaría nombres que
+        # ya no existen en el servidor (cabecera_factura, cabecera_compra) o
+        # tb_cabmov/tb_detmov, lentas o vacías para varias empresas.
         _vista_ventas_real = _vista_confiable_o_none(
             CANDIDATOS_VENTAS, "ventas", connector, active_company_code
         )
         _vista_compras_real = _vista_confiable_o_none(
             CANDIDATOS_COMPRAS, "compras", connector, active_company_code
         )
-        # Defecto detectado en pruebas (29/08/2026): cuando esta
-        # verificación no confirmaba una vista de CHAT, el prompt le decía a
-        # la IA "usa solo el esquema disponible" y la dejaba a su suerte —
-        # resultado real: "no encontré una vista de ventas sincronizada"
-        # mientras Indicadores, para la MISMA empresa y el MISMO momento, sí
-        # mostraba el dato (mirror_manager.get_bi_pulse cae a las tablas
-        # físicas tb_cabmov/tb_detmov de la propia empresa cuando pasa esto,
-        # nunca se rinde). Se le da a la IA esa MISMA subconsulta de
-        # respaldo, ya probada, en vez de dejarla reinventar la rueda cada
-        # vez — mismo criterio que el fallback ya aplicado a métricas
-        # certificadas y banco de preguntas más abajo en este archivo.
+        # Si no se confirma una vista de CHAT, se le da a la IA la misma
+        # subconsulta de respaldo sobre las tablas físicas de la empresa que
+        # usa Indicadores (mirror_manager.get_bi_pulse), en vez de dejarla sin
+        # fuente: de lo contrario respondería "no encontré una vista de ventas
+        # sincronizada" mientras Indicadores sí muestra el dato para la misma
+        # empresa. Es el mismo respaldo que usan las métricas certificadas y
+        # el banco de preguntas (más arriba en este archivo).
         def _subconsulta_fisica_respaldo(tipo_mov: str, alias: str) -> str:
+            """Devuelve la subconsulta sobre tb_cabmov/tb_detmov de la empresa activa para un tipo de movimiento (FA ventas, CO compras)."""
             return (
                 f"(SELECT m.mov_nummov AS NumeroFactura, m.mov_fecha AS Fecha, d.det_subtot AS Total, "
                 f"d.det_nomart AS Producto FROM [{active_company_code}].[dbo].[tb_cabmov] m "
@@ -2133,10 +2084,10 @@ def get_router() -> APIRouter:
             module=req.module or "GLOBAL",
             context_db=db_label,
             history=history_text,
-            # La empresa real, no `db_label`: este ultimo vale "CHAT" para
-            # todas (las consultas van contra las vistas de CHAT), asi que la
+            # La empresa real, no `db_label`: este último vale "CHAT" para
+            # todas (las consultas van contra las vistas de CHAT), así que la
             # memoria aprendida se indexa por `active_company_code`, igual que
-            # el cache semantico y el de respuesta completa.
+            # la caché semántica y la de respuesta completa.
             company_code=active_company_code,
             # El nombre real de las vistas de ventas/compras, confirmado en
             # vivo para esta empresa (evita que la IA use nombres obsoletos o
@@ -2146,22 +2097,15 @@ def get_router() -> APIRouter:
         )
 
         if gen_error:
-            # BUG REAL encontrado el 14/08/2026: este payload solo llevaba "error"
-            # (un detalle técnico, nunca mostrado) y ninguna "explanation". Como el
-            # endpoint de streaming solo sabe rellenar un mensaje genérico de "sin
-            # datos" cuando explanation viene vacía, CUALQUIER fallo del motor IA
-            # (timeout, error de red hacia el proveedor, respuesta no parseable,
-            # etc.) se disfrazaba de "no se encontraron registros" — indistinguible
-            # de una pregunta fuera de alcance o una consulta sin resultados. El
-            # usuario no tenía forma de saber que en realidad fue un error técnico.
+            # El payload lleva siempre una "explanation": si solo llevara
+            # "error" (que el frontend no muestra), el streaming lo rellenaría
+            # con el mensaje genérico de "sin datos" y un fallo del motor
+            # (timeout, red, respuesta no parseable) parecería una pregunta
+            # fuera de alcance o una consulta sin resultados.
             #
-            # MEJORA (30/08/2026): el error real (p.ej. HTTP 402 "Insufficient
-            # Balance") se quedaba solo en el campo `error` del payload, que el
-            # frontend jamás muestra — el usuario solo veía el mensaje genérico
-            # "Tuve un problema técnico", indistinguible de un fallo de red, y
-            # por eso insistía en que "los motores no funcionan" cuando el
-            # problema real era la cuenta DeepSeek sin saldo. Se detecta el caso
-            # concreto y se le da al usuario la causa real, accionable.
+            # El caso de saldo agotado (HTTP 402 "Insufficient Balance") se
+            # detecta aparte para dar al usuario la causa real y accionable, en
+            # lugar del mensaje genérico, que se confunde con un fallo de red.
             logger.warning("[AI_ENGINE] generate_sql devolvió error: %s", gen_error)
             _texto_error = str(gen_error)
             _bajo_error = _texto_error.lower()
@@ -2190,8 +2134,8 @@ def get_router() -> APIRouter:
 
         sql = llm_result.get("sql", "")
         if not sql:
-            # La IA respondió directamente sin SQL (pregunta conversacional, meta o general).
-            # Garantizamos que el frontend recibe viz_type y explanation correctos.
+            # La IA respondió sin SQL (pregunta conversacional, meta o general):
+            # se garantiza que el frontend reciba viz_type y explanation.
             llm_result.setdefault("visualization_type", llm_result.get("viz_type", "text"))
             llm_result.setdefault("visualization_type", "text")
             if not llm_result.get("explanation"):
@@ -2201,7 +2145,7 @@ def get_router() -> APIRouter:
                 )
             return finalize_response(llm_result)
 
-        # 5.5 SANITIZACIÓN Y NORMALIZACIÓN (NUEVO: Corrección de espacios y seguridad)
+        # 5.5 SANEAMIENTO Y NORMALIZACIÓN (corrección de espacios y seguridad)
         sql, is_valid, safety_msg = sanitize_pipeline(
             sql, 
             prompt, 
@@ -2214,24 +2158,23 @@ def get_router() -> APIRouter:
                  "agent_log": agent_log + ["Sanitizer: Bloqueo de seguridad o sintaxis"]
              }, status="error")
 
-        # 6. EJECUCIÓN DIRECTA EN CHAT (sin inyección de ADN virtual)
+        # 6. EJECUCIÓN DIRECTA EN CHAT
         # ═════════════════════════════════════════════════════════════════════════════════
-        # Las vistas CHAT YA contienen toda la lógica. El SQL se ejecuta directamente.
-        # No necesitamos inyectar ADN Virtual (eso era para plantillas antiguas).
+        # Las vistas de CHAT ya contienen toda la lógica: el SQL se ejecuta tal cual.
         final_sql = sql  # El SQL generado por la IA ya está listo para CHAT
 
         cols, rows, exec_error = execute_chat_query(connector, final_sql, db_label, empresa=active_company_code)
 
         if exec_error:
-            # Intentar autocorrección rápida
+            # Autocorrección rápida: la IA corrige el SQL con el error y se reintenta una vez.
             agent_log.append(f"Error ejecución en CHAT (corrigiendo)...")
             correction = client.generate_correction(sql, str(exec_error))
             sql_fixed = correction.get("sql", sql)
-            final_sql = sql_fixed  # Sin ADN virtual
+            final_sql = sql_fixed
             cols, rows, retry_error = execute_chat_query(connector, final_sql, db_label, empresa=active_company_code)
 
             if retry_error:
-                # Restaurar narrativa de negocio
+                # Explicación en lenguaje de negocio, sin detalles técnicos.
                 human_msg = client.generate_error_narrative(prompt_for_ai, str(retry_error))
                 return finalize_response({
                     "explanation": human_msg,
@@ -2240,17 +2183,15 @@ def get_router() -> APIRouter:
                 }, status="no_data")
             agent_log.append("Autocorrección exitosa.")
 
-        # 7. APRENDIZAJE: Guardar en Caché Semántico si fue exitoso
+        # 7. APRENDIZAJE: guardar en la caché semántica si hubo éxito
         #
-        # Blindaje (28/08/2026): si el SQL toca ESPECÍFICAMENTE
-        # ficha_trabajador/rol_pago para una pregunta que no es de nómina, es
-        # un SQL mal generado (ver el mismo chequeo en finalize_response) y
-        # nunca debe guardarse en caché. Ojo: esto NO debe extenderse a
-        # Ventas/Compras/VIS_ALUMNO — esas SÍ son vistas correctas para
-        # preguntas de negocio normales (están en la lista de riesgo solo por
-        # el problema de aislamiento en vivo de CHAT, no porque su SQL esté
-        # mal armado); un primer intento de este blindaje las incluyó por
-        # error y eso bloqueaba casi toda pregunta de ventas/compras.
+        # No se guarda un SQL que toque específicamente ficha_trabajador o
+        # rol_pago para una pregunta que no es de nómina: es un SQL mal
+        # generado (ver el mismo chequeo en finalize_response). No se extiende
+        # a Ventas, Compras ni VIS_ALUMNO: esas sí son vistas correctas para
+        # preguntas de negocio y están en la lista de riesgo solo por el
+        # aislamiento en vivo de CHAT; excluirlas bloquearía casi toda pregunta
+        # de ventas o compras.
         _vistas_arriesgadas_en_sql = vistas_no_aisladas_en_sql(sql)
         _toca_solo_nomina_fuera_de_tema = (
             bool(_vistas_arriesgadas_en_sql)
@@ -2260,7 +2201,7 @@ def get_router() -> APIRouter:
         if rows and not _toca_solo_nomina_fuera_de_tema:
             SEMANTIC_PROC.save_to_cache(
                 prompt,
-                sql,  # Guardamos el SQL original mapeado a la intención
+                sql,  # SQL original asociado a la intención
                 llm_result.get("viz_type", "table"),
                 llm_result.get("explanation", ""),
                 db_label,
@@ -2269,7 +2210,7 @@ def get_router() -> APIRouter:
             )
 
         # 8. MANEJO DE RESULTADOS VACÍOS O NULOS
-        # Consideramos vacío si no hay filas, o si es una consulta escalar con valor Nulo/Cero
+        # Se considera vacío si no hay filas o si es un escalar nulo o cero.
         is_empty_scalar = False
         if len(rows) == 1 and len(rows[0]) == 1:
             val = rows[0][0]
@@ -2289,25 +2230,25 @@ def get_router() -> APIRouter:
             }, status="no_data")
 
         try:
-            # RAZONAMIENTO CONTEXTUAL: Ajustar narrativa segun cantidad real de datos
+            # Ajuste de la explicación según la cantidad real de datos.
             explanation = llm_result.get("explanation", "")
-            
-            # Detectar si el usuario pidio una cantidad especifica (ej: "top 10")
+
+            # ¿Pidió el usuario una cantidad específica? (p. ej. "top 10")
             asked_count_match = re.search(r"\b(10|5|20|ranking)\b", prompt.lower())
             if asked_count_match and len(rows) > 0:
                 if len(rows) == 1:
                     prefix = "Solo se encontró **1 registro** en la base de datos que coincide con tu solicitud:\n\n"
-                    # Evitar que la IA diga "Aqui esta el ranking de los 10" si solo hay 1
+                    # Evita que la explicación hable del "ranking de los 10" si solo hay 1.
                     explanation = prefix + re.sub(r"(?i)ranking de los \d+|los \d+ productos|los \d+ mejores", "el registro encontrado", explanation)
                 elif len(rows) < 10 and "10" in prompt:
                     prefix = f"Se encontraron únicamente **{len(rows)} registros** disponibles para este análisis:\n\n"
                     explanation = prefix + explanation
 
-            # VERIFICACIÓN DE CIFRAS (25/09/2026): la explicación se escribió
-            # ANTES de ejecutar el SQL; si cita números que no están en el
-            # resultado o marcadores sin rellenar, se redacta de nuevo sobre
-            # los datos reales (con datos personales enmascarados). Nunca se
-            # muestra una cifra que el resultado no respalda.
+            # VERIFICACIÓN DE CIFRAS: la explicación se escribió antes de
+            # ejecutar el SQL; si cita números que no están en el resultado o
+            # marcadores sin rellenar, se redacta de nuevo sobre los datos
+            # reales (con datos personales enmascarados). Nunca se muestra una
+            # cifra que el resultado no respalda.
             from core.verificador_cifras import cifras_no_respaldadas, resumen_determinista
             _sospechosas = cifras_no_respaldadas(explanation, rows) if rows else []
             if _sospechosas:
@@ -2324,7 +2265,7 @@ def get_router() -> APIRouter:
                 if cifras_no_respaldadas(explanation, rows):
                     explanation = _respaldo
 
-            # DETERMINAR VIZ_TYPE CON HEURÍSTICA DE REFUERZO
+            # Tipo de visualización: el que propone la IA, corregido a tabla si se pidió un listado o hay varias filas.
             viz_type = llm_result.get("viz_type", "table")
             table_keywords = ["tabla", "listado", "detalle", "registros", "muestrame la tabla", "ver tabla", "muéstrame la tabla"]
             if any(tk in prompt.lower() for tk in table_keywords) and rows and len(rows) > 0:
@@ -2343,10 +2284,10 @@ def get_router() -> APIRouter:
                 "answer_source": "ia_generativa",
             }
 
-            # 7.5 APRENDIZAJE: guardar la RESPUESTA COMPLETA (no solo el SQL)
-            # en el caché de corta duración, para que una repetición exacta
-            # de esta pregunta se resuelva sin IA ni BD. Se cachea el payload
-            # final (con la narrativa ya ajustada), aislado por empresa.
+            # 7.5 APRENDIZAJE: guardar la respuesta completa (no solo el SQL) en
+            # la caché de corta duración, para que una repetición exacta de esta
+            # pregunta se resuelva sin IA ni base de datos. Se guarda el payload
+            # final (con la explicación ya ajustada), aislado por empresa.
             try:
                 set_cached(
                     f"{_clave_motor}::{prompt}",
@@ -2380,32 +2321,28 @@ def get_router() -> APIRouter:
     @router.post("/query/stream")
     def execute_query_stream(req: QueryRequest, current_user: dict = Depends(get_token_data)):
         """
-        Variante streaming de /query.
-        DELEGA al pipeline COMPLETO de execute_query para garantizar 100% de paridad.
-        Solo hace streaming de la explanation letra por letra mediante SSE.
+        Variante en streaming (SSE) de /query. Requiere usuario autenticado.
+
+        Delega en el pipeline completo de execute_query para garantizar la
+        misma respuesta; solo transmite la explicación por fragmentos.
 
         Protocolo SSE:
           - Evento "meta"   → JSON completo con sql, columns, rows, viz_type, etc.
-          - Evento "token"  → chunk de texto de la explanation (4 chars)
+          - Evento "token"  → fragmento de 4 caracteres de la explicación
           - Evento "done"   → señal de fin
           - Evento "error"  → mensaje de error si el pipeline falla
 
-        LATIDO (30/08/2026, arreglo del "techo" de 25s en los 3 motores):
-        `execute_query()` es una sola llamada bloqueante — nada llega al
-        navegador mientras corre. El navegador corta la conexión si pasa
-        INACTIVIDAD_MS (25s) sin recibir NINGÚN byte, así que una pregunta
-        que al motor Experto le toma más de eso (perfectamente
-        normal en una comparativa compleja) se abortaba SIEMPRE, sin importar
-        qué tan bien estuviera funcionando el motor del otro lado — eso era
-        el "techo" que reportó el usuario ("Pro tampoco funciona").
-        La corrección de fondo, no un parche por modelo: `execute_query` se
-        corre en un hilo aparte (es código síncrono, no async) y este
-        generador manda un comentario SSE (`: latido`) cada pocos segundos
-        MIENTRAS espera — el navegador ve bytes llegar y nunca activa el
-        corte por inactividad, sin importar cuánto tarde el motor elegido.
+        Latido: `execute_query()` es una sola llamada bloqueante y el navegador
+        corta la conexión si pasan INACTIVIDAD_MS (25 s) sin recibir ningún
+        byte, así que una pregunta que al motor Experto le toma más (normal en
+        una comparativa compleja) se abortaría siempre. Por eso
+        `execute_query` corre en un hilo aparte (es código síncrono) y el
+        generador envía un comentario SSE (`: latido`) cada pocos segundos
+        mientras espera, sin importar cuánto tarde el motor elegido.
         """
 
         async def event_generator():
+            """Emite latidos mientras corre execute_query y luego los eventos meta, token y done (o error)."""
             loop = asyncio.get_event_loop()
             tarea = loop.run_in_executor(None, execute_query, req, current_user)
             while not tarea.done():
@@ -2416,8 +2353,8 @@ def get_router() -> APIRouter:
                     continue
                 except Exception:
                     # El error real se recoge abajo con tarea.result(); aquí
-                    # solo se corta el "esperar con latidos" en cuanto la
-                    # tarea termina, sea éxito o fallo.
+                    # solo se deja de esperar con latidos en cuanto la tarea
+                    # termina, con éxito o con fallo.
                     break
 
             try:
@@ -2427,9 +2364,9 @@ def get_router() -> APIRouter:
                 return
             except Exception as exc:
                 # ── Traza persistente del 500 ──────────────────────────────
-                # El log de uvicorn vive en la consola del lanzador (oculta),
-                # así que un fallo aquí quedaba sin rastro. Se escribe también
-                # a debug/query_error.log para poder diagnosticar sin reproducir.
+                # El log de uvicorn vive en la consola oculta del lanzador; el
+                # fallo se escribe también en debug/query_error.log para poder
+                # diagnosticarlo sin reproducirlo.
                 import traceback as _tb
                 _log_query_error(
                     "stream_500",
@@ -2441,28 +2378,27 @@ def get_router() -> APIRouter:
                 yield f"event: error\ndata: {_json.dumps({'message': str(exc)}, ensure_ascii=False)}\n\n"
                 return
 
-            # ── Extraer explanation del resultado ────────────────────────────────
+            # ── Explicación del resultado ────────────────────────────────────────
             explanation = (
                 full_result.get("explanation") or
                 full_result.get("message") or
                 ""
             )
 
-            # ── Construir payload meta con TODO el resultado ─────────────────────
+            # ── Evento meta con todo el resultado salvo la explicación ──────────
             meta = {k: v for k, v in full_result.items() if k != "explanation"}
             yield f"event: meta\ndata: {_json.dumps(meta, ensure_ascii=False, default=str)}\n\n"
 
-            # ── Si no hay explanation, generar mensaje contextual según lo que preguntó ────
+            # ── Sin explicación: mensaje contextual según lo que se preguntó ────
             if not explanation:
                 rows = full_result.get("rows") or []
                 if rows:
                     explanation = f"Se encontraron **{len(rows)}** registros en la consulta."
                 elif full_result.get("error"):
-                    # Defensa en profundidad (14/08/2026): si en el futuro algún otro
-                    # camino del pipeline deja "error" seteado pero olvida rellenar
-                    # "explanation" (como pasaba antes aquí mismo), que se note como
-                    # error técnico y no como "no hay datos" — evita que un fallo real
-                    # del motor IA se disfrace de una consulta legítima sin resultados.
+                    # Defensa en profundidad: si algún camino del pipeline deja
+                    # "error" sin rellenar "explanation", se muestra como error
+                    # técnico y no como "no hay datos", para que un fallo real
+                    # del motor no parezca una consulta sin resultados.
                     explanation = (
                         "⚠️ Tuve un problema técnico procesando esta pregunta. "
                         "Intenta de nuevo en unos segundos."
@@ -2478,7 +2414,7 @@ def get_router() -> APIRouter:
                         explanation = "ℹ️ No se identificaron datos disponibles para esta consulta en la empresa activa. Puede que el período no tenga registros o que la pregunta necesite ser reformulada."
 
 
-            # ── Transmitir explanation letra por letra ────────────────────────────
+            # ── Transmisión de la explicación por fragmentos ─────────────────────
             chunk_size = 4
             for i in range(0, len(explanation), chunk_size):
                 chunk = explanation[i:i + chunk_size]
@@ -2497,7 +2433,7 @@ def get_router() -> APIRouter:
             },
         )
 
-    # ── FASE 4 — punto 6: análisis de imágenes adjuntas (modelo Vision) ──────
+    # ── Análisis de imágenes adjuntas (modelo de visión) ──────────────────────
     # Endpoint separado de /query y /query/stream a propósito: una pregunta
     # con imagen no pasa por SQL, esquema, caché semántico ni guardarraíl de
     # alcance — es una conversación directa con el modelo Vision sobre lo que
@@ -2511,6 +2447,12 @@ def get_router() -> APIRouter:
 
     @router.post("/query/vision")
     def execute_vision_query(req: VisionQueryRequest, current_user: dict = Depends(get_token_data)):
+        """Responde una pregunta sobre imágenes adjuntas con el modelo de visión.
+
+        Requiere sesión con una empresa conectada. Responde 400 si no hay
+        imágenes válidas, si son más de MAX_IMAGENES o si alguna supera
+        MAX_TAMANO_IMAGEN_B64.
+        """
         user_id = current_user.get("sub")
         session = SESSION_STORE.get_session(user_id)
         if not session:
@@ -2556,18 +2498,21 @@ def get_router() -> APIRouter:
 
     # ── Voz con FAL AI (ElevenLabs Multilingual v2) ─────────────────────────
     #
-    # Activado el 30/08/2026 por requisito explícito, que aceptó la
-    # contrapartida de privacidad ya documentada en useLectura.js: el texto
-    # que se lee en voz alta puede contener sueldos, totales de ventas o
-    # nombres de proveedores, y con este endpoint SÍ sale hacia FAL AI (a
-    # diferencia de la voz local del navegador, que nunca sale de la máquina).
+    # Contrapartida de privacidad (documentada en useLectura.js): el texto que
+    # se lee en voz alta puede contener sueldos, totales de ventas o nombres de
+    # proveedores, y con esta ruta sí sale hacia FAL AI, a diferencia de la voz
+    # local del navegador, que nunca sale del equipo.
     #
     # El backend hace de intermediario solo para no exponer FAL_KEY en el
-    # frontend — no procesa el audio, solo reenvía la URL pública que FAL
+    # frontend: no procesa el audio, solo reenvía la URL pública que FAL
     # genera. El frontend cae de vuelta a la voz local automáticamente si
     # este endpoint falla o si no hay FAL_KEY configurada (ver useLectura.js).
     @router.post("/query/speak")
     def sintetizar_voz_endpoint(req: SpeakRequest, current_user: dict = Depends(get_token_data)):
+        """Convierte texto en voz con FAL AI y devuelve la URL pública del audio. Requiere usuario autenticado.
+
+        Responde 502 si FAL falla o no hay FAL_KEY; el frontend cae entonces a la voz local.
+        """
         from config import FAL_KEY
         from core.voz_fal import sintetizar_voz
 
@@ -2577,15 +2522,15 @@ def get_router() -> APIRouter:
         return {"audio_url": resultado["audio_url"]}
 
     # ── Memoria aprendida: consulta y borrado ───────────────────────────────
-    # El aprendizaje es automatico, asi que el sistema puede llegar a guardar
+    # El aprendizaje es automático, así que el sistema puede llegar a guardar
     # una regla incorrecta. Sin una forma de ver y quitar lo aprendido, esa
-    # regla se aplicaria en silencio a todas las consultas futuras de la
-    # empresa y nadie podria saber de donde viene una respuesta rara. Estos
-    # dos endpoints son lo que hace auditable la memoria.
+    # regla se aplicaría en silencio a todas las consultas futuras de la
+    # empresa y nadie sabría de dónde viene una respuesta rara. Estas dos
+    # rutas hacen auditable la memoria.
 
     @router.get("/memoria/{empresa}")
     def listar_memoria(empresa: str, current_user: dict = Depends(get_token_data)):
-        """Reglas que el sistema aprendio de esa empresa, con su origen y evidencia."""
+        """Devuelve las reglas que el sistema aprendió de esa empresa, con su origen y evidencia. Requiere usuario autenticado."""
         from core.memoria_empresa import reglas_de
 
         _ = current_user
@@ -2603,7 +2548,7 @@ def get_router() -> APIRouter:
     def borrar_regla(
         empresa: str, regla_id: str, current_user: dict = Depends(get_token_data)
     ):
-        """Elimina una regla concreta que el sistema aprendio mal."""
+        """Elimina una regla que el sistema aprendió mal; 404 si no existe. Requiere usuario autenticado."""
         from core.memoria_empresa import olvidar
 
         _ = current_user

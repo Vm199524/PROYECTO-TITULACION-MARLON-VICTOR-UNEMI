@@ -1,7 +1,13 @@
 """
-knowledge/semantic_relations.py - Relaciones semanticas para el motor NL2SQL.
-Construye una "dieta de datos" compacta a partir del esquema activo.
-Prioriza uniones reales y nombres de columnas presentes en la base conectada.
+Relaciones semánticas para el motor NL2SQL.
+
+Construye una "dieta de datos" compacta a partir del esquema activo: las
+uniones entre tablas cuyas tablas y columnas existen de verdad en la base
+conectada, las reglas obligatorias de JOIN y un glosario que traduce el
+lenguaje coloquial del usuario a las vistas correctas.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -9,12 +15,14 @@ import unicodedata
 
 
 def _normalize(value: str) -> str:
+    """Pasa a minúsculas, quita tildes y deja solo letras y dígitos, para comparar nombres."""
     raw = unicodedata.normalize("NFD", str(value or "").strip().lower())
     raw = "".join(ch for ch in raw if unicodedata.category(ch) != "Mn")
     return "".join(ch for ch in raw if ch.isalnum())
 
 
 def _find_table(schema_dict: dict, aliases: tuple[str, ...]) -> str | None:
+    """Devuelve la tabla del esquema que coincide con algún alias, o None."""
     alias_set = {_normalize(alias) for alias in aliases}
     for table_name in schema_dict:
         if _normalize(table_name) in alias_set:
@@ -23,6 +31,7 @@ def _find_table(schema_dict: dict, aliases: tuple[str, ...]) -> str | None:
 
 
 def _find_column(schema_dict: dict, table_name: str | None, aliases: tuple[str, ...]) -> str | None:
+    """Devuelve el nombre real de la columna de la tabla que coincide con algún alias, o None."""
     if not table_name:
         return None
     columns = schema_dict.get(table_name, {}).get("columns", [])
@@ -42,7 +51,12 @@ def _build_relation_line(
     target_cols: tuple[str, ...],
     explanation: str,
 ) -> str | None:
-    source_table = _find_table(schema_dict, source_tables)
+    """Redacta la línea "origen.columna se une con destino.columna (explicación)".
+
+    Devuelve None si alguna de las dos tablas o columnas no existe en el
+    esquema, para no sugerir al LLM una unión imposible.
+    """
+    source_table =_find_table(schema_dict, source_tables)
     target_table = _find_table(schema_dict, target_tables)
     source_col = _find_column(schema_dict, source_table, source_cols)
     target_col = _find_column(schema_dict, target_table, target_cols)
@@ -55,12 +69,16 @@ def _build_relation_line(
 
 
 def build_semantic_relations(schema_dict: dict) -> str:
-    """
-    Produce un bloque de relaciones semanticas a partir del esquema real.
-    Si no encuentra coincidencias fuertes, devuelve guias conservadoras.
+    """Construye el bloque de relaciones semánticas que se agrega al prompt.
+
+    Incluye las uniones candidatas cuyas tablas y columnas existen en el
+    esquema real (si ninguna existe, unas guías conservadoras), seguidas de
+    las reglas estrictas de JOIN y del glosario de intención.
     """
     relations: list[str] = []
 
+    # Cada candidato: (alias de la tabla origen, alias de su columna, alias de
+    # la tabla destino, alias de su columna, para qué sirve la unión).
     candidates = (
         (
             ("V_Resumen_Nomina", "rol_pago"),
@@ -139,7 +157,7 @@ def build_semantic_relations(schema_dict: dict) -> str:
             "- Prioriza vistas semanticas V_ cuando existan; usa tablas base solo si la vista no esta disponible.",
         ]
 
-    # Inyeccion de Reglas Estrictas de Negocio para el Prompt de la IA
+    # Reglas estrictas de negocio que se inyectan en el prompt.
     strict_rules = """
 REGLAS ESTRICTAS DE JOIN Y NOMBRES (OBLIGATORIO):
 1. REGLA DE NOMBRES (VENTAS): Nunca uses la columna 'Cliente' de la cabecera_factura o Ejemplo_Ventas para mostrar el nombre. DEBES hacer un JOIN obligatoriamente con la tabla de clientes (ej. Clientes o MAE_CLIENTES) usando el ID (ej. ID_Cliente) para traer el NOMBRE REAL del cliente.
@@ -149,14 +167,14 @@ REGLAS ESTRICTAS DE JOIN Y NOMBRES (OBLIGATORIO):
 """
     relations.append(strict_rules)
 
-    # Inyeccion de Glosario de Lenguaje Natural del Usuario Final
-    # Necesario para que la IA traduzca preguntas cortas y coloquiales directamente a la logica correcta.
-    # REGLA CRITICA (28/08/2026): ventas/compras/clientes se consultan SIEMPRE
-    # sobre las vistas de CHAT listadas en el esquema (Ventas/Compras), NUNCA
-    # sobre las tablas físicas tb_cabmov/tb_detmov/tb_client: son lentas, no
-    # existen para todas las empresas (MONT factura en tb_cabmovT, no en
-    # tb_cabmov) y rompen la consistencia con Reportes BI. El nombre exacto de
-    # la vista se confirma en vivo y llega en el bloque VISTAS CONFIRMADAS.
+    # Glosario del lenguaje natural del usuario final: permite traducir
+    # preguntas cortas y coloquiales directamente a la lógica correcta.
+    # Regla crítica: ventas, compras y clientes se consultan SIEMPRE sobre las
+    # vistas de CHAT listadas en el esquema (Ventas/Compras), NUNCA sobre las
+    # tablas físicas tb_cabmov/tb_detmov/tb_client: son lentas, no existen
+    # para todas las empresas (MONT factura en tb_cabmovT, no en tb_cabmov) y
+    # rompen la consistencia con Reportes BI. El nombre exacto de la vista se
+    # confirma en vivo y llega en el bloque VISTAS CONFIRMADAS.
     natural_language_glossary = """
 GLOSARIO DE INTENCION (OBLIGATORIO - Lenguaje del usuario real):
 El usuario NUNCA escribe nombres técnicos de tablas. Siempre usa lenguaje coloquial.

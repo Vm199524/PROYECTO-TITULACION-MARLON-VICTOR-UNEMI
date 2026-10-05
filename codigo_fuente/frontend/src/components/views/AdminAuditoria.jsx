@@ -1,13 +1,11 @@
 /**
- * Archivo: AdminAuditoria.jsx
- * Rol: panel "Pizarra" de auditoría del sistema (Fase 5, 28/08/2026);
- * patrón portado conceptualmente de TripleA_VentasIA:
- * app/audit/routes.py + templates/audit/audit_list.html).
- *
- * Muestra el registro de eventos (login, creación/edición/eliminación de
- * usuarios, cambios de perfil) que ya escribe el backend en
- * core/audit_log.py, con las mismas 4 tarjetas de estadística, filtros y
- * tabla que el proyecto hermano, adaptado a los colores oscuros de VicMar Data AI.
+ * @file Registro de auditoría del sistema. Muestra los eventos que el backend escribe
+ * en core/audit_log.py (inicios de sesión, creación, edición y eliminación de usuarios,
+ * cambios de perfil) con cuatro tarjetas de estadística, filtros por texto, acción,
+ * entidad y fechas, y exportación a Excel. Lee /api/admin/audit y
+ * /api/admin/audit/export; solo lo ve el rol ADMINISTRADOR.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -17,6 +15,7 @@ import {
 } from 'lucide-react';
 import { apiGet } from '../../services/api';
 
+// Ícono y color de la etiqueta de cada tipo de acción registrada.
 const ICONO_ACCION = {
     crear: FilePlus,
     editar: Pencil,
@@ -37,6 +36,7 @@ const COLOR_ACCION = {
     desactivar: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
 };
 
+// Formatea una fecha ISO en formato corto de Ecuador; si no es válida, la devuelve tal cual.
 function formatFecha(iso) {
     if (!iso) return '—';
     try {
@@ -46,14 +46,20 @@ function formatFecha(iso) {
     }
 }
 
-// Mismo arreglo que en el input de fecha de "Comparación por Período"
-// (Indicadores): sin esto el calendario nativo no se ve ni se abre bien en
-// tema oscuro.
+// Igual que en el campo de fecha de «Comparación por Período» (Indicadores):
+// `[color-scheme:dark]` hace legible el calendario nativo en tema oscuro y
+// `showPicker` lo abre al hacer clic en cualquier parte del campo.
 const inputDateClass = "rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-[13px] text-white/80 outline-none focus:border-cyan-500/40 [color-scheme:dark]";
 const abrirCalendario = (e) => {
     try { e.currentTarget.showPicker?.(); } catch (_err) { /* navegador sin soporte */ }
 };
 
+/**
+ * Muestra el registro de auditoría con sus estadísticas, filtros y exportación.
+ * Carga todos los eventos al montar y vuelve a consultar al aplicar los filtros.
+ *
+ * @returns {JSX.Element} Vista de auditoría.
+ */
 export function AdminAuditoria() {
     const [eventos, setEventos] = useState([]);
     const [stats, setStats] = useState({ total: 0, creaciones: 0, ediciones: 0, eliminaciones: 0, logins: 0 });
@@ -128,9 +134,9 @@ export function AdminAuditoria() {
             className="flex h-full w-full flex-col overflow-hidden p-4 lg:p-6"
         >
             <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 overflow-hidden">
-                {/* Cabecera, tarjetas y filtros no scrollean: solo la tabla de
-                    abajo se desplaza, así el título y los filtros quedan
-                    siempre a la vista (30/08/2026). */}
+                {/* Cabecera, tarjetas y filtros no se desplazan: solo la tabla
+                    de abajo hace scroll, así el título y los filtros quedan
+                    siempre a la vista. */}
                 <div className="flex shrink-0 flex-col gap-4">
                     <header className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                         <h1 className="flex items-center gap-2 text-xl font-black uppercase tracking-tight text-white lg:text-2xl">
@@ -254,6 +260,7 @@ export function AdminAuditoria() {
     );
 }
 
+// Tarjeta de estadística: valor grande con su etiqueta.
 function Tarjeta({ label, value, color }) {
     return (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03]" style={{ padding: '18px 20px' }}>
@@ -263,6 +270,7 @@ function Tarjeta({ label, value, color }) {
     );
 }
 
+// Campo del formulario de filtros: etiqueta sobre el control.
 function Campo({ label, children }) {
     return (
         <div className="flex flex-col gap-1.5">

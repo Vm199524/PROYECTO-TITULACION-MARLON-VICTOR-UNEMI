@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-seed_historial_academico.py — carga historial_matriculas.csv (trayectoria
-alumno-periodo, ver generate_historial.py) en
-UNEMI_PRUEBAS.dbo.historial_matriculas.
+Carga del historial académico de prueba en UNEMI_PRUEBAS.
 
-Reemplaza el patron del antiguo scripts/seed_alumnos_prueba.ts (Node/mssql,
-en desuso desde que el backend volvio a ser Python) por pyodbc + fast_executemany,
-consistente con el resto de backend/scripts/*.py.
+Carga historial_matriculas.csv (trayectoria alumno-periodo, generada por
+codigo_fuente/base_de_datos/datos_de_prueba/generate_historial.py) en
+UNEMI_PRUEBAS.dbo.historial_matriculas; la tabla se recrea en cada
+ejecución. Usa pyodbc con fast_executemany, igual que el resto de
+backend/scripts/*.py.
 
 Uso:
     cd backend
     python scripts/seed_historial_academico.py
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -61,6 +64,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 
 def cargar_csv(path: str) -> list[tuple]:
+    """Lee el CSV y convierte cada fila a los tipos de dbo.historial_matriculas, en el orden de INSERT_SQL."""
     filas = []
     with open(path, encoding='utf-8-sig', newline='') as f:
         for r in csv.DictReader(f):
@@ -87,6 +91,7 @@ def cargar_csv(path: str) -> list[tuple]:
 
 
 def main() -> int:
+    """Recrea dbo.historial_matriculas y la llena desde el CSV."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', default=None)
     parser.add_argument('--driver', default=None)

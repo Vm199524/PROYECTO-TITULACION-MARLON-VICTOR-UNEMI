@@ -1,15 +1,13 @@
 """
-core/business_logic.py - Giro de negocio por empresa.
+Giro de negocio por empresa.
 
-FASE 3 — C4: el mapeo empresa → giro de negocio vivía como un diccionario
-hardcodeado en este archivo, así que agregar o corregir una empresa exigía
-tocar código y redeployar. Ahora vive en knowledge/business_logic.json,
-editable directamente (con recarga en caliente por fecha de modificación,
-igual que knowledge/integridad_vistas.json y knowledge/metric_catalog.json).
+Devuelve la descripción del giro de negocio de cada empresa para que la IA
+interprete sus datos en contexto. El mapeo vive en knowledge/business_logic.json,
+que se edita sin tocar código y se recarga en caliente por fecha de
+modificación (igual que integridad_vistas.json y metric_catalog.json).
 
-Si el archivo JSON falta o está corrupto, se usa _POR_DEFECTO (una copia
-congelada del mapeo original) para que el sistema nunca se quede sin esta
-información por un error de edición.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -24,6 +22,8 @@ _CONFIG_PATH = Path(__file__).resolve().parents[1] / "knowledge" / "business_log
 
 _cache: dict[str, Any] = {"mtime": None, "data": None}
 
+# Copia congelada del mapeo original. Se usa si el JSON falta o está corrupto,
+# para que el sistema nunca se quede sin esta información por un error de edición.
 _POR_DEFECTO = {
     "mapa": {
         "HITE": "Industria Textil - Producción de hilos, inventarios de materia prima, ventas industriales y exportaciones.",
@@ -96,9 +96,16 @@ def _cargar() -> dict:
 
 def get_business_logic(db_code: str, db_name: str = "") -> str:
     """
-    Retorna la lógica de negocio asociada a una base de datos o empresa.
-    Este mapeo permite a la IA entender de forma contextual el giro de negocio
-    y responder asertivamente el tipo de datos que maneja cada entorno.
+    Devuelve la descripción del giro de negocio de una empresa.
+
+    Busca primero el código exacto en el mapa; si no está, infiere el giro por
+    palabras del nombre de la base y, en último caso, devuelve el valor por
+    defecto. El texto se inyecta en el prompt para que la IA entienda qué tipo
+    de datos maneja cada empresa.
+
+    Args:
+        db_code: código de la empresa (por ejemplo, "MONT").
+        db_name: nombre descriptivo de la base, usado solo para la inferencia.
     """
     cfg = _cargar()
     code = str(db_code or "").strip().upper()

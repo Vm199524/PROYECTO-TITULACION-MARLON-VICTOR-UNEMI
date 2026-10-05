@@ -1,27 +1,21 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-CORE-ERR-01]
- * ============================================================================
- * ARCHIVO: ErrorBoundary.jsx
- * MÓDULO: CORE / Stability
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Es el "Paracaídas de Emergencia" de React. Asegura que si una pequeña 
- * parte visual de la página falla (por ejemplo, un gráfico no carga), toda 
- * la aplicación NO se ponga en blanco. Atrapa el error y muestra un reporte.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Envuelve `AppInner` en `App.jsx`. Solo es visible si ocurre un colapso.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Interceptación de errores de ciclo de vida en componentes hijos.
- * - Renderizado de UI de respaldo (Pantalla de "Error de Renderizado").
- * - Previene bloqueos fatales (White screen of death) de React.
- * ============================================================================
+ * @file Límite de errores de React. Envuelve la aplicación en App.jsx para que un
+ * fallo de renderizado en un componente hijo (por ejemplo, un gráfico) no deje la
+ * pantalla en blanco: atrapa el error y muestra el mensaje con su traza.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React from 'react';
 
+/**
+ * Captura los errores de renderizado de sus hijos y muestra una pantalla de
+ * respaldo con el mensaje y la traza en lugar de desmontar toda la interfaz.
+ *
+ * @param {object} props
+ * @param {React.ReactNode} props.children - Árbol de componentes que protege.
+ * @returns {JSX.Element} Los hijos, o la pantalla de error si alguno falló.
+ */
 export class ErrorBoundary extends React.Component {
     constructor(props) { super(props); this.state = { hasError: false, error: null }; }
     static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -40,4 +34,3 @@ export class ErrorBoundary extends React.Component {
     }
 }
 
-// --- COMPONENTE PRINCIPAL ---

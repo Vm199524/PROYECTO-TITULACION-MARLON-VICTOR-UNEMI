@@ -1,40 +1,39 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-SIDEBAR-02]
- * ============================================================================
- * ARCHIVO: ContextNodes.jsx
- * MÓDULO: UI / Sidebar Navigation
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Panel de navegación rápida en el menú izquierdo que permite al usuario 
- * visualizar con qué base de datos está operando o volver al chat general.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Ubicado en la parte superior del menú lateral del DashboardDesktop y Mobile.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Menú Desplegable con buscador para elegir la base de datos SQL objetivo.
- * - Renderización del Indicador del origen de los datos activos.
- * - Acceso directo a la "Pasarela Chat".
- * ============================================================================
+ * @file Bloque «Canales de Conexión» del menú lateral. Muestra el acceso a la
+ * pasarela de chat y un selector con buscador de las bases del servidor central;
+ * al elegir una base reconecta la sesión con ella. Se usa en la barra lateral de
+ * escritorio y en la hoja «Más» del móvil.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useMemo, useState } from 'react';
 import { Check, Database, Loader2, MessageSquare, Search, Link2 } from 'lucide-react';
 import { dbToBusinessName } from '../constants/appConfig';
 
+/**
+ * Muestra los canales de conexión y el selector de base de datos.
+ *
+ * @param {object} props
+ * @param {string[]} [props.availableDBs=[]] - Bases disponibles en el servidor.
+ * @param {object} [props.connInfo={}] - Datos de la conexión activa; `database` marca la base seleccionada.
+ * @param {Function} props.handleConnect - Reconecta con la base elegida; recibe `(null, connInfo)`.
+ * @param {Function} [props.loadDatabases] - Recarga la lista de bases al abrir el selector.
+ * @param {boolean} [props.fetchingDBs=false] - Si la lista de bases se está cargando.
+ * @param {boolean} [props.compact=false] - Versión de tipografía reducida para el móvil.
+ * @returns {JSX.Element} Bloque de canales de conexión.
+ */
 export function ContextNodes({
     availableDBs = [],
     connInfo = {},
     handleConnect,
     loadDatabases,
     fetchingDBs = false,
-    // Este componente nació para el sidebar ancho de escritorio (ver ficha
-    // técnica arriba) y se reutiliza tal cual en la hoja "Más" del móvil,
-    // mucho más angosta. Su interletrado (`tracking-[0.2em]`/`0.25em`) sobre
-    // textos en mayúsculas ahí ocupa casi todo el ancho disponible y se ve
-    // desproporcionado (reportado 29/08/2026). `compact` reduce tamaño y
-    // tracking solo quien lo pida, sin tocar el aspecto ya aprobado en
+    // El componente se diseñó para la barra lateral ancha de escritorio y se
+    // reutiliza en la hoja «Más» del móvil, mucho más angosta. Allí el
+    // interletrado (`tracking-[0.2em]`/`0.25em`) sobre textos en mayúsculas
+    // ocupa casi todo el ancho y se ve desproporcionado. `compact` reduce
+    // tamaño e interletrado solo cuando se pide, sin alterar el aspecto de
     // escritorio.
     compact = false,
 }) {

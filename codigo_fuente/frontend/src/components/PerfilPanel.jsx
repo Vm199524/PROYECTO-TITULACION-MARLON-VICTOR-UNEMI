@@ -1,3 +1,12 @@
+/**
+ * @file Panel «Mi Perfil». Se abre como un cajón a la derecha sobre el panel actual,
+ * sin navegar a otra pantalla, y permite cambiar o eliminar la foto, editar el correo
+ * y cambiar la contraseña. Por eso no lleva selector de empresa y su botón de cierre
+ * es «Volver»: cerrar el panel deja al usuario donde estaba. Usa /api/profile y sus
+ * rutas /avatar, /email y /password; lo abre DesktopHeader para cualquier rol.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -6,14 +15,11 @@ import {
 } from 'lucide-react';
 import { apiGet, apiPost, apiPut, apiDelete } from '../services/api';
 
-// Panel "Mi Perfil" — abre como un cajón a la derecha sobre el dashboard
-// actual (no navega a otra pantalla ni abre otra pestaña), siguiendo el
-// mismo patrón del proyecto hermano TripleA_VentasIA.
-// Por eso no lleva selector de empresa: el botón de cierre es "Volver", no
-// "Cambiar base" — cerrar el panel ya te deja donde estabas.
-
+// Lado máximo, en píxeles, de la foto de perfil que se guarda.
 const MAX_AVATAR_DIM = 256;
 
+// Recorta la imagen al cuadrado central, la reduce a MAX_AVATAR_DIM como máximo
+// y la devuelve como data URL JPEG para enviarla al backend.
 function resizeImageToDataUrl(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -39,6 +45,18 @@ function resizeImageToDataUrl(file) {
     });
 }
 
+/**
+ * Muestra el cajón de perfil del usuario autenticado. Carga el perfil al abrirse y,
+ * al cerrarse, descarta la foto pendiente y las contraseñas escritas.
+ *
+ * @param {object} props
+ * @param {boolean} props.open - Si el panel está abierto.
+ * @param {Function} props.onClose - Cierra el panel (botón «Volver», fondo o Escape).
+ * @param {object} props.userAuth - Usuario autenticado; respaldo de nombre y usuario mientras carga el perfil.
+ * @param {string|null} [props.avatarUrl] - Foto actual que ya conoce la cabecera.
+ * @param {Function} [props.onAvatarChange] - Avisa a la cabecera de la foto nueva o eliminada.
+ * @returns {JSX.Element} Panel animado (vacío mientras está cerrado).
+ */
 export function PerfilPanel({ open, onClose, userAuth, avatarUrl, onAvatarChange }) {
     const [profile, setProfile] = useState(null);
     const [toast, setToast] = useState('');
@@ -73,7 +91,7 @@ export function PerfilPanel({ open, onClose, userAuth, avatarUrl, onAvatarChange
     useEffect(() => {
         if (open) return;
         // Al cerrar, se limpia todo lo que no debe sobrevivir a la próxima
-        // apertura — sobre todo las contraseñas en memoria.
+        // apertura, sobre todo las contraseñas en memoria.
         setPendingPhoto(null);
         setPwdCurrent(''); setPwdNew(''); setPwdConfirm(''); setPwdError('');
         setEmailEditing(false); setEmailError('');
@@ -397,6 +415,7 @@ export function PerfilPanel({ open, onClose, userAuth, avatarUrl, onAvatarChange
     );
 }
 
+// Campo de contraseña con botón para mostrar u ocultar el texto.
 function PasswordField({ label, value, onChange, show, onToggleShow, placeholder }) {
     return (
         <div>
@@ -423,6 +442,7 @@ function PasswordField({ label, value, onChange, show, onToggleShow, placeholder
     );
 }
 
+// Mosaico informativo de la sección «Seguridad de la Cuenta».
 function SecurityTile({ icon, label, value }) {
     return (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3 py-4 text-center">

@@ -1,15 +1,16 @@
 """
-Pruebas de core/voz_fal.py — lectura en voz alta con ElevenLabs vía FAL AI.
+Pruebas de la lectura en voz alta con ElevenLabs vía FAL AI (core/voz_fal.py).
 
-Contrato verificado en la documentación oficial de FAL antes de escribir el
-código (no adivinado): POST https://fal.run/fal-ai/elevenlabs/tts/multilingual-v2
-con {"text", "voice", "language_code"}, respuesta {"audio": {"url": "..."}}.
+El contrato sigue la documentación oficial de FAL: POST
+https://fal.run/fal-ai/elevenlabs/tts/multilingual-v2 con {"text", "voice",
+"language_code"} y respuesta {"audio": {"url": "..."}}. Las pruebas no llaman
+a la red real (usan `monkeypatch` sobre `requests.post`): verifican que la
+petición se arma bien y que el módulo SIEMPRE degrada a `{"ok": False, ...}`
+sin lanzar, sea cual sea el fallo, para que el frontend recurra a la voz local
+del navegador y el usuario no se quede sin lectura.
 
-Estas pruebas no llaman a la red real (usan `monkeypatch` sobre
-`requests.post`): verifican que el módulo arma la petición correctamente y
-que SIEMPRE degrada a `{"ok": False, ...}` sin lanzar, sin importar la causa
-del fallo — es la garantía que permite al frontend caer de vuelta a la voz
-local del navegador sin que el usuario se quede sin lectura.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os
@@ -127,18 +128,15 @@ def test_error_http_4xx_5xx_nunca_se_propaga(monkeypatch):
     assert "401" in resultado["error"]
 
 
-# ─── Regresión: el endpoint HTTP /query/speak (30/08/2026) ─────────────────
+# ─── El endpoint HTTP /query/speak ─────────────────────────────────────────
 #
-# Bug real: `SpeakRequest(BaseModel)` estaba definida DENTRO de `get_router()`
-# (anidada en la función), y FastAPI no la reconocía como el cuerpo de la
-# petición — la trataba como si `req` fuera un parámetro de query string
-# obligatorio, así que CUALQUIER llamada real a /query/speak fallaba con
-# 422 "Field required" antes de ejecutar una sola línea del endpoint. La
-# función `sintetizar_voz()` en sí estaba bien probada (arriba), pero nunca
-# se probó la ruta HTTP completa — por eso el bug pasó desapercibido. Se
-# corrigió moviendo `SpeakRequest` a nivel de módulo, junto a `QueryRequest`
-# y las demás que sí funcionaban. Esta prueba llama al endpoint real vía
-# HTTP para que este tipo de bug no vuelva a colarse sin que un test lo note.
+# `SpeakRequest(BaseModel)` debe estar definida a nivel de módulo, junto a
+# `QueryRequest`: si se anidara dentro de `get_router()`, FastAPI no la
+# reconocería como cuerpo de la petición y trataría `req` como un parámetro
+# obligatorio de la cadena de consulta, así que toda llamada a /query/speak
+# fallaría con 422 "Field required" antes de ejecutar el endpoint. Probar solo
+# `sintetizar_voz()` (arriba) no detecta ese fallo; por eso esta prueba llama
+# al endpoint real vía HTTP.
 
 
 def test_endpoint_speak_acepta_el_body_via_http(monkeypatch):

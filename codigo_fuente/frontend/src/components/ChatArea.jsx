@@ -1,9 +1,11 @@
 /**
- * Archivo: ChatArea.jsx
- * Rol: superficie central del chat en escritorio.
- * Recibe desde: DashboardDesktop.jsx.
- * Se conecta con: ChatMessage.jsx, ChatInput.jsx, useContextOverview.js
- * y appConfig.js para mostrar contexto, KPIs y mensajes.
+ * @file Área central del chat en escritorio. Muestra el estado vacío con preguntas
+ * sugeridas, la lista de mensajes (ChatMessage) y el campo de entrada (ChatInput) con
+ * su ficha de sugerencias bajo demanda. Las sugerencias provienen de las áreas
+ * detectadas en la empresa activa (/api/context-overview, vía useContextOverview). La
+ * renderiza DashboardDesktop.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useState } from 'react';
@@ -32,7 +34,7 @@ const KPI_ICON_MAP = {
     database: Database,
 };
 
-// Seccion: tarjeta KPI reutilizable para la franja superior.
+// Tarjeta KPI compacta (ícono, etiqueta, valor y pista opcional) para la franja superior.
 function BentoCard({ icon: Icon, label, value, valueColor, accent, hint = '', delay = 0 }) {
     return (
         <motion.div
@@ -91,6 +93,31 @@ function BentoCard({ icon: Icon, label, value, valueColor, accent, hint = '', de
     );
 }
 
+/**
+ * Muestra la conversación activa y el campo de consulta.
+ *
+ * @param {object} props
+ * @param {object[]} props.chatHistory - Mensajes de la conversación; los de bienvenida (`isWelcome`) no se muestran.
+ * @param {Function} props.setChatHistory - Actualiza los mensajes (p. ej. al editar o reintentar).
+ * @param {string} props.deviceType - Tipo de dispositivo ('mobile', 'desktop', etc.).
+ * @param {object} props.userAuth - Usuario autenticado.
+ * @param {boolean} props.loading - Si hay una consulta en curso.
+ * @param {string} props.prompt - Texto actual del campo de consulta.
+ * @param {Function} props.setPrompt - Actualiza el texto del campo.
+ * @param {string} props.motorIA - Motor de IA elegido.
+ * @param {Function} props.setMotorIA - Cambia el motor de IA.
+ * @param {Function} props.handleQuery - Envía una consulta; recibe `(evento, texto)`.
+ * @param {Function} props.cancelQuery - Cancela la consulta en curso.
+ * @param {string} props.correctionHint - Corrección sugerida para el texto escrito.
+ * @param {Function} props.correct - Aplica la corrección sugerida al texto.
+ * @param {object} props.textareaRef - Referencia al textarea de ChatInput.
+ * @param {object} props.chatEndRef - Referencia al final de la lista, para desplazarse al último mensaje.
+ * @param {object} props.connInfo - Conexión activa (`database`, `selected_company_code`, `business_name`).
+ * @param {boolean} props.isConnectionReady - Habilita la consulta de sugerencias al backend.
+ * @param {Array} props.attachedImages - Imágenes adjuntas a la consulta.
+ * @param {Function} props.setAttachedImages - Actualiza las imágenes adjuntas.
+ * @returns {JSX.Element} Área de chat.
+ */
 export function ChatArea({
     chatHistory, setChatHistory,
     deviceType, userAuth, loading,
@@ -100,14 +127,14 @@ export function ChatArea({
     isSidebarOpen, connInfo, isConnectionReady,
     attachedImages, setAttachedImages,
 }) {
-    // Seccion: resolucion del contexto visible de empresa/base activa.
+    // Contexto visible de la empresa o base activa.
     const dbProfile = getDbProfile(connInfo?.database || '');
     const companyName = dbProfile?.business_name || dbToBusinessName(connInfo?.database || '');
     const shortName = dbProfile?.short_name || connInfo?.database || '';
 
     const showKpis = deviceType !== 'mobile' && connInfo?.database;
 
-    // Determinar si estamos en CHAT con una empresa seleccionada de forma explicita.
+    // Detecta si la conexión es CHAT con una empresa seleccionada de forma explícita.
     const isChatDB = connInfo?.database?.toUpperCase() === 'CHAT';
     const selectedCompanyCode = String(connInfo?.selected_company_code || '').trim().toUpperCase();
     const overviewTargetDb = selectedCompanyCode || connInfo?.database || '';
@@ -117,16 +144,13 @@ export function ChatArea({
     // Sugerencias contextuales según las áreas realmente detectadas en la empresa.
     const suggestedQuestions = (overview?.quick_questions || []).slice(0, 4);
 
-    // Recomendación aplicada (28/08/2026): las sugerencias
-    // solo vivían en el estado vacío del chat — en cuanto se enviaba el primer
-    // mensaje, desaparecían para siempre y no había forma de volver a verlas sin
-    // abrir una conversación nueva. Este botón las deja SIEMPRE accesibles, sin
-    // ocupar espacio permanente en pantalla (popover bajo demanda, no un panel
-    // fijo): un acceso discreto y constante, no un bloque que compite por
-    // espacio con la conversación real.
+    // Las sugerencias del estado vacío desaparecen al enviar el primer mensaje.
+    // Este interruptor las deja SIEMPRE accesibles mediante un popover bajo
+    // demanda: un acceso discreto que no ocupa espacio fijo ni compite con la
+    // conversación.
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
-    // Mostrar informacion correcta segun el contexto
+    // Nombre que se muestra según el contexto (CHAT o empresa).
     const displayCompanyName = (isChatDB ? 'Mente VicMar Data AI' : (connInfo?.business_name || companyName));
 
     return (
@@ -175,10 +199,9 @@ export function ChatArea({
                                     VicMar Data AI Intelligent System
                                 </span>
 
-                                {/* Sugerencias de arranque: viven aquí, pegadas al input donde
-                                    realmente se usan (patrón habitual de las interfaces de chat), en vez
-                                    de en una tarjeta del dashboard que obligaba al usuario a
-                                    memorizarlas y caminar hasta el chat. */}
+                                {/* Sugerencias de arranque junto al campo donde se usan (patrón
+                                    habitual de las interfaces de chat), para que el usuario no
+                                    tenga que memorizarlas desde el panel y escribirlas aquí. */}
                                 {suggestedQuestions.length > 0 && (
                                     <div className="w-full max-w-2xl pt-4">
                                         <p className="mb-3 text-center text-[13px] text-white/35">
@@ -226,21 +249,18 @@ export function ChatArea({
                 </div>
             </div>
 
-            {/* zIndex 50: la zona del input (y con ella la ficha de sugerencias,
-                que se posiciona respecto a este contenedor) tiene que quedar
-                SIEMPRE por encima de lo que se muestre en el área de respuesta.
-                Defecto detectado en pruebas (30/08/2026): el encabezado de
-                las tablas de resultados es `sticky top-0 ... z-10` (ver
-                DataVisualizer.jsx), y como este bloque no declaraba ningún
-                z-index, esa cabecera se dibujaba ENCIMA de las sugerencias y las
-                tapaba. Con 50 queda por delante de cualquier contenido del chat
-                sin llegar al nivel de los modales (z-[100]). */}
+            {/* zIndex 50: la zona del campo (y con ella la ficha de sugerencias,
+                que se posiciona respecto a este contenedor) debe quedar SIEMPRE
+                por encima del área de respuesta. El encabezado de las tablas de
+                resultados es `sticky top-0 ... z-10` (ver DataVisualizer.jsx) y,
+                sin un z-index aquí, se dibujaría ENCIMA de las sugerencias. Con
+                50 queda por delante de cualquier contenido del chat sin llegar
+                al nivel de los modales (z-[100]). */}
             <div className="shrink-0 w-full flex justify-center relative pt-1" style={{ zIndex: 50 }}>
-                {/* La ficha de sugerencias ahora vive pegada a la MISMA tarjeta
-                    del textarea (mismo fondo/borde que ChatInput, ver
-                    --bg-main/--border), no como una caja oscura suelta y
-                    aparte — corregido (29/08/2026). El
-                    botón que la abre/cierra se movió adentro de ChatInput. */}
+                {/* La ficha de sugerencias va pegada a la MISMA tarjeta del
+                    textarea (mismo fondo y borde que ChatInput: --bg-main y
+                    --border), no como una caja oscura aparte. El botón que la
+                    abre o cierra está dentro de ChatInput. */}
                 <AnimatePresence>
                     {mostrarSugerencias && suggestedQuestions.length > 0 && (
                         <motion.div

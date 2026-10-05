@@ -1,3 +1,5 @@
+<a id="readme-top"></a>
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.svg">
@@ -34,13 +36,20 @@
 
 <p align="center">
   <a href="#qué-hace">Qué hace</a> ·
+  <a href="#el-sistema-en-acción">En acción</a> ·
   <a href="#cómo-funciona-el-modelo">El modelo</a> ·
   <a href="#resultados">Resultados</a> ·
   <a href="#arquitectura">Arquitectura</a> ·
   <a href="#diagramas">Diagramas</a> ·
   <a href="#inicio-rápido">Inicio rápido</a> ·
   <a href="#documentación">Documentación</a> ·
+  <a href="#autores">Autores</a> ·
   <a href="#cómo-citar">Cómo citar</a>
+</p>
+
+<p align="center">
+  <img src="documentacion/capturas/04_indicadores.png" alt="Panel de indicadores con el riesgo de abandono de cada alumno" width="100%">
+  <br/><sub>Panel de indicadores de UNEMI_PRUEBAS: datos sintéticos y cédulas enmascaradas.</sub>
 </p>
 
 ---
@@ -87,6 +96,28 @@ Sitúa a la institución frente a **referentes publicados** en revistas científ
 Cada institución ve **solo sus datos**, garantizado en el propio motor de base de datos. Los datos personales se enmascaran antes de salir del sistema.
 
 </td>
+</tr>
+</table>
+
+## El sistema en acción
+
+<p align="center">
+  <img src=".github/assets/demo_chat.gif" alt="Pregunta en lenguaje natural respondida con una tabla" width="90%">
+  <br/><sub>Una pregunta en español se convierte en una consulta de solo lectura y vuelve como tabla.</sub>
+</p>
+
+<table>
+<tr>
+<td width="50%" align="center"><img src="documentacion/capturas/03_conexion_bases.png" alt="Conexión al servidor y elección de la institución"><br/><sub><b>Conexión</b> al servidor y elección de la institución</sub></td>
+<td width="50%" align="center"><img src="documentacion/capturas/06_inteligencia_institucional.png" alt="Segmentos de carreras y referentes externos"><br/><sub><b>Inteligencia institucional:</b> segmentos de carreras y referentes con DOI</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="documentacion/capturas/09_panel_riesgo_oulad.png" alt="Panel de riesgo con datos reales de OULAD"><br/><sub><b>Datos reales (OULAD):</b> mismo panel, otra institución</sub></td>
+<td align="center"><img src="documentacion/capturas/08_peticion_de_borrado_rechazada.png" alt="Petición de borrado rechazada"><br/><sub><b>Seguridad:</b> una petición de borrar datos se rechaza; nada se ejecuta</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="documentacion/capturas/10_gestion_de_usuarios.png" alt="Gestión de usuarios"><br/><sub><b>Administración:</b> usuarios y roles</sub></td>
+<td align="center"><img src="documentacion/capturas/13_movil_riesgo.png" alt="Vista móvil del panel de riesgo" width="45%"><br/><sub><b>Móvil:</b> el mismo panel en el teléfono</sub></td>
 </tr>
 </table>
 
@@ -222,6 +253,9 @@ Los diagramas UML y de datos del Avance 2. Haz clic en cualquiera para verlo en 
 
 ## Inicio rápido
 
+> [!TIP]
+> **¿Primera vez?** Sigue el [Manual técnico de instalación](documentacion/manuales/MANUAL_TECNICO_DE_INSTALACION.md), paso a paso desde una computadora nueva, y luego el [Manual de usuario](documentacion/manuales/MANUAL_DE_USUARIO.md).
+
 **Requisitos:** Python 3.14 · Node.js 22+ · Docker Desktop · ODBC Driver 18 for SQL Server
 
 ```powershell
@@ -302,6 +336,14 @@ La organización por capas se justifica con literatura científica y repositorio
 
 ## Documentación
 
+**Manuales de entrega** (Markdown, Word y PDF en [`documentacion/manuales/`](documentacion/manuales/)):
+
+| Manual | Para quién |
+|---|---|
+| [Manual de usuario](documentacion/manuales/MANUAL_DE_USUARIO.md) | Autoridades, bienestar estudiantil y administradores: cómo conectarse, leer el panel y consultar |
+| [Manual técnico de instalación](documentacion/manuales/MANUAL_TECNICO_DE_INSTALACION.md) | Personal de TI: instalar, configurar, cargar datos y verificar |
+| [Guía de pruebas de aceptación](documentacion/manuales/GUIA_DE_PRUEBAS_DE_ACEPTACION.md) | Quien recibe el sistema: casos de prueba paso a paso y acta de aceptación |
+
 | Documento | Contenido |
 |---|---|
 | [Plan y estado del proyecto](documentacion/PLAN_Y_ESTADO_DEL_PROYECTO.md) | Exigencias de las tutoras, avance y pendientes |
@@ -309,7 +351,6 @@ La organización por capas se justifica con literatura científica y repositorio
 | [Benchmarking institucional](documentacion/tecnica/BENCHMARKING_INSTITUCIONAL.md) | Referentes externos y segmentación de carreras |
 | [Base de datos de pruebas](documentacion/tecnica/BASE_DE_DATOS_DE_PRUEBAS.md) | Bases, anonimización y reconstrucción |
 | [Diccionario de datos](documentacion/tecnica/DICCIONARIO_DE_DATOS.md) | Generado desde el esquema real |
-| [Manual de instalación](documentacion/tecnica/MANUAL_INSTALACION.md) | Instalación paso a paso |
 | [Decisiones de diseño](documentacion/decisiones/) | Matrices ponderadas y ADR |
 | [Diagramas UML](documentacion/diagramas/) | Fuentes Mermaid y figuras |
 
@@ -342,14 +383,31 @@ Mientras dure el proceso de titulación, este repositorio es privado y su uso es
 
 Los datos de UNEMI_PRUEBAS son sintéticos. OULAD se usa bajo licencia CC BY 4.0 y no se redistribuye en este repositorio.
 
----
+
+## Autores
+
+<table align="center">
+<tr>
+<td align="center" width="50%">
+<a href="https://github.com/ing-MarlonPerez"><img src=".github/assets/autores/marlon.png" width="140" alt="Marlon David Pérez Almachi"></a><br/>
+<b>Marlon David Pérez Almachi</b><br/>
+<sub>Autor · <a href="https://github.com/ing-MarlonPerez">@ing-MarlonPerez</a></sub>
+</td>
+<td align="center" width="50%">
+<a href="https://github.com/Vm199524"><img src=".github/assets/autores/victor.png" width="140" alt="Víctor Manuel Lluilema Pisco"></a><br/>
+<b>Víctor Manuel Lluilema Pisco</b><br/>
+<sub>Autor · <a href="https://github.com/Vm199524">@Vm199524</a></sub>
+</td>
+</tr>
+</table>
+
+<p align="center"><sub>Docentes tutoras: Mirella Azucena Peralta Correa · María Gabriela Espinoza Bravo</sub></p>
 
 <p align="center">
-  <b>Universidad Estatal de Milagro</b><br/>
-  Facultad de Ciencias e Ingenierías · Carrera de Ingeniería en Tecnologías de la Información<br/>
-  Docentes tutoras: Mirella Azucena Peralta Correa · María Gabriela Espinoza Bravo
-</p>
-
-<p align="center">
-  <sub>© 2026 Marlon David Pérez Almachi y Víctor Manuel Lluilema Pisco</sub>
+  <a href="#readme-top">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/footer-dark.svg">
+      <img src=".github/assets/footer-light.svg" alt="Universidad Estatal de Milagro · VicMar Data AI · Volver arriba" width="100%">
+    </picture>
+  </a>
 </p>

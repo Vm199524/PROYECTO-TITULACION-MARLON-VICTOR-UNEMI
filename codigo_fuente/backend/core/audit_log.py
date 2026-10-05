@@ -1,36 +1,14 @@
 """
-core/audit_log.py — Registro de auditoría: quién hizo qué, cuándo y desde dónde.
+Registro de auditoría de VicMar Data AI.
 
-ORIGEN
-------
-Portado del proyecto hermano TripleA_VentasIA (app/audit/models.py +
-app/audit/utils.py, 28/08/2026). Ese proyecto usa una
-tabla SQL (audit_logs) porque tiene una base de datos propia de aplicación.
-VicMar Data AI no la tiene: `security_config.json` ES el almacén de usuarios (ver
-main.py: _load_security_config/_save_security_config), así que este registro
-sigue el mismo patrón de archivo JSON que ya usan memoria_empresa.py y
-password_reset.py — de solo-anexado, con un tope de eventos para no crecer
-sin límite.
+Registra quién hizo qué, cuándo y desde dónde: inicios de sesión, altas,
+ediciones y bajas de usuarios, cambios de perfil propio y exportaciones.
+Como el sistema no tiene base de datos de aplicación (security_config.json es
+el almacén de usuarios), el registro es un JSON de solo anexado con tope de
+eventos, el mismo patrón de memoria_empresa.py y password_reset.py.
 
-ALMACENAMIENTO (30/08/2026)
----------------------------
-Hasta el 30/08/2026 el registro vivía solo en `CACHE_DIR/audit_log.json`, un
-archivo en el disco local del contenedor. En Cloud Run eso no sirve: el disco
-es efímero (se pierde al escalar a cero) y cada instancia tiene el suyo
-(los eventos se reparten entre instancias y quedan invisibles a medias).
-
-Por eso ahora, igual que hace `user_store.py` con los usuarios, si se define
-`AUDIT_GCS_BUCKET` (o `USER_STORE_GCS_BUCKET` como respaldo) el registro se
-guarda en un objeto JSON de Google Cloud Storage: compartido entre instancias
-y persistente entre reinicios. Si no hay bucket configurado, se sigue usando
-el archivo local de siempre (desarrollo sin cambios).
-
-QUÉ REGISTRA
-------------
-Login, creación/edición/eliminación de usuarios, cambios de perfil propio
-(correo, contraseña, foto) y exportaciones — los mismos tipos de evento que
-TripleA_VentasIA, con el mismo vocabulario en español (acción/entidad) para
-que el registro se lea igual de claro.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -47,6 +25,11 @@ from config import CACHE_DIR
 logger = logging.getLogger(__name__)
 
 # ── Almacén: GCS si hay bucket, archivo local si no ─────────────────────────
+# En Cloud Run el disco local es efímero (se pierde al escalar a cero) y cada
+# instancia tiene el suyo, así que los eventos quedarían repartidos y a medias.
+# Con bucket configurado, el registro vive en un objeto JSON de Google Cloud
+# Storage, compartido entre instancias y persistente entre reinicios, igual que
+# user_store.py con los usuarios. Sin bucket se usa CACHE_DIR (desarrollo local).
 # Se reutiliza el mismo bucket de usuarios para no multiplicar infraestructura;
 # el objeto de auditoría es distinto (`audit_log.json`). Se puede apuntar a un
 # bucket dedicado con AUDIT_GCS_BUCKET si algún día se quiere separar.
@@ -71,6 +54,8 @@ MAX_EVENTOS = 5000
 # entre un guardado y el siguiente.
 _cache = {"eventos": None, "ts": 0.0}
 
+# Vocabulario de entidades y acciones, en español, para que el registro se lea
+# con claridad.
 ENTIDAD_USUARIO = "usuario"
 ENTIDAD_AUTH = "autenticación"
 ENTIDAD_EMPRESA = "empresa"
@@ -88,14 +73,18 @@ ACCION_CONSULTAR = "consultar"
 
 
 def _cliente_gcs():
-    """Cliente de Cloud Storage (import diferido: en local sin bucket no se
-    instala/carga la librería y la app sigue arrancando sin ella)."""
+    """Crea el cliente de Cloud Storage.
+
+    El import es diferido: en local sin bucket la librería no hace falta y la
+    app arranca sin ella.
+    """
     from google.cloud import storage
 
     return storage.Client()
 
 
 def _descargar_remoto() -> list[dict]:
+    """Descarga los eventos del objeto JSON en GCS; lista vacía si no hay datos."""
     bucket = _cliente_gcs().bucket(GCS_BUCKET)
     blob = bucket.blob(GCS_OBJETO)
     datos = blob.download_as_bytes()
@@ -106,6 +95,7 @@ def _descargar_remoto() -> list[dict]:
 
 
 def _subir_remoto(eventos: list[dict]) -> None:
+    """Sobrescribe el objeto JSON de GCS con la lista completa de eventos."""
     bucket = _cliente_gcs().bucket(GCS_BUCKET)
     blob = bucket.blob(GCS_OBJETO)
     blob.upload_from_string(
@@ -172,9 +162,10 @@ def registrar(
     ip: str = "",
 ) -> None:
     """
-    Anexa un evento. Nunca lanza: la auditoría no puede tumbar la acción real
-    que está registrando (mismo criterio que log_action() en VentasIA, que
-    envuelve todo en try/except).
+    Anexa un evento al registro de auditoría.
+
+    Nunca lanza: la auditoría no puede tumbar la acción real que está
+    registrando. Al superar MAX_EVENTOS se descartan los más antiguos.
     """
     try:
         evento = {
@@ -207,12 +198,23 @@ def listar(
     hasta: str = "",
     limite: int = 500,
 ) -> list[dict]:
-    """Más reciente primero. `desde`/`hasta` son 'YYYY-MM-DD'."""
+    """
+    Devuelve los eventos filtrados, del más reciente al más antiguo.
+
+    Args:
+        q: texto libre que se busca en usuario, nombre, descripción y detalle.
+        accion: filtra por una acción exacta (ACCION_*).
+        entidad: filtra por una entidad exacta (ENTIDAD_*).
+        desde: fecha inicial inclusiva, en formato 'YYYY-MM-DD'.
+        hasta: fecha final inclusiva, en formato 'YYYY-MM-DD'.
+        limite: número máximo de eventos devueltos.
+    """
     with _LOCK:
         eventos = _leer()
     q_norm = q.strip().lower()
 
     def coincide(ev: dict) -> bool:
+        """Indica si el evento cumple todos los filtros pedidos."""
         if accion and ev.get("accion") != accion:
             return False
         if entidad and ev.get("entidad") != entidad:
@@ -236,6 +238,7 @@ def listar(
 
 
 def estadisticas() -> dict:
+    """Cuenta el total de eventos y los de creación, edición, eliminación e inicio de sesión."""
     with _LOCK:
         eventos = _leer()
     return {

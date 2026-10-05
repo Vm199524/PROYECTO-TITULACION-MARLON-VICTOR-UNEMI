@@ -1,13 +1,12 @@
 /**
- * VoiceMode.jsx — Asistente conversacional por voz (AURA), a pantalla completa.
- *
- * Características clave:
- * - Máquina de estados libre de ecos: ESCUCHANDO -> PENSANDO -> HABLANDO.
- * - Sincronización estricta de mensajes: solo responde a la pregunta recién formulada,
- *   evitando leer mensajes anteriores del historial.
- * - Esfera central interactiva (Push-to-Talk / Touch-to-Interrupt).
- * - Detección y recuperación automática de micrófono y permisos.
- * - Compatibilidad multiplataforma (Chrome, Edge, Safari, Android).
+ * @file Modo de voz a pantalla completa. Conversa con el usuario mediante la Web Speech
+ * API del navegador en un ciclo ESCUCHANDO -> PENSANDO -> HABLANDO sin eco: envía la
+ * pregunta al mismo motor del chat (handleQuery), lee en voz alta solo la respuesta a
+ * la pregunta recién formulada y atiende órdenes rápidas («cambiar a…», «salir»). La
+ * esfera central permite pulsar para hablar o interrumpir, y el micrófono se recupera
+ * solo si se pierde la señal. Lo abre DashboardDesktop desde el chat y el panel.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,11 +16,16 @@ import { useLectura, construirRespuestaHablada } from '../hooks/useLectura';
 import { interpretarComandoVoz } from '../utils/comandosVoz';
 import { getDbCatalog } from '../constants/appConfig';
 
+// Constructor de reconocimiento de voz del navegador (estándar o con prefijo webkit).
 const ReconocimientoVoz =
     typeof window !== 'undefined'
         ? (window.SpeechRecognition || window.webkitSpeechRecognition)
         : null;
 
+/**
+ * Indica si el navegador permite el modo de voz (reconocimiento o síntesis de voz).
+ * @type {boolean}
+ */
 export const modoVozDisponible = Boolean(typeof window !== 'undefined' && (ReconocimientoVoz || window.speechSynthesis));
 
 const ESTADOS = {
@@ -42,6 +46,18 @@ const COLOR_ESTADO = {
     [ESTADOS.HABLANDO]: '#34D399',
 };
 
+/**
+ * Muestra el asistente de voz a pantalla completa y gestiona el ciclo de escucha,
+ * consulta y lectura de la respuesta.
+ *
+ * @param {object} props
+ * @param {Function} props.onClose - Cierra el modo de voz.
+ * @param {Function} props.handleQuery - Envía la consulta al chat; recibe `(null, texto)`.
+ * @param {object[]} [props.chatHistory=[]] - Historial del chat, del que se toma la respuesta.
+ * @param {string} [props.empresa=''] - Nombre de la empresa activa que se muestra.
+ * @param {Function} [props.onCambiarEmpresa] - Cambia de empresa por orden de voz; recibe el código de la base.
+ * @returns {JSX.Element} Interfaz del modo de voz.
+ */
 export function VoiceMode({ onClose, handleQuery, chatHistory = [], empresa = '', onCambiarEmpresa }) {
     const [estado, setEstado] = useState(ESTADOS.ESCUCHANDO);
     const [transcripcion, setTranscripcion] = useState('');
@@ -81,7 +97,7 @@ export function VoiceMode({ onClose, handleQuery, chatHistory = [], empresa = ''
         const textoLimpio = String(texto || '').trim();
         if (!textoLimpio || textoLimpio.length <= 2) return;
 
-        // Verificar órdenes rápidas del sistema (ej. "cambiar a Montessori", "salir")
+        // Verifica órdenes rápidas del sistema (p. ej. «cambiar a Montessori», «salir»).
         const empresasConocidas = Object.values(getDbCatalog() || {});
         const orden = interpretarComandoVoz(textoLimpio, empresasConocidas);
 
@@ -110,7 +126,7 @@ export function VoiceMode({ onClose, handleQuery, chatHistory = [], empresa = ''
             }
         }
 
-        // Marcar la pregunta como activa y resetear el mensaje esperado
+        // Marca la pregunta como activa y reinicia el mensaje esperado.
         preguntaLanzadaRef.current = { texto: textoLimpio, timestamp: Date.now() };
         idMensajeEsperadoRef.current = null;
 
@@ -119,7 +135,7 @@ export function VoiceMode({ onClose, handleQuery, chatHistory = [], empresa = ''
         setEstado(ESTADOS.PENSANDO);
         detenerEscucha();
 
-        // Invocar la consulta en el motor central
+        // Envía la consulta al motor central.
         handleQueryRef.current?.(null, textoLimpio);
     }, [detenerEscucha]);
 

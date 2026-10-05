@@ -1,34 +1,16 @@
 """
-tests/test_integridad_vistas.py — Advertencia sobre vistas que no aíslan por empresa.
+Pruebas de la advertencia sobre vistas que no aíslan los datos por empresa.
 
-Hallazgo del 27/07/2026 (scripts/verificar_alcance_fuga.py, 13 empresas reales):
-`SP_MODIFICA_VISTA_IA` reapunta correctamente las vistas comerciales, pero NO
-las de talento humano. Resultado: `ficha_trabajador` devolvía AGRINAG=2.205 y
-`rol_pago` 353.586 registros en TODAS las empresas.
+`ficha_trabajador` y `rol_pago` leen siempre de una única base física RRHH, y
+CHAT es un espacio de vistas compartido por todo el servidor: una petición
+concurrente puede reapuntar `cabecera_factura`, `cabecera_compra`, `VIS_ALUMNO`
+o "Ventas"/"Compras" a otra empresa justo antes de una consulta y mostrar datos
+ajenos. Las pruebas protegen las dos capas: la detección estática marca SIEMPRE
+esas vistas como de riesgo, y la verificación dinámica (`vista_aislada_para_empresa`)
+decide en cada uso si apuntan a la base de la empresa conectada.
 
-Hallazgo del 14/08/2026: la causa es que ambas vistas leen siempre de una
-única base física "RRHH", que hoy solo contiene datos de AGRINAG S.A.S. Desde
-esa fecha la protección ya no es un interruptor global: se verifica en vivo,
-por empresa, si la vista apunta hoy a la misma base que la empresa conectada
-(`vista_aislada_para_empresa`). Para AGRINAG eso es cierto (sus datos SÍ son
-confiables); para cualquier otra empresa no lo es (no hay dato que mostrar).
-
-Hallazgo del 28/08/2026: `cabecera_factura`, `cabecera_compra` y `VIS_ALUMNO`
-SÍ se reapuntan correctamente por empresa, pero CHAT es un namespace de
-vistas COMPARTIDO por todo el servidor (no aislado por sesión). Con SONG
-activa, Reportes BI mostró "Ingresos por Línea de Negocio" y "Top 5
-Productos" con datos reales de MONT (pensiones de colegio en una empresa
-agrícola) — condición de carrera: otra petición concurrente había re-apuntado
-CHAT a MONT justo antes de que esta consulta corriera. Por eso estas tres
-vistas (más "Ventas"/"Compras", los nombres alternativos que usa MONT) se
-movieron a la lista de riesgo: la detección estática ahora las marca SIEMPRE,
-y es la verificación dinámica la que decide, en cada uso, si en ESE momento
-son confiables. Antes de este hallazgo estaban en "vistas_correctas" (nunca
-se verificaban) — ese era justo el hueco por el que se coló la fuga.
-
-Estos tests protegen ambas capas: la detección estática de qué vistas están
-en riesgo, y la verificación dinámica que decide si confiar en ellas para la
-empresa conectada en este momento.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import sys
 from pathlib import Path
@@ -93,10 +75,10 @@ class TestDeteccionDeVistasAfectadas:
     def test_vistas_comerciales_y_academicas_quedan_marcadas(self, sql):
         """
         Ventas/compras/alumnos se reapuntan bien POR EMPRESA, pero CHAT es un
-        namespace compartido por todo el servidor (hallazgo 28/08/2026: fuga
-        real de MONT hacia SONG). Por eso la deteccion estatica las marca
-        SIEMPRE — es la verificacion dinamica (mas abajo) la que decide si son
-        confiables en cada uso concreto, no esta funcion.
+        espacio de nombres compartido por todo el servidor y otra petición
+        puede dejarlas apuntando a otra empresa. Por eso la detección estática
+        las marca SIEMPRE; es la verificación dinámica (más abajo) la que
+        decide si son confiables en cada uso concreto, no esta función.
         """
         assert sql_usa_vista_no_aislada(sql) is True, (
             f"Debería marcarse para verificación dinámica: {sql}"
@@ -105,9 +87,9 @@ class TestDeteccionDeVistasAfectadas:
 
     def test_marcarlas_no_es_bloquearlas_si_la_verificacion_dinamica_confia(self):
         """
-        El punto de la doble capa: una vista marcada NO se bloquea a ciegas.
+        El sentido de la doble capa: una vista marcada NO se bloquea a ciegas.
         Con la vista apuntando de verdad a la empresa conectada, la
-        verificacion dinamica la confirma confiable igual que antes.
+        verificación dinámica la confirma como confiable.
         """
         conn = FakeConnector("CREATE VIEW cabecera_factura AS SELECT * FROM [GYMM].[dbo].[tb_cabmov]")
         assert vistas_no_aisladas_en_sql("SELECT SUM(Total) FROM cabecera_factura")
@@ -115,9 +97,9 @@ class TestDeteccionDeVistasAfectadas:
 
     def test_la_fuga_real_queda_bloqueada(self):
         """
-        Reproduce el caso exacto del 28/08/2026: SONG es la empresa activa,
-        pero CHAT.cabecera_factura quedo apuntando a MONT por una activacion
-        concurrente. La verificacion dinamica debe rechazarla.
+        SONG es la empresa activa, pero CHAT.cabecera_factura quedó apuntando
+        a MONT por una activación concurrente. La verificación dinámica debe
+        rechazarla.
         """
         conn = FakeConnector("CREATE VIEW cabecera_factura AS SELECT * FROM [MONT].[dbo].[tb_cabmov]")
         assert vista_aislada_para_empresa(conn, "cabecera_factura", "SONG", target_db="CHAT") is False
@@ -136,12 +118,11 @@ class TestDeteccionDeVistasAfectadas:
 
 class TestFalsosPositivosPorTextoLibre:
     """
-    Dos bugs reales de falso positivo (28-29/08/2026): "Ventas" y "Compras"
-    son palabras comunes del español de negocio, así que aparecen todo el
-    tiempo en texto que NO es una referencia a una tabla — un alias de
-    columna legible, o un valor de texto en un discriminador de UNION ALL.
-    Ambos disparaban el aviso de integridad para SQL que ni siquiera tocaba
-    esas vistas.
+    "Ventas" y "Compras" son palabras comunes del español de negocio, así que
+    aparecen todo el tiempo en texto que NO es una referencia a una tabla: un
+    alias de columna legible o un valor de texto en un discriminador de UNION
+    ALL. Esos casos no deben disparar el aviso de integridad para un SQL que
+    ni siquiera toca esas vistas.
     """
 
     @pytest.mark.parametrize("sql", [
@@ -210,7 +191,7 @@ class TestVerificacionDinamicaPorEmpresa:
         assert vista_aislada_para_empresa(conn, "ficha_trabajador", "MONT", target_db="CHAT") is False
 
     def test_rol_pago_forma_con_puntos_sin_corchetes(self):
-        # rol_pago real: RRHH.dbo.tb_cabrol, RRHH.dbo.tb_detrol (confirmado en vivo).
+        # Definición real de rol_pago: RRHH.dbo.tb_cabrol, RRHH.dbo.tb_detrol.
         conn = FakeConnector(
             "CREATE VIEW rol_pago AS SELECT * FROM RRHH.dbo.tb_cabrol "
             "INNER JOIN RRHH.dbo.tb_detrol ON 1=1"
@@ -219,8 +200,8 @@ class TestVerificacionDinamicaPorEmpresa:
         assert vista_aislada_para_empresa(conn, "rol_pago", "ALIM", target_db="CHAT") is False
 
     def test_vista_corregida_en_el_futuro_queda_confiable_sin_tocar_codigo(self):
-        """Si algún día se filtra por empresa y se repunta correctamente, el
-        mecanismo debe reconocerlo solo — ese es el punto de verificar en vivo."""
+        """Si la vista pasa a filtrar por empresa y se reapunta correctamente,
+        el mecanismo lo reconoce solo: ese es el sentido de verificar en vivo."""
         conn = FakeConnector(
             "CREATE VIEW ficha_trabajador AS SELECT * FROM [DAUN].[dbo].[tb_trabaj] WHERE trb_empre = 1"
         )
@@ -256,8 +237,8 @@ class TestCatalogoDeMetricasAfectadas:
     def test_metricas_rrhh_del_catalogo_quedan_marcadas(self):
         """
         Recorre el catálogo real: toda métrica que consulte las vistas
-        afectadas debe activar la advertencia. Si mañana alguien agrega una
-        métrica de RRHH nueva, queda cubierta automáticamente.
+        afectadas debe activar la advertencia. Una métrica nueva de RRHH queda
+        cubierta automáticamente.
         """
         from core.metric_catalog import _cargar_catalogo
 
@@ -275,11 +256,10 @@ class TestCatalogoDeMetricasAfectadas:
 
     def test_metricas_comerciales_tambien_quedan_marcadas(self):
         """
-        Hallazgo 28/08/2026: lo comercial YA NO es sinónimo de "siempre
-        confiable sin verificar" — CHAT es compartido y puede quedar apuntando
-        a otra empresa. Estas métricas deben marcarse igual que las de RRHH,
-        para que finalize_response (api/routes_query.py) las verifique en vivo
-        antes de responder con ellas.
+        Lo comercial NO es sinónimo de "siempre confiable sin verificar":
+        CHAT es compartido y puede quedar apuntando a otra empresa. Estas
+        métricas se marcan igual que las de RRHH, para que finalize_response
+        (api/routes_query.py) las verifique en vivo antes de responder.
         """
         from core.metric_catalog import _cargar_catalogo
 
@@ -294,13 +274,12 @@ class TestCatalogoDeMetricasAfectadas:
 
 class TestPreguntaEsDeNomina:
     """
-    Blindaje (28/08/2026): el defecto detectado en pruebas fue justo un
-    NameError ('unicodedata' sin importar) que rompía ESTA función en TODAS
-    las consultas, no solo en las de nómina — porque finalize_response la
-    llama siempre que el SQL toca una vista de riesgo. Por eso este test no
-    solo verifica el resultado booleano: primero comprueba que la función se
-    pueda llamar sin reventar con texto acentuado real, que es justo lo que
-    la hizo fallar en producción ("total de ventas por meses del 2026").
+    finalize_response llama a esta función siempre que el SQL toca una vista
+    de riesgo, así que un error en ella (por ejemplo, un NameError por un
+    módulo sin importar) rompería TODAS las consultas, no solo las de nómina.
+    Por eso la prueba no solo verifica el resultado booleano: comprueba que la
+    función se pueda llamar sin fallar con preguntas reales, incluidas las que
+    llevan tildes.
     """
 
     @pytest.mark.parametrize("pregunta", [
@@ -325,16 +304,13 @@ class TestPreguntaEsDeNomina:
 
 class TestResolverAvisoIntegridad:
     """
-    Defecto detectado en pruebas (29/08/2026, vía el botón "Ver
-    detalle" de Indicadores): el SQL cacheado para "muéstrame el detalle de
-    ventas y compras del período más reciente" en AGGO NO toca
-    ficha_trabajador/rol_pago en absoluto (solo [Ventas]/[Compras]) — pero
-    cuando esas dos vistas de negocio no estaban confirmadas como aisladas
-    en ese momento (condición de carrera de CHAT), el sistema le mostraba al
-    usuario el aviso fijo de "talento humano no disponible" de todos modos,
-    porque antes solo existían dos caminos (nómina-fuera-de-tema, o el aviso
-    de nómina para cualquier otra cosa). Estos tests fijan los TRES caminos
-    reales que debe distinguir `resolver_aviso_integridad`.
+    `resolver_aviso_integridad` distingue TRES caminos. Un SQL que solo toca
+    [Ventas]/[Compras] (por ejemplo, el de "muéstrame el detalle de ventas y
+    compras del período más reciente", que no usa ficha_trabajador/rol_pago)
+    con vistas no confirmadas como aisladas en ese momento recibe un aviso de
+    sincronización, no el aviso fijo de "talento humano no disponible". Las
+    vistas de nómina con una pregunta ajena son un fallo de generación, y con
+    una pregunta de nómina reciben el aviso de integridad habitual.
     """
 
     def test_solo_ventas_compras_no_aisladas_da_mensaje_de_sincronizacion_no_de_nomina(self):

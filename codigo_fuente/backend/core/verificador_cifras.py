@@ -1,19 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-verificador_cifras.py — garantiza que la explicación que ve el usuario no
-cite cifras que no están en el resultado.
+Verificador de cifras de la explicación frente al resultado de la consulta.
 
-Problema (detectado el 25/09/2026 por eval/evaluar_nl2sql.py): en el camino
-de IA generativa, el modelo escribe el SQL Y la explicación en la MISMA
-respuesta, ANTES de que el SQL se ejecute. No conoce el resultado, así que a
-veces "completa" la explicación con un número inventado (ej. "ROC-AUC 0,87"
-junto a una tabla que dice 0,9971) o deja marcadores sin rellenar
-("[carrera]", "{tasa_abandono}"). La tabla es correcta; el texto, no. Para
-una autoridad que debe CONFIAR en la respuesta (sección 1.2), eso es grave.
+En el camino de IA generativa el modelo escribe el SQL y la explicación en la
+misma respuesta, antes de ejecutar el SQL, por lo que puede citar un número
+inventado o dejar marcadores sin rellenar («[carrera]», «{tasa_abandono}»).
+Este módulo detecta esas cifras y marcadores (lo mide eval/evaluar_nl2sql.py);
+routes_query.py vuelve a redactar la explicación sobre los datos reales y, si
+falla, usa resumen_determinista(), que solo cita valores del resultado.
 
-Este módulo detecta esas cifras y marcadores; routes_query.py redacta de
-nuevo la explicación sobre los datos reales cuando hace falta (y, si eso
-falla, usa `resumen_determinista`, que solo cita valores del resultado).
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -25,6 +22,7 @@ _MARCADOR = re.compile(r'\[[A-Za-z_áéíóúñ]+\]|\{[A-Za-z_áéíóúñ]+\}')
 
 
 def _a_float(texto: str) -> float | None:
+    """Convierte un número escrito en formato español o inglés a float, o None."""
     t = texto
     if re.fullmatch(r'\d{1,3}(?:\.\d{3})+(?:,\d+)?', t):   # 10.848 o 76.924,62
         t = t.replace('.', '').replace(',', '.')
@@ -37,6 +35,7 @@ def _a_float(texto: str) -> float | None:
 
 
 def _valores_resultado(rows: list) -> list[float]:
+    """Extrae todos los valores numéricos de las filas, incluidos los escritos en texto."""
     valores = []
     for fila in rows or []:
         celdas = fila.values() if isinstance(fila, dict) else fila
@@ -51,7 +50,12 @@ def _valores_resultado(rows: list) -> list[float]:
 
 
 def _respaldada(x: float, valores: list[float], n_filas: int) -> bool:
-    if x == n_filas:                       # "se encontraron 18 carreras"
+    """Indica si `x` coincide con un valor del resultado.
+
+    Acepta el número de filas, años plausibles y valores con tolerancia de
+    redondeo, también en escala x100 o /100 (proporción frente a porcentaje).
+    """
+    if x == n_filas:                      # "se encontraron 18 carreras"
         return True
     if x.is_integer() and 1900 <= x <= 2100:  # años citados en la pregunta o el contexto
         return True
@@ -63,8 +67,11 @@ def _respaldada(x: float, valores: list[float], n_filas: int) -> bool:
 
 
 def cifras_no_respaldadas(texto: str, rows: list) -> list[str]:
-    """Números del texto que no aparecen en el resultado (con tolerancia de
-    redondeo y escala x100) y marcadores sin rellenar."""
+    """Devuelve los números del texto que no aparecen en el resultado y los marcadores sin rellenar.
+
+    La comparación tolera el redondeo y la escala x100. Los enteros de 0 a 10
+    se ignoran porque suelen ser parte de la pregunta («top 5»).
+    """
     if not texto:
         return []
     problemas = _MARCADOR.findall(texto)
@@ -80,7 +87,7 @@ def cifras_no_respaldadas(texto: str, rows: list) -> list[str]:
 
 
 def resumen_determinista(columns: list, rows: list, maximo: int = 5) -> str:
-    """Resumen que SOLO cita valores del resultado (último recurso)."""
+    """Genera un resumen que solo cita valores del resultado; es el último recurso."""
     if not rows:
         return 'La consulta no devolvió registros.'
     cols = list(columns or [])

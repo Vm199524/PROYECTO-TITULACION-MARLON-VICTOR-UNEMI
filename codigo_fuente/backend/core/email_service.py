@@ -1,16 +1,14 @@
 """
-core/email_service.py — Envío de correo saliente (SMTP) de VicMar Data AI.
+Envío de correo saliente por SMTP.
 
-Hoy el único uso es "Olvidé mi contraseña" (Mi Perfil, Fase 5, 28/08/2026):
-un código de un solo uso enviado al correo que el usuario registró en su
-perfil. Usa SMTP estándar con una contraseña de aplicación de Gmail — sin
-OAuth ni librerías nuevas — porque es lo que el usuario ya tiene disponible
-(una cuenta Gmail propia).
+Lo usa el flujo «Olvidé mi contraseña» para enviar un código de un solo uso al
+correo registrado en el perfil. Usa SMTP estándar con una contraseña de
+aplicación de Gmail, sin OAuth ni dependencias adicionales. Si faltan
+SMTP_USER o SMTP_APP_PASSWORD en el .env, enviar_correo() devuelve False sin
+lanzar excepción: el backend sigue funcionando y el fallo queda en el log.
 
-Si SMTP_USER o SMTP_APP_PASSWORD no están configurados en el .env,
-enviar_correo() devuelve False sin lanzar excepción: el backend sigue
-funcionando igual, solo que sin poder enviar correos (queda registrado en el
-log para que se note en desarrollo, sin tumbar la petición que lo dispara).
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -24,12 +22,21 @@ logger = logging.getLogger("EmailService")
 
 
 def correo_configurado() -> bool:
-    """¿Hay credenciales SMTP cargadas? Se usa para dar un mensaje claro en
-    vez de fingir que el correo salió cuando en realidad nadie lo configuró."""
+    """Indica si hay credenciales SMTP cargadas.
+
+    Permite dar un mensaje claro en lugar de informar que el correo salió
+    cuando el servidor SMTP no está configurado.
+    """
     return bool(SMTP_USER and SMTP_APP_PASSWORD)
 
 
 def enviar_correo(destinatario: str, asunto: str, cuerpo: str) -> bool:
+    """Envía un correo de texto plano en UTF-8 mediante SMTP con STARTTLS.
+
+    Returns:
+        True si el servidor aceptó el mensaje; False si falta configuración,
+        destinatario o si ocurrió un error de envío (que se registra en el log).
+    """
     if not correo_configurado():
         logger.warning(
             "[EMAIL] SMTP_USER/SMTP_APP_PASSWORD no configurados en backend/.env "

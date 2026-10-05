@@ -1,9 +1,10 @@
 /**
- * Archivo: api.js
- * Rol: cliente HTTP compartido del frontend.
- * Recibe desde: App.jsx y hooks/servicios que llaman a la API.
- * Se conecta con: appConfig.js para API_BASE y con backend/main.py.
- * Responsabilidades: centralizar axios e inyectar JWT en cada request.
+ * @file Cliente HTTP compartido del frontend. Centraliza la instancia de axios
+ * con `API_BASE` (appConfig.js), adjunta el JWT guardado por App.jsx en cada
+ * petición al backend FastAPI y devuelve al login cuando la sesión se revoca.
+ * Lo usan App.jsx, los hooks y los componentes que llaman a la API.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import axios from 'axios';
@@ -13,10 +14,9 @@ const api = axios.create({
     baseURL: API_BASE
 });
 
-// ── INTERCEPTOR DE SEGURIDAD (v2 Gold) ──────────────────────────────────────
-// Este bloque intercepta cada petición saliente para inyectar el Token JWT
-// si está disponible. Esto permite el aislamiento multiusuario en el servidor.
-// Seccion: interceptor que anexa el JWT persistido por App.jsx.
+// Interceptor de petición: agrega el JWT guardado por App.jsx en
+// `quantum_token`, si existe, para que el servidor aísle los datos de cada
+// usuario.
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('quantum_token');
     if (token) {
@@ -27,8 +27,7 @@ api.interceptors.request.use((config) => {
     return Promise.reject(error);
 });
 
-// ── INTERCEPTOR DE RESPUESTA (sesión revocada) ─────────────────────────────
-// Si el backend responde 401/403 en cualquier petición protegida, la sesión
+// Interceptor de respuesta (sesión revocada): si el backend responde 401/403 en cualquier petición protegida, la sesión
 // fue revocada o expiró: se limpia el token y se vuelve al login al instante.
 // Se excluye el propio /login para que el error de credenciales se muestre
 // en pantalla y no se recargue la página.
@@ -39,15 +38,13 @@ api.interceptors.response.use(
         const url = error?.config?.url || '';
         const esLogin = url.includes('/login') || url.includes('/auth');
         if ((status === 401 || status === 403) && !esLogin && typeof window !== 'undefined') {
-            // Solo se recarga si REALMENTE habia una sesion que perder. Sin esa
-            // condicion, un 401 recibido cuando ya estamos en la pantalla de
-            // login volveria a recargar la pagina una y otra vez.
+            // Solo se recarga si había una sesión que perder; si no, un 401
+            // recibido en la pantalla de login recargaría la página en bucle.
             const habiaSesion = Boolean(localStorage.getItem('quantum_token'));
             localStorage.removeItem('quantum_token');
             if (habiaSesion) {
-                // La aplicacion no usa rutas (no hay react-router): la pantalla
-                // de login es lo que se muestra cuando no hay token, asi que se
-                // vuelve a la raiz en vez de inventar una URL /login.
+                // La aplicación no usa rutas (no hay react-router): el login se
+                // muestra cuando no hay token, así que se vuelve a la raíz.
                 window.location.assign('/');
             }
         }
@@ -55,8 +52,34 @@ api.interceptors.response.use(
     }
 );
 
+/**
+ * Envía una petición GET autenticada.
+ * @param {string} path Ruta relativa a `API_BASE` (p. ej. '/context-overview').
+ * @param {import('axios').AxiosRequestConfig} [config] Opciones de axios.
+ * @returns {Promise<import('axios').AxiosResponse>} Respuesta del backend.
+ */
 export const apiGet = (path, config) => api.get(path, config);
+/**
+ * Envía una petición POST autenticada.
+ * @param {string} path Ruta relativa a `API_BASE`.
+ * @param {*} [data] Cuerpo de la petición.
+ * @param {import('axios').AxiosRequestConfig} [config] Opciones de axios.
+ * @returns {Promise<import('axios').AxiosResponse>} Respuesta del backend.
+ */
 export const apiPost = (path, data, config) => api.post(path, data, config);
+/**
+ * Envía una petición PUT autenticada.
+ * @param {string} path Ruta relativa a `API_BASE`.
+ * @param {*} [data] Cuerpo de la petición.
+ * @param {import('axios').AxiosRequestConfig} [config] Opciones de axios.
+ * @returns {Promise<import('axios').AxiosResponse>} Respuesta del backend.
+ */
 export const apiPut = (path, data, config) => api.put(path, data, config);
+/**
+ * Envía una petición DELETE autenticada.
+ * @param {string} path Ruta relativa a `API_BASE`.
+ * @param {import('axios').AxiosRequestConfig} [config] Opciones de axios.
+ * @returns {Promise<import('axios').AxiosResponse>} Respuesta del backend.
+ */
 export const apiDelete = (path, config) => api.delete(path, config);
 

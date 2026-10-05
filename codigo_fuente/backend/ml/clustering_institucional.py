@@ -1,37 +1,46 @@
 # -*- coding: utf-8 -*-
 """
-clustering_institucional.py — segmentación de las CARRERAS (o módulos) de
-una institución por perfil de riesgo, con K-Means, y su VALIDACIÓN.
+Segmentación de las carreras de una institución por perfil de riesgo.
+
+Agrupa con K-Means las CARRERAS (o módulos, en OULAD) de una institución
+según su perfil de riesgo y VALIDA la partición antes de guardarla en
+CHAT.dbo.fact_cluster_carrera, que consultan el panel y el chat.
 
 Por qué carreras y no universidades: con pocos referentes externos, agrupar
 instituciones completas no es estadísticamente defendible; segmentar las
 unidades académicas propias sí tiene volumen y es accionable ("qué
 programas necesitan atención prioritaria"). Ver documentacion/tecnica/BENCHMARKING_INSTITUCIONAL.md.
 
-Indicadores por carrera (StandardScaler antes, por escalas distintas):
-  - tasa_abandono_hist: % de matrículas cerradas como RETIRADO
+Indicadores por carrera (se estandarizan con StandardScaler porque tienen
+escalas distintas):
+  - tasa_abandono_hist: proporción de trayectorias cuyo último periodo
+    cierra como RETIRADO
   - promedio_hist: rendimiento académico histórico promedio
   - riesgo_promedio: probabilidad media de abandono de los alumnos ACTIVOS
     (salida de ml/predecir_abandono.py)
 
-Validación (Avance 2 — Melchor et al., 2026: los clústeres deben someterse
-a una validación rigurosa antes de usarse para decidir; Valles-Coral et al.,
+Validación (Melchor et al., 2026: los clústeres deben someterse a una
+validación rigurosa antes de usarse para decidir; Valles-Coral et al.,
 2022: comparar algoritmos):
   1. Barrido de k = 2..6: silhouette, Davies-Bouldin, Calinski-Harabasz.
   2. Estabilidad: ARI medio entre la partición de referencia y 100
      particiones obtenidas sobre remuestreos bootstrap.
-  3. Comparación, con k = 3, de K-Means, jerárquico (Ward) y HDBSCAN.
+  3. Comparación, con el k elegido (3 por defecto), de K-Means, jerárquico
+     (Ward) y HDBSCAN.
   4. Kruskal-Wallis: ¿la tasa de abandono difiere entre los clústeres? Es lo
      que respalda que los "tres niveles" sean diferenciables (criterio b).
   5. Variante SIN riesgo_promedio: comprueba que la segmentación no sea
      circular respecto del propio modelo predictivo.
 
-Las etiquetas se asignan por el centroide de tasa de abandono (ascendente),
-nunca por el número arbitrario que devuelve K-Means.
+Las etiquetas se asignan por la tasa media de abandono de cada clúster
+(ascendente), nunca por el número arbitrario que devuelve K-Means.
 
 Uso:
     cd backend
     python -m ml.clustering_institucional --empresa UNEMI_PRUEBAS
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -66,10 +75,18 @@ ETIQUETAS_POR_RIESGO_ASC = [
 
 
 def conectar() -> pyodbc.Connection:
+    """Abre la conexión administrativa a la base CHAT."""
     return conectar_admin('CHAT')
 
 
 def construir_indicadores_por_carrera(conn: pyodbc.Connection, empresa: str) -> pd.DataFrame:
+    """Calcula los indicadores de cada carrera de la institución.
+
+    Por carrera: alumnos distintos (matricula_total), promedio histórico,
+    tasa de abandono histórica y probabilidad media de abandono de sus
+    alumnos calificados en fact_prediccion_abandono. Una carrera sin
+    predicciones queda con riesgo_promedio = 0.
+    """
     sql = """
         SELECT
             fm.carrera_id,
@@ -102,6 +119,11 @@ def _escalar(df: pd.DataFrame, columnas: list[str]) -> np.ndarray:
 
 
 def barrido_k(X: np.ndarray, k_max: int = 6) -> list[dict]:
+    """Evalúa K-Means para k = 2..k_max (sin pasar de n - 1 unidades).
+
+    Returns:
+        Una entrada por k con silhouette, Davies-Bouldin y Calinski-Harabasz.
+    """
     salida = []
     for k in range(2, min(k_max, len(X) - 1) + 1):
         etiquetas = KMeans(n_clusters=k, random_state=SEMILLA, n_init=10).fit_predict(X)
@@ -115,7 +137,14 @@ def barrido_k(X: np.ndarray, k_max: int = 6) -> list[dict]:
 
 
 def estabilidad_bootstrap(X: np.ndarray, k: int, n: int = 100) -> dict:
-    referencia = KMeans(n_clusters=k, random_state=SEMILLA, n_init=10).fit_predict(X)
+    """Mide la estabilidad de la partición con k clústeres por bootstrap.
+
+    Ajusta K-Means sobre n remuestreos con reemplazo, asigna con cada modelo
+    TODAS las unidades y compara esa asignación con la partición de
+    referencia mediante el índice de Rand ajustado (ARI). Se omiten los
+    remuestreos con menos puntos distintos que k.
+    """
+    referencia =KMeans(n_clusters=k, random_state=SEMILLA, n_init=10).fit_predict(X)
     rng = np.random.default_rng(SEMILLA)
     aris = []
     for _ in range(n):
@@ -129,6 +158,12 @@ def estabilidad_bootstrap(X: np.ndarray, k: int, n: int = 100) -> dict:
 
 
 def comparar_algoritmos(X: np.ndarray, k: int) -> dict:
+    """Compara K-Means y jerárquico Ward (ambos con k clústeres) con HDBSCAN.
+
+    HDBSCAN decide su propio número de clústeres y puede marcar puntos como
+    ruido (etiqueta -1). La silhouette se calcula sin el ruido y queda en
+    None si no hay al menos dos clústeres.
+    """
     resultados = {}
     for nombre, etiquetas in (
         ('KMEANS', KMeans(n_clusters=k, random_state=SEMILLA, n_init=10).fit_predict(X)),
@@ -145,6 +180,15 @@ def comparar_algoritmos(X: np.ndarray, k: int) -> dict:
 
 
 def clusterizar(df: pd.DataFrame, k: int = 3, columnas: list[str] | None = None) -> pd.DataFrame:
+    """Asigna cada carrera a un clúster K-Means y le pone su etiqueta de riesgo.
+
+    Las columnas se estandarizan antes del ajuste y k se recorta al número de
+    carreras. Los clústeres se ordenan por su tasa media de abandono y
+    reciben, en ese orden, las etiquetas de ETIQUETAS_POR_RIESGO_ASC.
+
+    Returns:
+        Copia de df con las columnas cluster_id y cluster_label.
+    """
     columnas = columnas or COLUMNAS
     X = _escalar(df, columnas)
     k_efectivo = min(k, len(df))
@@ -156,6 +200,13 @@ def clusterizar(df: pd.DataFrame, k: int = 3, columnas: list[str] | None = None)
 
 
 def validar(df: pd.DataFrame, k: int) -> dict:
+    """Reúne la validación completa de la segmentación con k clústeres.
+
+    Incluye el barrido de k, la estabilidad bootstrap, la comparación de
+    algoritmos, la prueba de Kruskal-Wallis de la tasa de abandono entre
+    clústeres, el ARI frente a la variante sin riesgo_promedio y el tamaño y
+    la tasa media de abandono de cada clúster.
+    """
     X = _escalar(df, COLUMNAS)
     final = clusterizar(df, k)
     grupos = [g['tasa_abandono_hist'].values for _, g in final.groupby('cluster_id')]
@@ -177,6 +228,13 @@ def validar(df: pd.DataFrame, k: int) -> dict:
 
 
 def main() -> int:
+    """Segmenta las carreras de la institución y guarda el resultado.
+
+    Recarga la asignación en fact_cluster_carrera y las métricas de
+    validación (silhouette, ARI, p de Kruskal-Wallis) en
+    fact_evaluacion_modelo, y escribe metricas_clustering.json en
+    ml/models/<EMPRESA>/. Con menos de 3 carreras no segmenta.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--empresa', default='UNEMI_PRUEBAS')
     parser.add_argument('--k', type=int, default=3)

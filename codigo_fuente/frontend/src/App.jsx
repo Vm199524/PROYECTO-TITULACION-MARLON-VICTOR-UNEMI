@@ -1,15 +1,17 @@
+/**
+ * @file Componente raíz del frontend y centro del estado global. Gestiona el
+ * inicio de sesión con JWT, la conexión a SQL Server por empresa, el chat con
+ * respuestas en streaming (/api/query/stream) y análisis de imágenes, el
+ * historial de sesiones (caché local por usuario sincronizada con
+ * /api/sessions), el cierre de sesión por inactividad y la elección entre el
+ * diseño móvil y el de escritorio según el ancho de pantalla. Lo monta main.jsx.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as Sentry from "@sentry/react";
 import { Box, GraduationCap, Layout, TrendingUp, Users } from 'lucide-react';
-
-/**
- * Archivo: App.jsx
- * Rol: contenedor principal del frontend y centro de estado global.
- * Recibe desde: main.jsx.
- * Se conecta con: services/api.js, Login.jsx, DashboardDesktop.jsx,
- * DashboardMobile.jsx, appConfig.js y queryResult.js.
- * Responsabilidades: auth, conexion, chat, sesiones y cambio de vistas.
- */
 
 import { useAutoCorrect } from './hooks/useAutoCorrect';
 import { apiGet, apiPost, apiPut } from './services/api';
@@ -19,13 +21,14 @@ import { API_BASE, dbToBusinessName, getDbModules, getDbProfile, mergeDbCatalog,
 import { normalizeQueryResult } from './utils/queryResult';
 import { normalizeSqlServerHost } from './utils/sqlServer';
 
-// --- IMPORTACION DIRECTA PARA MOVIL Y DESKTOP (MAXIMA COMPATIBILIDAD) ---
-// NOTA: React.lazy() con import dinámico causaba "Failed to fetch dynamically
-// imported module" en Chrome/Edge --app mode por incompatibilidad con el SW
-// y los hashes variables de Vite. Importación directa = cero ese problema.
+// Importación directa de los tableros móvil y de escritorio, sin React.lazy():
+// el import dinámico, combinado con el Service Worker y los hashes variables
+// de Vite, provoca «Failed to fetch dynamically imported module» en Chrome y
+// Edge en modo --app.
 import { DashboardMobile } from './mobile/DashboardMobile';
 import { DashboardView as DashboardDesktop } from './pages/DashboardDesktop';
 
+// Vista activa según el hash de la URL: '#/quantum-core' o el tablero.
 const readAppView = () => {
     if (typeof window === 'undefined') return 'dashboard';
     return (window.location.hash || '').trim().toLowerCase() === '#/quantum-core'
@@ -38,6 +41,8 @@ const resetAppViewToDashboard = () => {
     window.location.hash = '';
 };
 
+// Tiempos de sesión y de conexión (ms): cierre por inactividad a los 30 min,
+// revisión cada 15 s, espera de la primera conexión y pausas entre reintentos.
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const SESSION_CHECK_INTERVAL_MS = 15 * 1000;
 const SESSION_ACTIVITY_KEY = 'quantum_last_activity';
@@ -47,34 +52,29 @@ const LOGIN_RETRY_DELAY_MS = 650;
 // Margen total que el login espera a que el backend termine de arrancar antes
 // de darse por vencido (ver handleAuthLogin). Uvicorn tarda bastante más que
 // Vite en estar listo, y el lanzador abre la ventana apenas Vite responde.
-//
-// El 31/08/2026 subió de 12000 a 120000: con 12000 el margen era MENOR que el
-// timeout de un solo intento (15000) y el retry se rendía a los 15s con el
-// panel azul "El sistema no responde" aunque el fallo fuera solo un arranque
-// en frío del backend (la primera llamada tras `uvicorn` paga imports pesados
-// de langchain y puede tardar más de un minuto). Con 120s el loop reintenta
-// hasta que el backend contesta de verdad: una contraseña incorrecta entonces
-// recibe su 401 limpio ("Usuario o contraseña incorrectos.") y el panel azul
-// queda reservado para un backend que genuinamente no responde.
+// Debe superar el timeout de un solo intento (15 s): la primera llamada tras
+// arrancar uvicorn carga dependencias pesadas (langchain) y puede tardar más
+// de un minuto. Con 120 s el bucle reintenta hasta que el backend contesta:
+// una contraseña incorrecta recibe su 401 ("Usuario o contraseña
+// incorrectos.") y el panel «El sistema no responde» queda reservado para un
+// backend que de verdad no responde.
 const LOGIN_BOOT_WAIT_MS = 120000;
 
-// ── Caché local del historial, separada POR USUARIO ────────────────────────
-// Antes existia una sola clave 'quantum_sessions' compartida, y al cerrar
-// sesion se borraba entera para que un segundo usuario en el mismo navegador
-// no viera el historial del anterior. El efecto secundario era que al volver
-// a entrar NO habia nada que mostrar: el historial recien aparecia cuando
-// respondia /api/sessions, de ahi los segundos en blanco al abrir el sistema.
-// Con una clave por usuario se consigue lo mejor de ambos: cada quien ve su
-// propio historial al instante y nadie ve el del otro.
+// Caché local del historial, separada por usuario. Con una clave por usuario
+// (quantum_sessions::<usuario>) cada quien ve su propio historial al instante,
+// sin esperar a /api/sessions, y nadie ve el de otro usuario del mismo
+// navegador. La clave compartida 'quantum_sessions' solo se lee para migrarla.
 const SESSIONS_CACHE_PREFIX = 'quantum_sessions::';
 const LEGACY_SESSIONS_KEY = 'quantum_sessions';
 
+// Identificador del usuario para la clave de caché (username, sub, id o email).
 const userCacheId = (user) => {
     if (!user) return '';
     const raw = user.username || user.sub || user.id || user.email || '';
     return String(raw).trim().toLowerCase();
 };
 
+// Usuario guardado en localStorage por el último inicio de sesión, o null.
 const readStoredUser = () => {
     try { return JSON.parse(localStorage.getItem('quantum_user')) || null; }
     catch (_e) { return null; }
@@ -91,15 +91,15 @@ const readSessionsCache = (user) => {
     try {
         const cached = JSON.parse(localStorage.getItem(key));
         if (Array.isArray(cached)) return cached;
-        // Migracion desde la clave antigua compartida: se adopta una sola vez
-        // para que el usuario actual no pierda el historial que ya tenia.
+        // Migración desde la clave antigua compartida: se adopta una sola vez
+        // para que el usuario actual no pierda el historial que ya tenía.
         const legacy = JSON.parse(localStorage.getItem(LEGACY_SESSIONS_KEY));
         if (Array.isArray(legacy) && legacy.length > 0) {
             localStorage.setItem(key, JSON.stringify(legacy));
             localStorage.removeItem(LEGACY_SESSIONS_KEY);
             return legacy;
         }
-    } catch (_e) { /* cache corrupta: se ignora */ }
+    } catch (_e) { /* caché corrupta: se ignora */ }
     return [];
 };
 
@@ -107,9 +107,10 @@ const writeSessionsCache = (user, sessions) => {
     const key = sessionsCacheKey(user);
     if (!key) return;
     try { localStorage.setItem(key, JSON.stringify(sessions || [])); }
-    catch (_e) { /* cuota llena: no es critico, el backend es la fuente de verdad */ }
+    catch (_e) { /* cuota llena: no es crítico, el backend es la fuente de verdad */ }
 };
 
+// Lee el campo `exp` del JWT y lo devuelve en ms; 0 si no se puede leer.
 const parseJwtExpiryMs = (token) => {
     if (!token) return 0;
     try {
@@ -120,20 +121,18 @@ const parseJwtExpiryMs = (token) => {
     }
 };
 
-// URL del endpoint de salud del BACKEND vista desde el navegador.
-//
-// Debe atravesar el mismo camino que el resto de la API, nunca apuntar al
-// origin del frontend: antes devolvía "/health" (raíz relativa), que en local
-// caía en el servidor de Vite y en producción en Firebase — en ningún caso
-// llegaba al backend (el proxy y el rewrite solo reenvían "/api/*"), así que
-// el pre-calentamiento sondeaba la página en vez del servicio y nunca veía
-// "online" (bug real 31/08/2026). Con "/api/health" el proxy de Vite lo
-// reenvía al backend correcto y Firebase lo rewrites a Cloud Run.
+// URL del endpoint de salud del backend vista desde el navegador. Debe pasar
+// por el mismo camino que el resto de la API ("/api/health") y no por la raíz
+// del frontend: "/health" caería en el servidor de Vite (local) o en Firebase
+// (producción), porque el proxy y el rewrite solo reenvían "/api/*". Con
+// "/api/health" el proxy de Vite lo envía al backend y Firebase lo reescribe
+// hacia Cloud Run.
 const resolveHealthUrl = () => {
     const base = String(API_BASE || '/api').trim();
     return `${base.replace(/\/$/, '')}/health`;
 };
 
+// Consulta /api/health con un límite de 1,2 s; devuelve el JSON o null.
 const probeBackendHealth = async () => {
     try {
         const controller = new AbortController();
@@ -154,52 +153,47 @@ const probeBackendHealth = async () => {
 
 const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
-// Umbrales estándar de la industria (Tailwind/Material/iOS HIG coinciden en
-// este rango): <768px teléfono, 768-1023px tablet, >=1024px escritorio.
+// Umbrales habituales (Tailwind, Material e iOS HIG coinciden en este rango):
+// <768 px teléfono, 768-1023 px tableta, >=1024 px escritorio.
 const clasificarDeviceType = (ancho) => {
     if (ancho < 768) return 'mobile';
     if (ancho < 1024) return 'tablet';
     return 'desktop';
 };
 
-// Seccion: componente principal y estado global del frontend.
+/**
+ * Componente principal: concentra el estado global (sesión, conexión, chat e
+ * historial) y renderiza el login o el tablero móvil o de escritorio.
+ * @returns {JSX.Element} Login o tablero, según el estado de la sesión.
+ */
 function AppInner() {
-    // Bloque: Estado global de la app.
-    // Controla conexin, sesiones, chat y permisos del usuario.
+    // Estado global: conexión, sesiones, chat y permisos del usuario.
     const [biPulse, setBiPulse] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
     const [loading, setLoading] = useState(false);
-    // Login (30/08/2026): el clic en "Ingresar al
-    // sistema" NO usa `loading` (que dispara la pantalla de carga a pantalla
-    // completa en Login.jsx). `authPending` es un estado discreto, solo para
-    // el spinner DENTRO del botón mientras /login verifica las credenciales.
-    // El shell (dashboard) no se abre hasta que /login confirma el token —
-    // ver `handleAuthLogin`.
+    // El clic en "Ingresar al sistema" no usa `loading` (que muestra la
+    // pantalla de carga completa en Login.jsx). `authPending` solo controla el
+    // indicador dentro del botón mientras /login verifica las credenciales; el
+    // tablero no se abre hasta que /login confirma el token (ver
+    // `handleAuthLogin`).
     const [authPending, setAuthPending] = useState(false);
     const [error, setError] = useState(null);
-    // ¿El error de arriba es un problema DEL SISTEMA (el servidor no responde,
-    // la conexión SQL se cayó) o algo que el usuario puede corregir escribiendo
-    // otra vez (credenciales incorrectas)?
-    //
-    // Distinguirlo importa porque el login ofrece un panel con el botón
-    // "Refrescar Sistema". Recargar la página tiene sentido cuando el sistema
-    // no está respondiendo, pero no arregla una contraseña equivocada: hasta el
-    // 31/08/2026 ese panel salía SIEMPRE que hubiera un error, así que al
-    // escribir mal la clave el mismo texto aparecía dos veces —en la franja
-    // roja del formulario y otra vez abajo, en azul, con un botón que no lleva
-    // a ninguna parte—. Solo se muestra cuando de verdad hay algo que refrescar.
+    // Indica si el error es del sistema (el servidor no responde, la conexión
+    // SQL se cayó) o algo que el usuario puede corregir (credenciales
+    // incorrectas). El login solo ofrece «Refrescar Sistema» en el primer caso:
+    // recargar no corrige una contraseña equivocada y el mismo error
+    // aparecería dos veces en pantalla.
     const [errorDeSistema, setErrorDeSistema] = useState(false);
     const [schema, setSchema] = useState({});
     const [prompt, setPrompt] = useState('');
-    // Selector manual de motor de IA (30/08/2026).
-    // '' = Flash por defecto (siempre); otro motor solo si el usuario lo
-    // elige a propósito. Se revalida en el servidor contra los modelos que
-    // ese usuario tiene permitidos — este valor es solo la preferencia que
-    // el usuario indicó, nunca la fuente de verdad de qué puede usar.
+    // Selector manual de motor de IA. '' usa Flash por defecto; otro motor
+    // solo si el usuario lo elige. El servidor lo revalida contra los modelos
+    // permitidos para ese usuario: este valor es solo una preferencia, no la
+    // fuente de verdad de lo que puede usar.
     const [motorIA, setMotorIA] = useState('');
     const [chatHistory, setChatHistory] = useState([]);
-    // FASE 4 — punto 6: imágenes adjuntas pendientes de enviar al modelo
-    // Vision. Cada item: { id, dataUrl, name }. Se limpia después de enviar.
+    // Imágenes adjuntas pendientes de enviar al modelo de visión. Cada
+    // elemento: { id, dataUrl, name }. Se limpia después de enviar.
     const [attachedImages, setAttachedImages] = useState([]);
     const [currentResult, setCurrentResult] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -215,9 +209,10 @@ function AppInner() {
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [devClicks, setDevClicks] = useState(0);
     const [showDevOptions, setShowDevOptions] = useState(false);
-    // Estado para el efecto typewriter del streaming
+    // Mensaje que se está recibiendo por streaming (efecto de escritura).
     const [streamingMsgId, setStreamingMsgId] = useState(null);
 
+    // Cinco clics en el título del login muestran las opciones de infraestructura.
     const handleTitleClick = () => {
         setDevClicks(prev => {
             const next = prev + 1;
@@ -234,7 +229,7 @@ function AppInner() {
     const [isSwitchingDB, setIsSwitchingDB] = useState(false);
     const [activeView, setActiveView] = useState(readAppView);
 
-    // Seccion: seguridad, restauracion y permisos visibles en UI.
+    // Seguridad, restauración de sesión y permisos visibles en la interfaz.
     const [isVerifying, setIsVerifying] = useState(false);
     const [isRestoringSession, setIsRestoringSession] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -253,6 +248,7 @@ function AppInner() {
         isDemo: false
     };
 
+    // Borra la sesión guardada en localStorage (token, usuario, conexión y esquema).
     const clearPersistedSession = () => {
         localStorage.removeItem('quantum_token');
         localStorage.removeItem('quantum_user');
@@ -260,18 +256,18 @@ function AppInner() {
         localStorage.removeItem('quantum_schema');
         localStorage.removeItem(SESSION_ACTIVITY_KEY);
         localStorage.removeItem(LEGACY_SESSIONS_KEY);
-        // El historial de chat vive en backend, aislado por usuario via JWT.
-        // La copia local se conserva bajo una clave PROPIA DE ESTE USUARIO
-        // (quantum_sessions::<usuario>) y por eso ya no hace falta borrarla al
-        // cerrar sesion: otro usuario en el mismo navegador tendra otra clave y
-        // no vera (ni sobrescribira) este historial. Conservarla es justamente
-        // lo que permite que al volver a entrar el historial este en pantalla
-        // desde el primer instante, sin esperar a /api/sessions.
+        // El historial de chat vive en el backend, aislado por usuario vía JWT.
+        // La copia local usa una clave propia de cada usuario
+        // (quantum_sessions::<usuario>), así que no se borra al cerrar sesión:
+        // otro usuario del mismo navegador tiene otra clave y no la ve ni la
+        // sobrescribe, y al volver a entrar el historial aparece desde el
+        // primer instante, sin esperar a /api/sessions.
         sessionsHydratedRef.current = false;
         setSavedSessions([]);
         setSessionsLoading(true);
     };
 
+    // Abre el tablero con un mensaje de bienvenida y una conversación nueva.
     function openConnectedShell(dataToUse) {
         const effectiveData = dataToUse || connInfo;
         const displayDbCode = effectiveData.selected_company_code || effectiveData.database;
@@ -282,15 +278,12 @@ function AppInner() {
         setActiveView('dashboard');
         setActiveModule(null);
         setCurrentResult(null);
-        // BUG (historial perdido al cambiar de empresa): esta función arranca
-        // una conversación nueva pero antes NUNCA soltaba `activeSessionId`.
-        // El efecto de autoguardado (ver más abajo, depende de [chatHistory,
-        // currentResult]) usa activeSessionId para decidir si CREA una sesión
-        // nueva o ACTUALIZA una existente. Sin este reset, el primer mensaje
-        // que el usuario mandaba en la empresa nueva se guardaba sobre el
-        // `id` de la conversación anterior — la sobrescribía en silencio en
-        // vez de crear una entrada nueva, por eso la conversación previa
-        // desaparecía del historial reciente en vez de quedar guardada.
+        // Se suelta `activeSessionId` porque empieza una conversación nueva.
+        // El efecto de autoguardado (más abajo, depende de [chatHistory,
+        // currentResult]) usa activeSessionId para decidir si crea una sesión
+        // o actualiza una existente; sin este reinicio, el primer mensaje en la
+        // empresa nueva sobrescribiría la conversación anterior en lugar de
+        // crear otra entrada en el historial.
         setActiveSessionId(null);
         setChatHistory([{
             id: `welcome-${Date.now()}`,
@@ -307,6 +300,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }]);
     }
 
+    // Registra la última actividad del usuario para el cierre por inactividad.
     const registerActivity = () => {
         const now = Date.now();
         lastActivityRef.current = now;
@@ -315,6 +309,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     };
 
+    // Inicia sesión con /login y, solo si las credenciales son válidas, abre el tablero.
     const handleAuthLogin = async (e) => {
         if (e) e.preventDefault();
         if (!tempCreds.username || !tempCreds.password) return;
@@ -323,18 +318,14 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         setErrorDeSistema(false);
         setAuthPending(true);
 
-        // ── Validación real ANTES de entrar (31/08/2026) ─────────────────────
-        // Hasta hoy el clic abría el shell DE INMEDIATO (UI optimista, sin
-        // esperar a /login). Eso causaba un flasheo del dashboard cuando las
-        // credenciales eran incorrectas: se "entraba" visualmente y luego el
-        // catch revertía. Ahora el shell se abre SOLO después de que /login
-        // confirma credenciales y token (ver `openConnectedShell`, dentro del
-        // try). Con credenciales malas el usuario se queda en el formulario y
-        // ve el error, sin haber entrado jamás.
+        // Validación antes de entrar: el tablero se abre solo después de que
+        // /login confirma credenciales y token (ver `openConnectedShell`,
+        // dentro del try). Abrirlo antes, de forma optimista, haría que el
+        // tablero apareciera un instante con credenciales incorrectas. Con
+        // credenciales malas, el usuario se queda en el formulario y ve el error.
         //
-        // La espera de arranque se conserva: `authPending` mantiene el spinner
-        // dentro del botón mientras /login reintenta mientras uvicorn termina
-        // de levantar (LOGIN_BOOT_WAIT_MS).
+        // `authPending` mantiene el indicador dentro del botón mientras /login
+        // reintenta y uvicorn termina de arrancar (LOGIN_BOOT_WAIT_MS).
         const targetData = { ...connInfo, database: connInfo.database || '' };
 
         try {
@@ -342,24 +333,14 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                 username: tempCreds.username,
                 password: tempCreds.password
             };
-            // ── Espera activa mientras el backend termina de levantar ─────────
-            // BUG REAL corregido el 30/08/2026 (detectado en pruebas: "hay
-            // que dar click como 3 veces al botón de ingresar"). Al optimizar
-            // el lanzador (VicMarDataAI_Silenzo.vbs) la ventana pasó a abrirse unos
-            // 2.5s antes, pero ahí solo se espera a que VITE esté escuchando —
-            // uvicorn tarda más en arrancar (importa FastAPI, SQLAlchemy,
-            // pyodbc y toda la base de conocimiento). Resultado: el usuario
-            // llega al login y pulsa "Ingresar" cuando el backend todavía no
-            // responde; /login fallaba con error de red, la transición
-            // optimista se revertía y había que volver a pulsar. Con dos
-            // intentos separados por 650ms se cubrían ~0.65s de arranque; por
-            // eso hacían falta ~3 clics para cubrir los segundos que de verdad
-            // tarda.
-            //
-            // Ahora un SOLO clic espera hasta 12s reintentando, pero SOLO
+            // Espera activa mientras el backend termina de arrancar. El
+            // lanzador (VicMarDataAI_Silenzo.vbs) abre la ventana en cuanto Vite
+            // escucha, pero uvicorn tarda más (carga FastAPI, SQLAlchemy, pyodbc
+            // y la base de conocimiento). Un solo clic reintenta cada
+            // LOGIN_RETRY_DELAY_MS hasta agotar LOGIN_BOOT_WAIT_MS, pero solo
             // mientras el fallo sea de conexión (el servidor aún no contesta).
-            // Una contraseña incorrecta responde 401 —con `err.response`— y
-            // sale de inmediato, sin hacer esperar a nadie por un error real.
+            // Una contraseña incorrecta responde 401, con `err.response`, y sale
+            // de inmediato.
             let res = null;
             const inicioIntentos = Date.now();
             for (;;) {
@@ -385,12 +366,12 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             setUserAuth(userData);
             localStorage.setItem('quantum_user', JSON.stringify(userData));
             // Credenciales válidas y token recibido: solo aquí se abre el
-            // shell (dashboard). Con credenciales malas no se llega a esta
-            // línea: el catch de abajo deja el error visible en el formulario.
+            // tablero. Con credenciales malas no se llega a esta línea: el
+            // catch deja el error visible en el formulario.
             openConnectedShell(targetData);
-            // Pintar YA el historial que este navegador guardo para ESTE
-            // usuario. La llamada de abajo lo refresca contra el backend, pero
-            // el usuario no tiene que mirar un panel vacio mientras tanto.
+            // Se muestra de inmediato el historial que este navegador guardó
+            // para este usuario; la llamada siguiente lo refresca contra el
+            // backend sin dejar el panel vacío mientras tanto.
             const cachedSessions = readSessionsCache(userData);
             if (cachedSessions.length > 0) {
                 setSavedSessions(cachedSessions);
@@ -398,8 +379,9 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             }
             void hydrateSessionHistory();
 
-            // Si el usuario ya tiene una base configurada (ej. por persistencia), conectamos en background.
-            // Si no, simplemente cargamos las bases para que el usuario elija.
+            // Si el usuario ya tiene una base configurada (p. ej. guardada de una
+            // sesión anterior), se conecta en segundo plano; si no, se cargan
+            // las bases para que elija.
             if (targetData.database && targetData.database !== 'PROYECTO') {
                 void handleConnect(null, targetData, {
                     background: true,
@@ -411,10 +393,10 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                 void loadDatabases(targetData);
             }
         } catch (err) {
-            // /login falló (credenciales, timeout, red). Como el shell ya no se
-            // abre antes de validar, no hay transición que revertir: el usuario
-            // permanece en el formulario con el error visible. Las líneas de
-            // abajo son una salvaguarda que limpia cualquier sesión residual.
+            // /login falló (credenciales, tiempo de espera o red). Como el
+            // tablero no se abre antes de validar, no hay transición que
+            // revertir: el usuario permanece en el formulario con el error
+            // visible. Las líneas siguientes limpian cualquier sesión residual.
             localStorage.removeItem('quantum_token');
             localStorage.removeItem('quantum_user');
             setUserAuth(null);
@@ -428,12 +410,10 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                 setError('El sistema no responde. Verifica que el servicio esté encendido e intenta de nuevo.');
                 setErrorDeSistema(true);
             } else if (statusLogin === 401 || statusLogin === 403) {
-                // El servidor SÍ respondió y rechazó las credenciales. Mensaje
-                // propio y claro, sin depender del detail del backend (que aún
-                // usa el lenguaje viejo "identificador y codigo"). Nunca se
-                // ofrece refrescar: recargar no arregla una contraseña mal
-                // escrita, y hasta el 31/08/2026 ese panel azul duplicaba el
-                // error en pantalla.
+                // El servidor respondió y rechazó las credenciales. El mensaje
+                // es propio y no depende del `detail` del backend. Nunca se
+                // ofrece refrescar: recargar no corrige una contraseña mal
+                // escrita y duplicaría el error en pantalla.
                 setError('Usuario o contraseña incorrectos.');
                 setErrorDeSistema(false);
             } else {
@@ -447,19 +427,16 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     };
 
+    // Conecta a la base o empresa elegida con /connect. Opciones: `background`
+    // (sin pantalla de carga), `dbSwitch` (cambio de empresa con actualización
+    // optimista), `openShellOnSuccess` y `timeoutMs`.
     const handleConnect = async (e, overrideData = null, options = {}) => {
         if (e && e.preventDefault) e.preventDefault();
-        // ── "El último clic gana" ────────────────────────────────────────────
-        // Antes, si ya había una conexión en curso se devolvía {status:'busy'} y
-        // el clic se descartaba EN SILENCIO: el usuario elegía otra empresa, no
-        // pasaba nada, y la interfaz quedaba mostrando "CONECTANDO..." o volvía
-        // a la anterior. Se sentía como que el sistema "se buguea".
-        //
-        // Ahora no se rechaza: se deja continuar. El mecanismo de `generation`
-        // que ya existía más abajo se encarga de que la respuesta de la conexión
-        // vieja (que llegará tarde) se descarte y no pise a la nueva. Es la
-        // semántica correcta para un selector: la última intención del usuario
-        // es la que vale.
+        // "El último clic gana": si ya hay una conexión en curso, la nueva no
+        // se descarta. El mecanismo de `generation` (más abajo) hace que la
+        // respuesta de la conexión anterior, que llega tarde, se ignore y no
+        // pise a la nueva. En un selector, la última intención del usuario es
+        // la que vale.
         const mergedConnInfo = overrideData ? { ...connInfo, ...overrideData } : connInfo;
         const targetCompanyCode = overrideData && ('selected_company_code' in overrideData)
             ? overrideData.selected_company_code
@@ -485,15 +462,12 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         const requestGeneration = connectGenerationRef.current + 1;
         connectGenerationRef.current = requestGeneration;
 
-        // ── Serialización: nunca dos /connect en paralelo ────────────────────
-        // /connect reconfigura la sesión del usuario en el backend. Si dos
-        // corrieran a la vez, la que terminara última dejaría al backend
-        // apuntando a una empresa distinta de la que muestra la pantalla — que
-        // es exactamente el síntoma de "datos de otra empresa".
-        // Esperamos a que la anterior termine; si mientras esperábamos el
-        // usuario hizo clic en otra empresa, abandonamos: esa más nueva hará
-        // el trabajo y conectarse a una empresa que el usuario ya descartó
-        // sería tiempo perdido.
+        // Serialización: nunca dos /connect en paralelo. /connect reconfigura
+        // la sesión del usuario en el backend; si dos corrieran a la vez, la
+        // última en terminar dejaría al backend apuntando a una empresa
+        // distinta de la que muestra la pantalla. Se espera a que la anterior
+        // termine; si mientras tanto el usuario eligió otra empresa, esta
+        // petición se abandona porque la más nueva hará el trabajo.
         const MAX_ESPERA_CONEXION_MS = 60000;
         const inicioEspera = Date.now();
         while (isConnectingRef.current && (Date.now() - inicioEspera) < MAX_ESPERA_CONEXION_MS) {
@@ -506,17 +480,14 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         isConnectingRef.current = true;
         if (dbSwitch) {
             setIsSwitchingDB(true);
-            // Ya no bloqueamos la chatArea (isConnectionReady(false)) para permitir saludos inmediatos.
+            // El área de chat no se bloquea (no se llama a
+            // setIsConnectionReady(false)) para permitir saludos inmediatos.
             //
-            // El `business_name` se actualiza JUNTO con la empresa, no después.
-            // Antes solo se actualizaban `database` y `selected_company_code` de
-            // forma optimista, mientras `business_name` conservaba el de la
-            // empresa anterior hasta que llegara la respuesta del servidor.
-            // En esa ventana el encabezado mostraba una empresa y las consultas
-            // se enviaban a OTRA — el usuario creía estar viendo DELPYG mientras
-            // el chat respondía con datos de ALIM. Un desfase así es
-            // inaceptable: el nombre en pantalla debe ser siempre el de la
-            // empresa que realmente se está consultando.
+            // `business_name` se actualiza junto con la empresa, no después: si
+            // conservara el de la empresa anterior hasta la respuesta del
+            // servidor, el encabezado mostraría una empresa mientras las
+            // consultas se envían a otra. El nombre en pantalla debe ser siempre
+            // el de la empresa que realmente se consulta.
             const perfilDestino = getDbProfile(
                 dataToUse.selected_company_code || dataToUse.database
             );
@@ -610,17 +581,15 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             }
             throw err;
         } finally {
-            // La bandera se libera SIEMPRE, sin condicionar a la generación.
-            // Antes solo se liberaba si la generación seguía siendo la actual:
-            // bastaba con que un logout o una restauración de sesión cambiara la
-            // generación a mitad de una conexión para que quedara trabada en
-            // `true` de forma permanente — y a partir de ahí TODA conexión
-            // posterior se rechazaba por "busy" hasta recargar la página.
+            // La bandera se libera siempre, sin depender de la generación: si
+            // un cierre de sesión o una restauración cambia la generación a
+            // mitad de una conexión, condicionarla dejaría la bandera trabada
+            // en `true` y bloquearía toda conexión posterior hasta recargar.
             isConnectingRef.current = false;
 
             // Los estados visuales sí siguen condicionados: solo la petición más
             // reciente tiene derecho a apagar el indicador de carga, para que una
-            // respuesta vieja que llega tarde no oculte el spinner de la nueva.
+            // respuesta vieja que llega tarde no oculte el indicador de la nueva.
             if (requestGeneration === connectGenerationRef.current) {
                 if (dbSwitch) {
                     setIsSwitchingDB(false);
@@ -631,6 +600,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     };
 
+    // Cancela la restauración de la sesión guardada y vuelve al login manual.
     const cancelSessionRestore = () => {
         connectGenerationRef.current += 1;
         isConnectingRef.current = false;
@@ -647,6 +617,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         setConnInfo(defaultConnInfo);
     };
 
+    // Cierra la sesión: avisa al backend, limpia el estado local y vuelve al
+    // login mostrando el motivo, si lo hay.
     const handleLogout = async (reason = '') => {
         connectGenerationRef.current += 1;
         isConnectingRef.current = false;
@@ -686,33 +658,31 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
     const [connInfo, setConnInfo] = useState(defaultConnInfo);
     const maskedHost = connInfo.host ? (showHost ? connInfo.host : '****************') : '';
     const [savedSessions, setSavedSessions] = useState(() => {
-        // El historial debe estar EN PANTALLA desde el primer render, no
-        // aparecer segundos despues cuando responde /api/sessions. Por eso se
-        // lee la copia local del ultimo usuario conocido de forma sincrona,
-        // aqui mismo, antes de pintar nada.
+        // El historial debe estar en pantalla desde el primer render, no
+        // aparecer segundos después cuando responde /api/sessions; por eso se
+        // lee de forma síncrona la copia local del último usuario conocido.
         try {
             return readSessionsCache(readStoredUser()) || [];
         } catch (e) { return []; }
     });
     // Bandera para no sincronizar hacia el backend hasta haber intentado
-    // hidratar primero (evita que un arreglo local vacio/desactualizado
+    // hidratar primero (evita que un arreglo local vacío o desactualizado
     // sobrescriba el historial ya guardado en el servidor para este usuario).
     const sessionsHydratedRef = useRef(false);
-    // Mientras esto es true y aun no hay sesiones locales, el sidebar muestra
-    // un esqueleto en vez de "nada" — antes, con el historial ya cargado en
-    // localStorage vacio (ej. primer arranque del dia, o el backend tardando
-    // en levantar junto al frontend), el usuario veia "Historial Reciente"
-    // completamente vacio por unos segundos hasta que /api/sessions respondia,
-    // y la lista aparecia de golpe sin ningun indicio de que se estaba cargando.
+    // Mientras es true y aún no hay sesiones locales, la barra lateral muestra
+    // un esqueleto en lugar de una lista vacía, para indicar que el historial
+    // se está cargando (p. ej. en el primer arranque o si el backend tarda).
     const [sessionsLoading, setSessionsLoading] = useState(true);
+    // Descarga el historial desde /api/sessions, con un reintento si el
+    // backend todavía está arrancando.
     const hydrateSessionHistory = async () => {
-        // Diagnostico: mide donde se va el tiempo del historial. Visible en la
-        // consola del navegador (F12 -> Console, filtrar por "[Historial]").
+        // Diagnóstico: mide dónde se va el tiempo del historial. Visible en la
+        // consola del navegador (F12 > Console, filtrar por "[Historial]").
         const t0 = performance.now();
         const cached = readSessionsCache(userAuth || readStoredUser());
-        // Solo se marca "cargando" si NO hay nada que mostrar todavia. Si la
-        // copia local ya tiene sesiones, esta hidratacion es un refresco en
-        // segundo plano y el usuario no debe ver ningun cambio de estado.
+        // Solo se marca "cargando" si no hay nada que mostrar todavía. Si la
+        // copia local ya tiene sesiones, esta hidratación es un refresco en
+        // segundo plano y el usuario no ve ningún cambio de estado.
         if (cached.length === 0) {
             setSessionsLoading(true);
         }
@@ -724,11 +694,11 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                 res = await attemptFetch();
                 console.log(`[Historial] primer intento OK en ${Math.round(performance.now() - t0)}ms`);
             } catch (firstErr) {
-                // El lanzador arranca backend y frontend a la vez: si el usuario
-                // abre la app justo cuando el backend todavia esta levantando,
-                // este primer intento puede fallar por conexion, no por datos
-                // faltantes. Un solo reintento corto (mismo patron que el login)
-                // cubre ese arranque en frio sin quedarse reintentando para siempre.
+                // El lanzador arranca backend y frontend a la vez: si la
+                // aplicación se abre cuando el backend todavía está arrancando,
+                // este primer intento puede fallar por conexión, no por falta de
+                // datos. Un solo reintento corto (como en el login) cubre ese
+                // arranque en frío sin reintentar indefinidamente.
                 console.warn(`[Historial] primer intento FALLO a los ${Math.round(performance.now() - t0)}ms:`, firstErr?.message || firstErr);
                 const transientFailure = firstErr?.code === 'ECONNABORTED' || !firstErr?.response;
                 if (!transientFailure) throw firstErr;
@@ -738,10 +708,9 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             }
             const remoteSessions = Array.isArray(res.data?.sessions) ? res.data.sessions : [];
             console.log(`[Historial] respuesta del backend: ${remoteSessions.length} sesion(es), total ${Math.round(performance.now() - t0)}ms`);
-            // Si el backend ya tiene historial, es la fuente de verdad.
-            // Si esta vacio pero el navegador tenia algo (localStorage), se
-            // conserva la copia local: el proximo efecto de guardado la subira
-            // al backend, migrando naturalmente al usuario a la nube.
+            // Si el backend ya tiene historial, es la fuente de verdad. Si está
+            // vacío pero el navegador tenía algo (localStorage), se conserva la
+            // copia local: el siguiente efecto de guardado la sube al backend.
             if (remoteSessions.length > 0) {
                 setSavedSessions(remoteSessions);
             }
@@ -752,14 +721,11 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             setSessionsLoading(false);
         }
     };
-    // Rediseño móvil/tablet (29/08/2026): antes solo
-    // existían dos categorías (mobile <768px, todo lo demás "desktop"), así
-    // que una tablet de 768-1024px (iPad, Android grande) recibía el layout
-    // de escritorio completo — sidebar fija de 260px + grillas pensadas para
-    // mouse — en vez de un layout intermedio pensado para dedo. Con 3
-    // categorías, "tablet" puede reusar DashboardDesktop pero con la barra
-    // lateral colapsada por defecto (ver DashboardDesktop) en vez de
-    // duplicar todo el layout.
+    // Tres categorías de dispositivo (mobile, tablet, desktop). Una tableta
+    // de 768-1024 px reutiliza DashboardDesktop con la barra lateral
+    // colapsada por defecto, en lugar de recibir el diseño de escritorio
+    // completo (barra fija de 260 px pensada para ratón) o de duplicar todo
+    // el diseño.
     const [deviceType, setDeviceType] = useState(clasificarDeviceType(window.innerWidth));
     const { correct } = useAutoCorrect();
 
@@ -769,14 +735,14 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Tablet reusa DashboardDesktop (mismas vistas, mismo código) pero con
-    // el riel lateral colapsado a 64px por defecto en vez de la barra fija
-    // de 260px: en un ancho de 768-1024px esa barra fija se comía demasiado
-    // espacio relativo. Solo se fuerza al ENTRAR a rango tablet — si el
-    // usuario la vuelve a abrir a mano, este efecto no se lo revierte.
+    // En tableta, el riel lateral empieza colapsado a 64 px porque la barra
+    // fija de 260 px ocupa demasiado espacio en 768-1024 px. Solo se fuerza al
+    // entrar en el rango de tableta: si el usuario vuelve a abrirla, este
+    // efecto no lo revierte.
     useEffect(() => {
         if (deviceType === 'tablet') setIsSidebarOpen(false);
     }, [deviceType]);
+    // Sincroniza la vista activa con el hash de la URL.
     useEffect(() => {
         const handleHashChange = () => setActiveView(readAppView());
         window.addEventListener('hashchange', handleHashChange);
@@ -792,14 +758,15 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
     const lastActivityRef = useRef(Date.now());
     const autoLogoutRef = useRef(false);
     const fileInputRef = useRef(null);
-    // Ref para deduplicar fetchBiPulse: evita doble-fetch cuando handleConnect
-    // y el useEffect lo invocan casi al mismo tiempo para la misma BD.
+    // Referencia para deduplicar fetchBiPulse: evita una doble petición cuando
+    // handleConnect y el useEffect lo invocan casi a la vez para la misma base.
     const biPulseFetchingRef = useRef('');
 
+    // Obtiene el pulso del tablero BI (/bi/pulse) para la base indicada o la activa.
     const fetchBiPulse = async (targetDb = '') => {
         const normalizedTargetDb = String(targetDb || connInfo.selected_company_code || connInfo.database || '').trim().toUpperCase();
         if (!normalizedTargetDb) return;
-        // Deduplicacion: si ya hay un fetch en vuelo para esta misma BD, no lanzar otro
+        // Deduplicación: si ya hay una petición en curso para esta base, no se lanza otra.
         if (biPulseFetchingRef.current === normalizedTargetDb) return;
         biPulseFetchingRef.current = normalizedTargetDb;
         try {
@@ -811,15 +778,17 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             }
         } catch (e) {
             console.warn("[BI] No se pudo sincronizar el pulso:", e);
-            biPulseFetchingRef.current = ''; // liberar en error para permitir reintento
+            biPulseFetchingRef.current = ''; // se libera en error para permitir el reintento
         } finally {
-            // Limpiar SOLO si nadie cambio el ref mientras esperabamos
+            // Se limpia solo si nadie cambió la referencia durante la espera.
             if (biPulseFetchingRef.current === normalizedTargetDb) {
                 biPulseFetchingRef.current = '';
             }
         }
     };
 
+    // Precalentamiento: sondea /api/health cada segundo hasta que el backend
+    // responde "online".
     useEffect(() => {
         let cancelled = false;
         let timerId = null;
@@ -842,6 +811,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         };
     }, []);
 
+    // Restaura la sesión guardada al cargar la página, salvo que haya expirado
+    // por inactividad o por el vencimiento del JWT.
     useEffect(() => {
         const token = localStorage.getItem('quantum_token');
         const savedUser = localStorage.getItem('quantum_user');
@@ -899,6 +870,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     }, []);
 
+    // Cualquier interacción del usuario renueva el registro de actividad.
     useEffect(() => {
         const syncActivity = () => {
             const token = localStorage.getItem('quantum_token');
@@ -913,6 +885,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         };
     }, []);
 
+    // Cada 15 s revisa si la sesión expiró por inactividad o por el JWT y, si
+    // es así, la cierra con el motivo correspondiente.
     useEffect(() => {
         const checkSessionFreshness = () => {
             const token = localStorage.getItem('quantum_token');
@@ -947,10 +921,10 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
 
     useEffect(() => {
         writeSessionsCache(userAuth || readStoredUser(), savedSessions);
-        // Copia local = cache offline. La fuente de verdad es el backend, pero
-        // solo se sincroniza despues de un intento de hidratacion (ver
-        // hydrateSessionHistory) para no pisar el historial ya guardado en el
-        // servidor con un arreglo local vacio o desactualizado.
+        // La copia local es la caché sin conexión. La fuente de verdad es el
+        // backend, pero solo se sincroniza después de un intento de hidratación
+        // (ver hydrateSessionHistory) para no sobrescribir el historial del
+        // servidor con un arreglo local vacío o desactualizado.
         if (sessionsHydratedRef.current) {
             void apiPut('/sessions', { sessions: savedSessions }).catch((e) => {
                 console.warn('No se pudo sincronizar el historial de sesiones con el backend. Se mantiene solo local.', e);
@@ -962,16 +936,13 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [chatHistory]);
 
-    // NOTA: el auto-resize del textarea se eliminó deliberadamente (bug de
-    // altura): el textarea tiene altura FIJA (rows="1") y scrollea internamente,
-    // así nunca crece solo, independientemente del motor de IA seleccionado.
+    // El textarea no se redimensiona solo: tiene altura fija (rows="1") y se
+    // desplaza internamente, sea cual sea el motor de IA seleccionado.
 
     useEffect(() => {
-        // `userAuth` es la guarda: con el login instantáneo (30/08/2026),
-        // `isConnected`/`isConnectionReady` pueden ya estar en `true` de forma
-        // OPTIMISTA mientras /login todavía verifica en segundo plano y el
-        // token real todavía no existe. Sin este guard, este efecto dispararía
-        // /databases sin Authorization válido apenas se abriera el shell.
+        // `userAuth` es la guarda: evita llamar a /databases sin un token
+        // válido si `isConnected` e `isConnectionReady` llegan a true antes de
+        // que exista el usuario verificado.
         if (isConnected && isConnectionReady && userAuth && connInfo.host) loadDatabases();
     }, [isConnected, isConnectionReady, userAuth, connInfo.host]);
 
@@ -979,11 +950,12 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         if (!isConnected || !isConnectionReady || !userAuth) return;
         const targetDb = String(connInfo.selected_company_code || connInfo.database || '').trim().toUpperCase();
         if (!targetDb) return;
-        // Guard: si handleConnect ya fetcheo este mismo DB, el ref de deduplicacion lo absorbe
+        // Si handleConnect ya pidió esta misma base, la deduplicación evita la segunda petición.
         fetchBiPulse(targetDb);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isConnected, isConnectionReady, userAuth, connInfo.database, connInfo.selected_company_code]);
 
+    // Cierra el menú de una sesión al hacer clic fuera de él.
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuOpenId && !event.target.closest('.session-menu-trigger')) {
@@ -1006,6 +978,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         return codigo ? `${codigo} - ${texto}` : texto;
     };
 
+    // Autoguardado: actualiza la sesión activa o, si no hay, crea una nueva
+    // con el primer mensaje del usuario (se conservan las 20 más recientes).
     useEffect(() => {
         const hasUserMessage = chatHistory.some(m => m.type === 'user');
         if (!hasUserMessage) return;
@@ -1042,6 +1016,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     }, [chatHistory, currentResult]);
 
+    // Empieza una conversación vacía en la base actual.
     const startNewChat = () => {
         setChatHistory([{
             id: `welcome-${Date.now()}`,
@@ -1059,6 +1034,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         setMenuOpenId(null);
     };
 
+    // Abre la vista Quantum Core (#/quantum-core) en la misma pestaña o en una nueva.
     const openQuantumCore = (newTab = false) => {
         if (typeof window === 'undefined') return;
         const targetUrl = `${window.location.pathname}${window.location.search}#/quantum-core`;
@@ -1076,6 +1052,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         setActiveView('dashboard');
     };
 
+    // Carga una sesión guardada: primero vacía el chat y espera dos cuadros de
+    // animación para que el historial se vuelva a montar desde cero.
     const loadSession = (session) => {
         setChatHistory([]);
         setCurrentResult(null);
@@ -1090,6 +1068,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         });
     };
 
+    // Acciones del menú de cada sesión: fijar, eliminar, renombrar y guardar el nombre.
     const togglePinSession = (e, sessionId) => {
         e.stopPropagation();
         setSavedSessions(savedSessions.map(s => s.id === sessionId ? { ...s, pinned: !s.pinned } : s));
@@ -1123,6 +1102,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         setEditingId(null);
     };
 
+    // Las sesiones fijadas van primero.
     const sortedSessions = useMemo(() => {
         return [...savedSessions].sort((a, b) => {
             if (a.pinned === b.pinned) return 0;
@@ -1130,6 +1110,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         });
     }, [savedSessions]);
 
+    // Módulos de análisis; cada base habilita algunos según su perfil (getDbModules).
     const capabilities = [
         { id: "VENTAS", label: "Área Comercial", desc: "Ventas y Facturación", icon: TrendingUp },
         { id: "OPERACIONES", label: "Gestión de Abastecimiento", desc: "Gestión de Proveedores", icon: Box },
@@ -1138,6 +1119,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         { id: "ACADEMICO", label: "Analitica Academica", desc: "Alumnos, Matriculas y Cursos", icon: GraduationCap }
     ];
 
+    // Módulos visibles: los de la base activa; GERENTE_GENERAL y ADMINISTRADOR
+    // ven todos, el resto solo los asignados a su usuario.
     const activeCapabilities = useMemo(() => {
         if (!userAuth) return [];
         const displayDbCode = connInfo.selected_company_code || connInfo.database;
@@ -1147,6 +1130,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         return byDb.filter(cap => userAuth.modules?.includes(cap.id));
     }, [userAuth, connInfo.database, connInfo.selected_company_code]);
 
+    // Si la base activa no ofrece el módulo seleccionado, se deselecciona.
     useEffect(() => {
         if (!activeModule) return;
         const displayDbCode = connInfo.selected_company_code || connInfo.database;
@@ -1156,6 +1140,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     }, [activeModule, connInfo.database, connInfo.selected_company_code]);
 
+    // Lista las bases del servidor SQL (/databases) y actualiza el catálogo local.
     const loadDatabases = async (overrideConnInfo = null) => {
         const sourceConnInfo = overrideConnInfo ? { ...connInfo, ...overrideConnInfo } : connInfo;
         const normalizedConnInfo = {
@@ -1192,6 +1177,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     };
 
+    // Envía la pregunta del usuario: con imágenes adjuntas va a /query/vision;
+    // si no, a /query/stream, con respuesta en streaming (SSE).
     // `options.skipUserBubble`: usado por "Regenerar respuesta" (ChatMessage.jsx)
     // para reenviar la misma pregunta al backend sin duplicar la burbuja de
     // usuario que ya está en pantalla — solo se reemplaza la respuesta.
@@ -1217,7 +1204,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             return false;
         };
 
-        // Si no estamos listos y NO es un saludo, bloqueamos para evitar errores de SQL sin esquema.
+        // Si la conexión no está lista y el texto no es un saludo corto, se
+        // bloquea la consulta para evitar errores de SQL sin esquema.
         if (!isConnectionReady && !isGreeting(finalInput)) {
             setChatHistory(prev => [...prev, {
                 id: `ai-sync-${Date.now()}`,
@@ -1236,7 +1224,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         const { text: finalPrompt } = skipUserBubble ? { text: finalInput } : correct(finalInput);
         registerActivity();
 
-        // Se capturan ANTES de limpiar el estado: `attachedImages` se vacía
+        // Se capturan antes de limpiar el estado: `attachedImages` se vacía
         // más abajo para que la miniatura desaparezca del input en cuanto se
         // envía, pero la petición necesita las imágenes que había en ese momento.
         const imagenesAEnviar = tieneImagenesAdjuntas ? [...attachedImages] : [];
@@ -1257,10 +1245,10 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         if (imagenesAEnviar.length > 0) setAttachedImages([]);
         setLoading(true);
 
-        // ── ID de burbuja de respuesta (se crea antes de recibir datos) ──────────
+        // ID de la burbuja de respuesta (se crea antes de recibir datos).
         const aiMsgId = `ai-res-${Date.now()}`;
 
-        // ── Burbuja de "escribiendo..." mientras espera el LLM ───────────────────
+        // Burbuja de "escribiendo..." mientras responde el modelo.
         setChatHistory(prev => [...prev, {
             id: aiMsgId,
             type: 'ai',
@@ -1272,11 +1260,10 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }]);
         setStreamingMsgId(aiMsgId);
 
-        // ── FASE 4 — punto 6: rama Vision ─────────────────────────────────
-        // Con imágenes adjuntas, la pregunta NO pasa por /query/stream (SQL,
-        // esquema, caché semántico, guardarraíl de alcance): va directo al
-        // modelo Vision con un endpoint propio, más simple, sin streaming
-        // (la respuesta suele ser un párrafo, no vale la pena trocearla).
+        // Rama de visión: con imágenes adjuntas, la pregunta no pasa por
+        // /query/stream (SQL, esquema, caché semántica, control de alcance):
+        // va directo al modelo de visión por un endpoint propio, sin streaming,
+        // porque la respuesta suele ser un párrafo.
         if (imagenesAEnviar.length > 0) {
             try {
                 const token = localStorage.getItem('quantum_token');
@@ -1335,16 +1322,14 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             const token = localStorage.getItem('quantum_token');
             const streamUrl = `${API_BASE}/query/stream`;
 
-            // ── Vigilancia de tiempo ─────────────────────────────────────────
-            // El fetch no tenía ningún límite: si el servidor SQL o el motor de
-            // IA se quedaban colgados, la pantalla giraba indefinidamente sin
-            // que el usuario supiera qué pasaba ni pudiera hacer nada.
-            // Se aplican dos cortes:
-            //   · inactividad: no llega NADA nuevo en 150 s. El rewrite de
+            // Vigilancia de tiempo: sin límite, si el servidor SQL o el motor de
+            // IA se quedan colgados, la pantalla giraría indefinidamente. Se
+            // aplican dos cortes:
+            //   · inactividad: no llega nada nuevo en 150 s. El rewrite de
             //     Firebase Hosting retiene la respuesta SSE completa, así que
             //     una pregunta que DeepSeek (Flash/Pro) tarda en responder
-            //     (40-125 s en frío) no envía NI UN byte hasta que termina;
-            //     abortar a 25 s hacía que Flash y Pro "nunca respondieran".
+            //     (40-125 s en frío) no envía ni un byte hasta terminar; un
+            //     corte más corto haría que esos motores nunca respondieran.
             //   · tope total: 5 minutos, en línea con el timeout del backend
             //     (Cloud Run corta a los 300 s).
             const INACTIVIDAD_MS = 150000;
@@ -1393,7 +1378,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
 
             if (!response.ok) {
                 limpiarVigilantes();
-                // Intentar leer el mensaje del backend si existe
+                // Se intenta leer el mensaje del backend, si existe.
                 let backendDetail = '';
                 try {
                     const errBody = await response.json();
@@ -1423,7 +1408,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
             let metaPayload = null;
             let explanation = '';
 
-            // Filtro de contenido técnico (mismo que antes)
+            // Filtro de contenido técnico: si el texto parece un error de base de
+            // datos, una traza de Python o SQL, no se muestra al usuario.
             const TECHNICAL_PATTERNS = [
                 /pyodbc\./i, /\[Microsoft\]\[ODBC/i, /\[SQL Server\]/i,
                 /SQLExecDirectW/i, /ProgrammingError/i, /OperationalError/i,
@@ -1443,7 +1429,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
 
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n');
-                buffer = lines.pop(); // guardar línea incompleta
+                buffer = lines.pop(); // se guarda la línea incompleta
 
                 let currentEvent = '';
                 for (const line of lines) {
@@ -1457,7 +1443,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                             if (currentEvent === 'meta') {
                                 metaPayload = parsed;
                                 const normalized = normalizeQueryResult(parsed);
-                                // Mostrar datos (tabla/gráfico) INMEDIATAMENTE
+                                // Los datos (tabla o gráfico) se muestran de inmediato, antes del texto.
                                 setChatHistory(prev => prev.map(m => m.id === aiMsgId ? {
                                     ...m,
                                     content: '',
@@ -1470,7 +1456,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                                 } : m));
 
                             } else if (currentEvent === 'token') {
-                                // Agregar chunk al texto en curso
+                                // Se agrega el fragmento al texto en curso.
                                 explanation += parsed;
                                 const sanitized = containsTech(explanation) ? '' : explanation;
                                 setChatHistory(prev => prev.map(m => m.id === aiMsgId ? {
@@ -1480,7 +1466,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                                 } : m));
 
                             } else if (currentEvent === 'done') {
-                                // Finalizar burbuja
+                                // Se cierra la burbuja.
                                 finalizadoPorServidor = true;
                                 setChatHistory(prev => prev.map(m => m.id === aiMsgId ? {
                                     ...m,
@@ -1489,10 +1475,9 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                                         : (metaPayload?.explanation || 'Análisis completado.'),
                                     isStreaming: false,
                                     // Preguntas rápidas que el backend adjuntó en el evento
-                                    // "meta" (ej. las opciones de Invitado: demo / solicitar
-                                    // acceso / conectar BD). Bug real (30/08/2026): este
-                                    // handler las pisaba con [] sin condición, así que nunca
-                                    // se veían botones aunque el backend los mandara.
+                                    // "meta" (p. ej. las opciones de Invitado: demo, solicitar
+                                    // acceso, conectar BD). Se toman de metaPayload para no
+                                    // perderlas al cerrar la burbuja.
                                     quickQuestions: metaPayload?.quick_questions || [],
                                 } : m));
                                 setStreamingMsgId(null);
@@ -1508,7 +1493,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
                                 } : m));
                                 setStreamingMsgId(null);
                             }
-                        } catch (_parseErr) { /* ignorar líneas malformadas */ }
+                        } catch (_parseErr) { /* se ignoran las líneas malformadas */ }
                     }
                 }
             }
@@ -1536,11 +1521,9 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
 
             let backendMessage;
             if (err.name === 'AbortError') {
-                // RESPUESTA DE CONTINGENCIA (no un error técnico plano): el
-                // usuario nunca debe quedarse solo con los tres puntitos ni con
-                // un mensaje que no explique nada. Siempre responde alguien —
-                // si no llegó la IA a tiempo, responde el propio sistema con
-                // una explicación entendible y una siguiente acción concreta.
+                // Respuesta de contingencia, no un error técnico plano: si el
+                // modelo no responde a tiempo (o el usuario cancela), el propio
+                // sistema explica qué pasó y propone una siguiente acción.
                 const motivo = motivoCorteRef.current || motivoCorte;
                 backendMessage = motivo === 'cancelado'
                     ? 'Consulta cancelada.\n\n'
@@ -1576,7 +1559,7 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     };
 
-    // Cancela la consulta en curso (botón de la ruedita de carga). Aborta el
+    // Cancela la consulta en curso (botón del indicador de carga). Aborta el
     // AbortController activo, lo que dispara el AbortError y cierra la burbuja
     // con un mensaje de "Consulta cancelada" en lugar de dejarla girando.
     const cancelQuery = () => {
@@ -1586,6 +1569,8 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
         }
     };
 
+    // Sin conexión se muestra el login; con conexión, el tablero móvil o el de
+    // escritorio (que también atiende tabletas).
     if (!isConnected) {
         return (
             <LoginView
@@ -1742,6 +1727,10 @@ Estoy lista para ayudarte a explorar tus datos una vez que elijas una empresa en
     );
 }
 
+/**
+ * Componente raíz de la aplicación: envuelve AppInner en un ErrorBoundary.
+ * @returns {JSX.Element} Aplicación completa.
+ */
 export default function App() {
     return (
         <ErrorBoundary>

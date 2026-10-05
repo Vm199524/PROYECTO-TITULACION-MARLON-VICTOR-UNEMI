@@ -1,31 +1,45 @@
+/**
+ * @file Tarjeta de inteligencia institucional del panel. Presenta dos secciones sobre la
+ * misma fuente que consulta el chat (VIS_CLUSTER_CARRERA y VIS_BENCHMARK_EXTERNO; ver
+ * documentacion/tecnica/BENCHMARKING_INSTITUCIONAL.md): la segmentación de las carreras
+ * propias por perfil de riesgo (K-Means sobre tasa de abandono, rendimiento y riesgo
+ * actual del modelo predictivo), leída de /ml/clusters-carrera, y la comparación de la
+ * tasa de abandono propia con referentes publicados con DOI, cada uno con su nivel de
+ * comparabilidad (Lepori & Bornmann, 2026: pares con pares), leída de
+ * /benchmarking/comparativo.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Building2, Network, Scale } from 'lucide-react';
 
 import { apiGet } from '../../services/api';
 
-// Módulo 2 del work package (Benchmarking con enfoque en inteligencia
-// institucional): dos secciones sobre la MISMA fuente que consulta el chat
-// (VIS_CLUSTER_CARRERA / VIS_BENCHMARK_EXTERNO — ver
-// documentacion/tecnica/BENCHMARKING_INSTITUCIONAL.md):
-//   1. Clustering institucional: segmenta las carreras propias por perfil
-//      de riesgo (K-Means sobre tasa de abandono, rendimiento y riesgo
-//      actual del modelo predictivo).
-//   2. Benchmarking externo: compara la tasa de abandono propia contra
-//      referentes publicados en fuentes académicas con DOI, cada uno con su
-//      nivel de comparabilidad (Lepori & Bornmann, 2026: pares con pares).
+// Estilo de la etiqueta según el nivel de comparabilidad del referente.
 const COMPARABILIDAD_STYLE = {
     ALTA: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
     MEDIA: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
     BAJA: 'border-white/15 bg-white/5 text-white/50',
 };
 
+// Estilo según la etiqueta del segmento; las claves deben coincidir con las que
+// devuelve el backend.
 const CLUSTER_STYLE = {
     'Atencion prioritaria': { text: 'text-rose-400', border: 'border-rose-500/30', bg: 'bg-rose-500/10' },
     'Estable': { text: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-500/10' },
     'Bajo riesgo / alto rendimiento': { text: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10' },
 };
 
+/**
+ * Muestra la segmentación de carreras y la comparación con referentes externos. Se
+ * oculta si no hay base, si alguna consulta falla o si ambas secciones vienen vacías.
+ *
+ * @param {object} props
+ * @param {string} props.targetDb - Base de datos de la institución que se consulta.
+ * @param {number} [props.delay=0] - Retardo, en segundos, de la animación de entrada.
+ * @returns {JSX.Element|null} La tarjeta, o null si no hay datos que mostrar.
+ */
 export function InteligenciaInstitucionalCard({ targetDb, delay = 0 }) {
     const [clusters, setClusters] = useState(null);
     const [benchmark, setBenchmark] = useState(null);

@@ -1,14 +1,14 @@
 """
-core/session_history_store.py - Persistencia del historial de sesiones de chat.
-Guarda, por usuario, la lista de conversaciones guardadas (antes solo vivía
-en localStorage del navegador, así que un usuario perdía su historial al
-cambiar de equipo o limpiar el navegador).
+Persistencia del historial de sesiones de chat.
 
-Sigue el mismo patrón híbrido que cache/query_cache.py: Redis como vía
-principal (rápida, compartida entre instancias) con fallback a un archivo
-JSON local cuando Redis no está disponible. El frontend sigue escribiendo
-en localStorage como caché offline — este módulo es la fuente de verdad
-cuando hay conexión.
+Guarda por usuario la lista de conversaciones para que no se pierda al cambiar
+de equipo o limpiar el navegador. Sigue el patrón híbrido de
+cache/query_cache.py: Redis como vía principal (compartida entre instancias) y
+un archivo JSON local como respaldo. El frontend mantiene localStorage como
+caché sin conexión; este módulo es la fuente de verdad cuando hay conexión.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -67,10 +67,10 @@ def get_sessions(user_id: str) -> list:
 
 
 def save_sessions(user_id: str, sessions: list) -> None:
-    """
-    Reemplaza la lista completa de sesiones de un usuario.
-    Refleja el mismo patrón que ya usa el frontend (siempre reescribe el
-    arreglo entero al cambiar algo), truncado a MAX_SESSIONS_PER_USER.
+    """Reemplaza la lista completa de sesiones de un usuario.
+
+    Sigue el patrón del frontend, que reescribe el arreglo entero en cada
+    cambio, y lo trunca a MAX_SESSIONS_PER_USER.
     """
     if not user_id:
         return

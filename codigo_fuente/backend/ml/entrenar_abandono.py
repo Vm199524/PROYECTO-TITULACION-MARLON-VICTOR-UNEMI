@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-entrenar_abandono.py — entrena el modelo de predicción de abandono de UNA
-institución sobre el panel alumno-periodo (ver ml/features_abandono.py):
-"con lo que se sabe del alumno hasta el periodo t, ¿abandonará en t+1?".
+Entrenamiento del modelo de predicción de abandono de una institución.
+
+Entrena el modelo de UNA institución sobre el panel alumno-periodo (ver
+ml/features_abandono.py): "con lo que se sabe del alumno hasta el periodo t,
+¿abandonará en t+1?".
 
 Un modelo por institución (--empresa), guardado en ml/models/<EMPRESA>/: los
 datos de dos instituciones nunca se mezclan en un mismo entrenamiento
@@ -27,10 +29,12 @@ prueba para decidir nada:
                           2024), línea base interpretable.
        - GRADIENT_BOOST   HistGradientBoosting, representante del boosting
                           (XGBoost en Carballo-Mendívil et al., 2025).
-     El modelo final es la mejor variante de Random Forest (la técnica que
-     declara el documento, por su balance entre desempeño e
-     interpretabilidad; Duro et al., 2026). Las otras dos son líneas base:
-     si alguna supera al RF, queda registrado como advertencia.
+     El modelo final es la variante de Random Forest con mayor ROC-AUC
+     medio (desempate por PR-AUC): es la técnica que declara el documento,
+     por su balance entre desempeño e interpretabilidad (Duro et al., 2026).
+     LOGISTICA y GRADIENT_BOOST son líneas base: si alguna supera al RF
+     elegido en más de 0,01 de ROC-AUC medio, queda registrado como
+     advertencia.
   4. Umbral operativo: sobre las predicciones fuera de pliegue, el mayor
      umbral que alcanza el recall objetivo (por defecto 0,80). La
      metodología prioriza no dejar pasar abandonos (recall).
@@ -40,12 +44,17 @@ prueba para decidir nada:
      impureza se sesga con clases desbalanceadas).
   6. Modelo final: se reentrena con todas las filas etiquetadas y se guarda
      junto con su umbral. Las métricas se escriben en metrics.json y en
-     CHAT.dbo.fact_evaluacion_modelo (consultables por el panel y el chat).
+     CHAT.dbo.fact_evaluacion_modelo (consultables por el panel y el chat);
+     las probabilidades de CV y de la prueba temporal quedan en CSV para
+     ml/reporte_validacion.py.
 
 Uso:
     cd backend
     python -m ml.entrenar_abandono --empresa UNEMI_PRUEBAS
     python -m ml.entrenar_abandono --empresa OULAD_UK
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -84,8 +93,8 @@ MODEL_VERSION = '2026.09.25-panel-t1'
 SEMILLA = 20260909
 N_JOBS = -1  # todos los núcleos
 
-# Mismo espacio de búsqueda que la versión anterior del modelo (incluye
-# árboles sin límite de profundidad): la búsqueda decide, no se fija a mano.
+# El espacio de búsqueda incluye árboles sin límite de profundidad
+# (max_depth=None): la búsqueda decide, no se fija a mano.
 ESPACIO_HIPERPARAMETROS = {
     'n_estimators': [150, 250, 300, 400, 500],
     'max_depth': [4, 6, 8, 10, 12, None],
@@ -96,14 +105,23 @@ ESPACIO_HIPERPARAMETROS = {
 
 
 def conectar() -> pyodbc.Connection:
+    """Abre la conexión administrativa a la base CHAT."""
     return conectar_admin('CHAT')
 
 
 def _r(x) -> float | None:
+    """Redondea a 4 decimales; devuelve None si el valor falta o es NaN (JSON válido)."""
     return None if x is None or (isinstance(x, float) and np.isnan(x)) else round(float(x), 4)
 
 
 def metricas(y_true, proba, umbral: float) -> dict:
+    """Calcula las métricas de clasificación de unas probabilidades con un umbral dado.
+
+    Returns:
+        n, positivos, prevalencia, umbral, ROC-AUC y PR-AUC (None si y_true
+        tiene una sola clase), recall, precisión, F1 y matriz de confusión
+        [[VN, FP], [FN, VP]].
+    """
     y_true = np.asarray(y_true).astype(int)
     pred = (np.asarray(proba) >= umbral).astype(int)
     dos_clases = len(set(y_true)) > 1
@@ -122,14 +140,25 @@ def metricas(y_true, proba, umbral: float) -> dict:
 
 
 def umbral_para_recall(y_true, proba, recall_objetivo: float) -> float:
-    """El MAYOR umbral cuyo recall sigue siendo >= recall_objetivo (es decir,
-    la mejor precisión posible sin bajar del recall exigido)."""
+    """Devuelve el MAYOR umbral cuyo recall sigue siendo >= recall_objetivo.
+
+    Subir el umbral reduce falsos positivos, así que se busca la mejor
+    precisión posible sin bajar del recall exigido. Si ningún umbral lo
+    alcanza, devuelve el menor umbral de la curva precisión-recall.
+    """
     precision, recall, umbrales = precision_recall_curve(y_true, proba)
     validos = [u for u, r in zip(umbrales, recall[:-1]) if r >= recall_objetivo]
     return float(max(validos)) if validos else float(umbrales.min())
 
 
 def candidatos(params_rf: dict) -> dict:
+    """Construye, sin entrenar, los cuatro modelos que se comparan.
+
+    Las dos variantes de Random Forest usan los hiperparámetros elegidos por
+    la búsqueda. RF_SMOTE va dentro de un Pipeline de imblearn para que SMOTE
+    se aplique solo al ajustar, es decir, solo a los datos de entrenamiento
+    de cada pliegue y nunca a los de prueba.
+    """
     return {
         'RF_CLASS_WEIGHT': RandomForestClassifier(class_weight='balanced', random_state=SEMILLA,
                                                   n_jobs=N_JOBS, **params_rf),
@@ -143,8 +172,16 @@ def candidatos(params_rf: dict) -> dict:
 
 
 def evaluar_cv(nombre, modelo, X, y, grupos, cv) -> tuple[dict, np.ndarray]:
-    """Métricas por pliegue (mismos pliegues para todos los modelos) y
-    probabilidades fuera de pliegue para elegir el umbral."""
+    """Evalúa un modelo con validación cruzada agrupada por alumno.
+
+    Con los mismos pliegues para todos los modelos, calcula por pliegue
+    ROC-AUC, PR-AUC, y recall y precisión con umbral 0,5.
+
+    Returns:
+        (resumen con la lista por pliegue, la media y la desviación de cada
+        métrica; probabilidades fuera de pliegue, que sirven para elegir el
+        umbral operativo sin tocar la prueba temporal).
+    """
     por_pliegue = {'roc_auc': [], 'pr_auc': [], 'recall_05': [], 'precision_05': []}
     oof = np.zeros(len(y))
     for tr, te in cv.split(X, y, grupos):
@@ -165,6 +202,16 @@ def evaluar_cv(nombre, modelo, X, y, grupos, cv) -> tuple[dict, np.ndarray]:
 
 
 def guardar_en_warehouse(conn, empresa: str, metrics: dict) -> int:
+    """Reemplaza en fact_evaluacion_modelo las métricas de predicción de la institución.
+
+    Guarda el ROC-AUC y el PR-AUC medios de CV de cada modelo comparado
+    (CV_GRUPOS_5), las métricas de la prueba temporal en el umbral operativo
+    y el propio umbral (TEMPORAL). No toca las métricas de otros esquemas,
+    como la evaluación prospectiva.
+
+    Returns:
+        Número de filas insertadas.
+    """
     filas = []
     for nombre, res in metrics['comparacion_cv'].items():
         final = int(nombre == metrics['modelo_final'])
@@ -189,6 +236,11 @@ def guardar_en_warehouse(conn, empresa: str, metrics: dict) -> int:
 
 
 def main() -> int:
+    """Ejecuta el entrenamiento y la validación completos de la institución.
+
+    Returns:
+        0 si termina; 1 si el panel tiene menos de 20 abandonos etiquetados.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--empresa', default='UNEMI_PRUEBAS')
     parser.add_argument('--recall-objetivo', type=float, default=0.80)

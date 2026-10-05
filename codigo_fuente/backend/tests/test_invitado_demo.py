@@ -1,24 +1,16 @@
 """
 Pruebas del rol Invitado (GUEST) y su modo de demostración.
 
-Contexto (30/08/2026): la primera versión de "Demo Mode" activaba
-`active_company_code = "DEMO"` a mitad del pipeline de `execute_query`,
-después de la validación de conector. Un valor residual de
-`selected_company_code` (de una sesión anterior en el mismo navegador) se
-colaba en la petición y desviaba el flujo hacia `_prepare_chat_for_query`
-contra una empresa real, que fallaba con "servidor no cuenta con módulo de
-inteligencia activado" — dejando al Invitado sin poder ni siquiera saludar.
+`_responder_invitado()` en api/routes_query.py resuelve toda la conversación
+del Invitado de forma autocontenida, sin tocar el conector, el esquema ni
+`selected_company_code`, para que un valor residual de otra sesión no lo
+desvíe hacia una empresa real. Se verifica que el saludo, "solicitar acceso" y
+"conectar BD" respondan sin conexión a la base; que cualquier otra pregunta
+reciba SIEMPRE respuesta con el dataset de demostración; que el texto diga
+"Invitado" y nunca "GUEST", y que las 3 opciones viajen como `quick_questions`.
 
-La solución: `_responder_invitado()` en api/routes_query.py resuelve TODA la
-conversación del Invitado de forma autocontenida, sin tocar connector, esquema
-ni `selected_company_code`. Estas pruebas verifican que:
-  1. El saludo, "solicitar acceso" y "conectar BD" respondan sin ninguna
-     conexión a base de datos.
-  2. Cualquier otra pregunta se responde SIEMPRE (nunca vacío, nunca error
-     silencioso) usando el dataset de demostración.
-  3. El texto visible dice "Invitado", nunca el código técnico "GUEST".
-  4. Las 3 opciones viajan como `quick_questions` (botones reales), no como
-     texto Markdown con corchetes.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os
@@ -55,9 +47,9 @@ def invitado_almacen():
     """Da de alta en el almacén (solo en memoria) los usuarios Invitado de
     prueba que usan los tests HTTP, y limpia la caché al terminar.
 
-    Necesario desde que `get_token_data` revalida contra el almacén central
+    Es necesario porque `get_token_data` revalida contra el almacén central
     (ver backend/core/user_store.py y backend/security.py): un token cuyo
-    `sub` no exista como usuario activo ya no se acepta. El login real
+    `sub` no exista como usuario activo no se acepta. El login real
     garantiza que el usuario existe; estos tests emiten el token a mano, así
     que deben registrar al usuario igual que lo haría un login.
     """
@@ -77,7 +69,7 @@ def invitado_almacen():
                 "name": "Test",
                 "role": "GUEST",
                 "active": True,
-                # El password nunca se usa: el token se emite a mano, sin login.
+                # La contraseña nunca se usa: el token se emite a mano, sin login.
                 "password": "$2b$12$invalido",
             },
             {
@@ -123,14 +115,14 @@ def test_solicitar_acceso_explica_como_pedirlo_al_administrador(fin, current_use
     explicacion = r["payload"]["explanation"].lower()
     assert "administrador" in explicacion
     assert "gestión de usuarios" in explicacion or "gestion de usuarios" in explicacion
-    # Debe identificar al usuario para que el admin sepa a quién promover.
+    # Debe identificar al usuario para que el administrador sepa a quién promover.
     assert "manuko" in r["payload"]["explanation"]
 
 
 def test_conectar_bd_responde_la_pregunta_de_sql_server(fin, current_user):
     """
-    El usuario preguntó explícitamente "solo a SQL Server podemos
-    conectarnos???" — la respuesta debe abordarlo directamente, sin evasivas.
+    La respuesta debe aclarar directamente con qué motor se conecta el
+    sistema (SQL Server) y dónde se configura (Bases de Datos), sin evasivas.
     """
     from api.routes_query import _responder_invitado
 
@@ -142,8 +134,8 @@ def test_conectar_bd_responde_la_pregunta_de_sql_server(fin, current_user):
 
 def test_pregunta_de_negocio_libre_nunca_se_queda_sin_respuesta(fin, current_user):
     """
-    Requisito explícito del usuario: "Nunca una pregunta se puede quedar
-    sin respuesta o bugueada NUNCA asi sea que solo sea el de guest."
+    Ninguna pregunta del Invitado puede quedar sin respuesta ni fallar:
+    siempre recibe una explicación y opciones de seguimiento.
     """
     from api.routes_query import _responder_invitado
 
@@ -176,7 +168,7 @@ def test_dataset_demo_existe_y_tiene_las_tablas_esperadas():
 
 
 def test_dataset_no_cargado_no_deja_al_invitado_sin_respuesta(fin, current_user, monkeypatch):
-    """Si el dataset falla al cargar, se avisa con claridad — nunca un crash."""
+    """Si el dataset falla al cargar, se avisa con claridad y la aplicación no falla."""
     import api.routes_query as rq
 
     monkeypatch.setattr("config.DEMO_DATASET_LOADED", False)
@@ -185,20 +177,18 @@ def test_dataset_no_cargado_no_deja_al_invitado_sin_respuesta(fin, current_user,
     assert r["kwargs"].get("status") == "error"
 
 
-# ─── Regresión: crash real vía HTTP (30/08/2026) ─────────────────────────────
+# ─── Flujo completo del Invitado vía HTTP ────────────────────────────────────
 #
-# Bug real: `finalize_response` (closure dentro de `execute_query`) usa
-# `selected_company_code` en `_safe_record_query_event`. Esa variable se
-# asigna en la sección "1. ARQUITECTURA STATELESS", que el rol Invitado NUNCA
-# alcanza (retorna antes, desde `_responder_invitado`). Python trata el
-# nombre como local de `execute_query` por esa asignación posterior, así que
-# referenciarlo antes de que se ejecute esa línea lanza
-# "NameError: cannot access free variable 'selected_company_code'" — un
-# usuario Invitado no podía ni siquiera saludar. Se prueba con una petición
-# HTTP real (TestClient), no solo llamando a `_responder_invitado` en
-# aislamiento, porque el bug estaba específicamente en cómo esa función se
-# conecta con el resto de `execute_query` — una prueba unitaria de
-# `_responder_invitado` sola no lo habría detectado.
+# `finalize_response` (función anidada dentro de `execute_query`) usa
+# `selected_company_code` en `_safe_record_query_event`, pero el rol Invitado
+# retorna antes, desde `_responder_invitado`, sin pasar por la sección
+# "1. ARQUITECTURA STATELESS". Si la variable solo se asignara en esa sección,
+# Python la trataría como local de `execute_query` y referenciarla lanzaría
+# "NameError: cannot access free variable 'selected_company_code'": el
+# Invitado no podría ni saludar. Se prueba con una petición HTTP real
+# (TestClient) porque el riesgo está en cómo esa función se conecta con el
+# resto de `execute_query`; una prueba unitaria de `_responder_invitado`
+# aislada no lo detectaría.
 
 
 def test_invitado_puede_saludar_sin_crashear_via_http(invitado_almacen):
@@ -255,10 +245,10 @@ def test_responder_demo_nunca_lanza_excepcion_sin_motor(monkeypatch):
     Doble red de seguridad: si el motor no está disponible (sin engine
     inicializado), el cliente arma un resumen determinista en vez de
     propagar el error. Se fuerza `_engine = None` y se neutraliza el
-    reintento de inicialización para no depender de si este entorno tiene
-    una API key real configurada (la tiene, y si dejáramos que
-    `_try_init_engine` corriera de nuevo, la prueba llamaría al proveedor
-    real por la red — lento e innecesario para probar el camino de fallback).
+    reintento de inicialización para no depender de si el entorno tiene una
+    clave de API real configurada: con una clave real, `_try_init_engine`
+    llamaría al proveedor por la red, algo lento e innecesario para probar el
+    camino de respaldo.
     """
     from core.deepseek_client import DeepSeekClient
 
@@ -281,7 +271,7 @@ def test_responder_demo_nunca_lanza_excepcion_sin_motor(monkeypatch):
 def test_role_labels_frontend_map_guest_a_invitado():
     """
     El código técnico del rol no cambia (JWT, security_config.json), pero
-    el texto que ve el usuario en el header y en Gestión de Usuarios sí.
+    el texto que ve el usuario en el encabezado y en Gestión de Usuarios sí.
     Se verifica leyendo el archivo fuente (no hay runtime JS en pytest).
     """
     ruta = os.path.join(

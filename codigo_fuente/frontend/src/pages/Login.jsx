@@ -1,10 +1,13 @@
 /**
- * Archivo: Login.jsx
- * Rol: pantalla inicial de autenticacion y preconexion.
- * Recibe desde: App.jsx cuando no existe sesion activa.
- * Se conecta con: handleAuthLogin y handleConnect definidos en App.jsx.
- * Responsabilidades: capturar credenciales, mostrar estados y abrir acceso manual.
- **/
+ * @file Pantalla de inicio de sesión. Captura usuario y contraseña y llama a
+ * handleAuthLogin (App.jsx); muestra los estados de restauración de sesión y
+ * de carga, separa los errores de credenciales de los errores del sistema,
+ * ofrece el panel avanzado de conexión a SQL Server (handleConnect) y el
+ * flujo de recuperación de contraseña por código enviado al correo. App.jsx
+ * la muestra cuando no hay una sesión activa.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -13,6 +16,34 @@ import {
 } from 'lucide-react';
 import { apiPost } from '../services/api';
 
+/**
+ * Renderiza la pantalla de inicio de sesión.
+ * @param {object} props
+ * @param {boolean} props.isConnected Indica si ya hay conexión (habilita mostrar el host).
+ * @param {boolean} props.loading Muestra el estado de sincronización.
+ * @param {boolean} props.authPending Indica si el login está en curso (deshabilita el botón).
+ * @param {boolean} props.isRestoringSession Muestra el estado de restauración de sesión.
+ * @param {boolean} props.showAdvanced Muestra el panel avanzado de conexión.
+ * @param {boolean} props.showDevOptions Muestra el botón «Ajustes de Infraestructura».
+ * @param {string|null} props.error Mensaje de error a mostrar.
+ * @param {boolean} [props.errorDeSistema=false] Indica que el error es del
+ *   sistema (servidor o SQL) y no de credenciales; decide dónde se muestra.
+ * @param {{username: string, password: string}} props.tempCreds Credenciales escritas.
+ * @param {function} props.setTempCreds Actualiza las credenciales.
+ * @param {boolean} props.showPassword Muestra la contraseña en claro.
+ * @param {function} props.setShowPassword Alterna la visibilidad de la contraseña.
+ * @param {function} props.handleAuthLogin Envía el formulario de login.
+ * @param {function} props.handleConnect Envía el formulario de conexión avanzada.
+ * @param {function} [props.cancelSessionRestore] Cancela la restauración de sesión.
+ * @param {function} props.setShowAdvanced Abre o cierra el panel avanzado.
+ * @param {function} props.handleTitleClick Manejador del clic en el título.
+ * @param {string} props.maskedHost Host (enmascarado si `showHost` es falso).
+ * @param {boolean} props.showHost Indica si el host se muestra y se puede editar.
+ * @param {function} props.setShowHost Alterna la visibilidad del host.
+ * @param {object} props.connInfo Datos de conexión (host, auth_type, user, password, driver, database).
+ * @param {function} props.setConnInfo Actualiza los datos de conexión.
+ * @returns {JSX.Element} Pantalla de login.
+ */
 export function LoginView({
     isConnected,
     loading,
@@ -73,7 +104,7 @@ export function LoginView({
                     </h1>
                     <p
                         onClick={() => {
-                            // Mostrar el host solo cuando ya estamos conectados (dashboard)
+                            // El host solo se puede mostrar cuando ya hay conexión (tablero).
                             if (isConnected) setShowHost(prev => !prev);
                         }}
                         className="text-[11px] sm:text-[13px] font-black tracking-tight uppercase leading-relaxed mb-2 sm:mb-3 font-tech cursor-pointer active:scale-95 transition-all select-none"
@@ -86,7 +117,7 @@ export function LoginView({
                     </p>
 
                     <div className="w-full space-y-3">
-                        {/* Seccion: alterna restauracion, loading, login o panel avanzado. */}
+                        {/* Alterna entre restauración de sesión, carga, login y panel avanzado. */}
                         {isRestoringSession ? (
                             <div className="py-20 flex flex-col items-center justify-center space-y-6">
                                 <div className="relative">
@@ -117,18 +148,13 @@ export function LoginView({
                                 </div>
                             </div>
                         ) : (
+                            // `initial={false}`, igual que el panel que lo contiene. Con
+                            // `initial={{opacity:0}}` el marco de la tarjeta (borde, fondo y
+                            // sombra de 120 px) se pinta desde el primer cuadro mientras el
+                            // formulario aparece después, y por un instante se ve una silueta
+                            // de la tarjeta a medio llenar. Sin animación de entrada, la
+                            // tarjeta y su contenido aparecen como una sola pieza.
                             <motion.div
-                                // `initial={false}` — igual que el panel que lo contiene (arriba).
-                                //
-                                // Con `initial={{opacity:0}}` (como estaba hasta el 31/08/2026) el
-                                // marco de la tarjeta se pintaba completo desde el primer frame
-                                // —borde, fondo y su sombra de 120px— mientras el formulario
-                                // arrancaba invisible y se desvanecía hacia adentro. En esa
-                                // fracción de segundo se veía la tarjeta a medio llenar: eso es
-                                // la "sombra"/silueta que el usuario seguía reportando incluso
-                                // después de quitar el placeholder estático de index.html.
-                                // Sin animación de entrada, la tarjeta y su contenido aparecen
-                                // como una sola pieza.
                                 initial={false} animate={{ opacity: 1, scale: 1 }}
                                 className="w-full space-y-4 pt-0"
                             >
@@ -144,7 +170,7 @@ export function LoginView({
                                 </div>
 
                                 <form onSubmit={handleAuthLogin} className="space-y-3">
-                                    {/* Seccion: captura de usuario. */}
+                                    {/* Usuario */}
                                     <div className="group">
                                         <label className="block text-white/50 text-[10px] font-semibold uppercase tracking-wider mb-1 ml-1">Usuario</label>
                                         <div className="flex items-center bg-white/[0.04] border border-white/12 rounded-[32px] focus-within:border-orange-500/50 focus-within:bg-white/[0.06] transition-all duration-200 overflow-hidden">
@@ -164,7 +190,7 @@ export function LoginView({
                                         </div>
                                     </div>
 
-                                    {/* Seccion: captura de contrasena. */}
+                                    {/* Contraseña */}
                                     <div className="group relative">
                                         <label className="block text-white/50 text-[10px] font-semibold uppercase tracking-wider mb-1 ml-1">Contraseña</label>
                                         <div className="flex items-center bg-white/[0.04] border border-white/12 rounded-[32px] focus-within:border-orange-500/50 focus-within:bg-white/[0.06] transition-all duration-200 overflow-hidden">
@@ -371,15 +397,12 @@ export function LoginView({
                             </motion.div>
                         )}
                     </div>
-                    {/* Panel de "algo va mal en el sistema". Va condicionado a
-                        `errorDeSistema` (31/08/2026): antes salía con CUALQUIER
-                        error, así que al escribir mal la contraseña el mismo
-                        texto aparecía dos veces —la franja roja de arriba, que
-                        es la que corresponde, y otra vez aquí en azul— con un
-                        botón "Refrescar Sistema" que no arregla unas
-                        credenciales equivocadas. Ahora solo aparece cuando
-                        recargar puede servir de algo: el servidor no responde o
-                        la conexión SQL se cayó. */}
+                    {/* Panel de error del sistema. Solo aparece con
+                        `errorDeSistema`, cuando recargar puede servir (el
+                        servidor no responde o la conexión SQL se cayó). Los
+                        errores de credenciales se muestran una sola vez en la
+                        franja roja del formulario, porque «Refrescar Sistema»
+                        no corrige una contraseña equivocada. */}
                     {error && errorDeSistema && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6 p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[12px] flex flex-col items-center gap-3 font-bold uppercase tracking-wider text-center">
                             <div className="flex items-center gap-2"><AlertCircle size={16} /> {error}</div>
@@ -398,16 +421,14 @@ export function LoginView({
     );
 }
 
-// "Olvidé mi contraseña" (Fase 5 — 28/08/2026): flujo de
-// 2 pasos con código de un solo uso enviado por correo (backend/core/
-// email_service.py + core/password_reset.py). Autocontenido: no depende de
-// ningún estado de App.jsx aparte del username ya tecleado en el login.
+// Recuperación de contraseña en 2 pasos con un código de un solo uso enviado
+// por correo (backend/core/email_service.py y core/password_reset.py). Es
+// autocontenido: de App.jsx solo recibe el usuario ya escrito en el login.
 function ForgotPasswordModal({ open, onClose, initialUsername }) {
-    // El identificador de esta app es un usuario corto (ej. "admin"), nunca
-    // el correo — pero es un error natural escribir el correo en el login
-    // pensando que es el usuario. Si lo que trae `initialUsername` parece un
-    // correo, precargarlo aquí solo repetiría ese mismo error, así que se
-    // descarta y se deja el campo vacío (reportado 29/08/2026).
+    // El identificador de la aplicación es un usuario corto (p. ej. "admin"),
+    // nunca el correo, aunque es común escribir el correo en el login. Si
+    // `initialUsername` parece un correo, precargarlo repetiría ese error,
+    // así que se descarta y el campo queda vacío.
     const usernameValido = (v) => (v && !v.includes('@') ? v : '');
     const [step, setStep] = useState('request'); // 'request' | 'confirm' | 'done'
     const [username, setUsername] = useState(usernameValido(initialUsername));
@@ -432,6 +453,7 @@ function ForgotPasswordModal({ open, onClose, initialUsername }) {
 
     if (!open) return null;
 
+    // Paso 1: pide el código. Siempre avanza al paso 2 con un mensaje genérico.
     const solicitarCodigo = async (e) => {
         e.preventDefault();
         if (!username.trim() || loading) return;
@@ -450,6 +472,7 @@ function ForgotPasswordModal({ open, onClose, initialUsername }) {
         }
     };
 
+    // Paso 2: valida la nueva contraseña (mínimo 8 caracteres) y la confirma con el código.
     const confirmarNuevaPassword = async (e) => {
         e.preventDefault();
         if (loading) return;

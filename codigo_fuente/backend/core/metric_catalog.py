@@ -1,19 +1,15 @@
 """
-core/metric_catalog.py — Capa Semántica de Métricas Certificadas (Fase 1).
+Capa semántica de métricas certificadas.
 
-Fuente de verdad: knowledge/metric_catalog.json (editable sin tocar código).
+La fuente de verdad es knowledge/metric_catalog.json, editable sin tocar código.
+api/routes_query.py llama primero a resolver_metrica(): si la pregunta coincide
+con fuerza con una métrica certificada, devuelve su SQL aprobado sin pasar por
+el LLM (cifra exacta y latencia mínima). Si no, hints_para_prompt() inyecta en
+el prompt las definiciones más afines para que el LLM use fórmulas certificadas
+en lugar de inventarlas. También provee las series y tarjetas del tablero.
 
-Flujo:
-  1. resolver_metrica(pregunta) → si hay match fuerte con una métrica CERTIFICADA,
-     retorna su SQL listo para ejecutar (sin pasar por el LLM). Precisión total,
-     latencia mínima.
-  2. hints_para_prompt(pregunta) → si no hay match fuerte, retorna las definiciones
-     de las métricas más afines para inyectarlas al prompt del LLM, de modo que
-     use fórmulas certificadas en lugar de inventarlas.
-
-Archivo: core/metric_catalog.py
-Recibe desde: api/routes_query.py (endpoint /query).
-Se conecta con: knowledge/metric_catalog.json.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -30,18 +26,18 @@ logger = logging.getLogger("MetricCatalog")
 
 _CATALOG_PATH = Path(__file__).resolve().parents[1] / "knowledge" / "metric_catalog.json"
 
-# Umbral para ejecutar directo una métrica certificada (match fuerte)
+# Umbral para ejecutar directamente una métrica certificada (coincidencia fuerte).
 UMBRAL_EJECUCION_DIRECTA = 0.80
-# Umbral para incluir una métrica como pista al LLM (match débil)
+# Umbral para incluir una métrica como pista al LLM (coincidencia débil).
 UMBRAL_PISTA = 0.45
 MAX_PISTAS = 3
 
-# Cache en memoria con invalidación por mtime (Marlon puede editar el JSON en caliente)
+# Caché en memoria invalidada por fecha de modificación: el JSON se puede editar en caliente.
 _cache: dict[str, Any] = {"mtime": None, "data": None}
 
 
 def _normalizar(texto: str) -> str:
-    """Minúsculas, sin acentos, sin signos — para comparación robusta."""
+    """Normaliza el texto (minúsculas, sin tildes ni signos y con sinónimos unificados) para comparar."""
     raw = unicodedata.normalize("NFD", str(texto or "").strip().lower())
     raw = "".join(ch for ch in raw if unicodedata.category(ch) != "Mn")
     raw = re.sub(r"[¿?¡!.,;:]+", " ", raw)
@@ -49,17 +45,15 @@ def _normalizar(texto: str) -> str:
     return _canonicalizar_sinonimos(raw)
 
 
-# Palabras de negocio que la gente usa de forma intercambiable pero que el
-# catálogo (y el usuario) no siempre escriben con la misma palabra exacta.
-# Sin esto, "total de TRABAJADORES por areas" no encontraba la métrica
-# "Empleados por área" (0.75, bajo el umbral 0.80) mientras que la misma
-# pregunta con "empleados" sí (0.95) — dos preguntas idénticas en intención
-# con resultados opuestos. Se aplica DENTRO de _normalizar, así que cubre
-# por igual el texto de la pregunta del usuario Y los sinónimos/nombres del
-# catálogo (se recalculan una sola vez al cargar el JSON) — cualquier mezcla
-# de estas palabras en cualquiera de los dos lados queda igualada.
-# Se ordena de más específico a más genérico y se aplica con límites de
-# palabra (\b) para no tocar substrings de otras palabras.
+# Palabras de negocio que se usan de forma intercambiable, pero que el catálogo
+# y el usuario no siempre escriben igual. Sin esto, «total de trabajadores por
+# áreas» puntuaría 0.75 contra «Empleados por área» (bajo el umbral de 0.80),
+# mientras que la misma pregunta con «empleados» puntuaría 0.95: dos preguntas
+# con la misma intención y resultados opuestos. Se aplica dentro de
+# _normalizar, así que cubre por igual la pregunta y los sinónimos y nombres
+# del catálogo (que se normalizan una sola vez al cargar el JSON).
+# Se ordena de más específico a más genérico y usa límites de palabra (\b)
+# para no tocar subcadenas de otras palabras.
 _CANONICALIZACIONES_PERSONA = [
     (re.compile(r"\btrabajadores\b"), "empleados"),
     (re.compile(r"\btrabajador\b"), "empleado"),
@@ -71,24 +65,25 @@ _CANONICALIZACIONES_PERSONA = [
 
 
 def _canonicalizar_sinonimos(texto_norm: str) -> str:
-    """Reemplaza variantes de vocabulario de RRHH por un término único, para
-    que el matching por similitud no dependa de qué palabra eligió quien
-    escribió el catálogo ni quien escribió la pregunta."""
+    """Reemplaza las variantes de vocabulario de RRHH por un término único.
+
+    Así la similitud no depende de qué palabra eligió quien escribió el
+    catálogo ni quien escribió la pregunta.
+    """
     resultado = texto_norm
     for patron, canonico in _CANONICALIZACIONES_PERSONA:
         resultado = patron.sub(canonico, resultado)
     return resultado
 
 
-# Frases de "envoltorio" (verbo de mando + tipo de visualización pedido) que no
-# aportan nada al INTENT de datos, pero diluyen el score de coincidencia contra
-# los sinónimos del catálogo. Ej: "muestra una grafica de barras con el total
-# de compras por proveedor" vs el sinónimo certificado "total de compras por
-# proveedor" — sin esta limpieza, el prefijo hace que el match caiga por debajo
-# del umbral de ejecución directa y la pregunta cae innecesariamente a la IA
-# libre (más lenta y sin garantía de acertar), aunque exista una métrica
-# certificada exacta para el dato pedido. Solo se listan aquí frases que son
-# inequívocamente de formato/mandato, nunca vocabulario de negocio.
+# Frases de «envoltorio» (verbo de mando y tipo de visualización pedido) que no
+# aportan nada a la intención de datos, pero diluyen el puntaje frente a los
+# sinónimos del catálogo. Por ejemplo, en «muestra una gráfica de barras con el
+# total de compras por proveedor» frente al sinónimo certificado «total de
+# compras por proveedor», el prefijo baja la coincidencia del umbral de
+# ejecución directa y la pregunta caería a la IA libre (más lenta y sin
+# garantía), aunque exista una métrica exacta. Solo se listan frases que son
+# inequívocamente de formato o mandato, nunca vocabulario de negocio.
 _PATRONES_DECORADORES = [
     r"\bmuestrame\b", r"\bmuestra\b", r"\bdame\b", r"\bdime\b", r"\bensename\b",
     r"\bnecesito ver\b", r"\bquiero ver\b", r"\bquisiera ver\b",
@@ -102,11 +97,11 @@ _PATRONES_DECORADORES = [
     r"\ben una grafica de lineas\b", r"\buna grafica de lineas\b", r"\bgrafica de lineas\b",
     r"\ben un grafico de torta\b", r"\bgrafico de torta\b", r"\bgrafica de torta\b", r"\bde torta\b", r"\bde pastel\b",
     r"\ben una tabla\b", r"\buna tabla con\b", r"\buna tabla\b",
-    # Formas genéricas de pedir un gráfico SIN decir el tipo. Van al final a
-    # propósito: los patrones específicos de arriba ("grafica de barras",
-    # "grafico circular"...) ya se consumieron, así que estos solo capturan lo
-    # que quedó. Sin ellos, "muestra un grafico del total de alumnos por
-    # cursos" no alcanzaba el umbral pese a existir la métrica exacta.
+    # Formas genéricas de pedir un gráfico sin decir el tipo. Van al final a
+    # propósito: los patrones específicos de arriba («gráfica de barras»,
+    # «gráfico circular»...) ya se consumieron, así que estos solo capturan lo
+    # que quedó. Sin ellos, «muestra un gráfico del total de alumnos por
+    # cursos» no alcanzaría el umbral pese a existir la métrica exacta.
     r"\bun grafico del\b", r"\bun grafico de\b", r"\buna grafica del\b",
     r"\buna grafica de\b", r"\bel grafico de\b", r"\bla grafica de\b",
     r"\bun grafico\b", r"\buna grafica\b", r"\bgrafico del\b", r"\bgrafica del\b",
@@ -119,9 +114,11 @@ _PATRONES_DECORADORES = [
 
 
 def _limpiar_decoradores(pregunta_norm: str) -> str:
-    """Quita verbos de mando y tipo de gráfico pedido antes de puntuar contra
-    el catálogo. Si el resultado queda vacío (pregunta era pura decoración),
-    se conserva el original para no perder la señal por completo."""
+    """Quita los verbos de mando y el tipo de gráfico pedido antes de puntuar contra el catálogo.
+
+    Si el resultado queda vacío (la pregunta era pura decoración), se conserva
+    el original para no perder la señal por completo.
+    """
     limpio = pregunta_norm
     for patron in _PATRONES_DECORADORES:
         limpio = re.sub(patron, " ", limpio)
@@ -130,7 +127,7 @@ def _limpiar_decoradores(pregunta_norm: str) -> str:
 
 
 def _cargar_catalogo() -> list[dict]:
-    """Carga el catálogo desde JSON con cache por fecha de modificación."""
+    """Carga el catálogo desde el JSON con caché por fecha de modificación."""
     try:
         mtime = _CATALOG_PATH.stat().st_mtime
     except OSError:
@@ -144,7 +141,7 @@ def _cargar_catalogo() -> list[dict]:
         with open(_CATALOG_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
         metricas = data.get("metricas", [])
-        # Pre-normalizar sinónimos una sola vez
+        # Los sinónimos y nombres se normalizan una sola vez por carga.
         for m in metricas:
             m["_sinonimos_norm"] = [_normalizar(s) for s in m.get("sinonimos", [])]
             m["_nombre_norm"] = _normalizar(m.get("nombre", ""))
@@ -182,12 +179,17 @@ def _extraer_mes_num(pregunta_norm: str) -> Optional[int]:
 
 
 def _score(pregunta_norm: str, metrica: dict) -> float:
-    """Puntaje de afinidad entre la pregunta y una métrica (0.0 - 1.0)."""
+    """Calcula el puntaje de afinidad entre la pregunta y una métrica (de 0.0 a 1.0).
+
+    Primero aplica discriminadores de dominio que anulan el puntaje (ventas
+    frente a compras, académico frente a RRHH, desgloses por nivel o curso) y
+    luego compara contra los sinónimos y el nombre de la métrica.
+    """
     modulo = str(metrica.get("modulo", "")).upper()
     nombre_norm = metrica.get("_nombre_norm", "")
     m_id = metrica.get("id", "")
 
-    # 1. Evitar emparejar métricas de VENTAS si la pregunta busca COMPRAS o viceversa
+    # 1. No se emparejan métricas de ventas si la pregunta busca compras, ni al revés.
     if ("compra" in pregunta_norm or "proveedor" in pregunta_norm) and "venta" not in pregunta_norm:
         if modulo == "VENTAS" or "venta" in nombre_norm or "factura" in nombre_norm:
             return 0.0
@@ -195,13 +197,12 @@ def _score(pregunta_norm: str, metrica: dict) -> float:
         if modulo in ("OPERACIONES", "COMPRAS") and "compra" in nombre_norm:
             return 0.0
 
-    # 2. Discriminador Académico vs Totales Escalares
-    # Estos discriminadores comparaban con `in` (subcadena), y eso hacía que
-    # "ventas del mes EN CURSO" contara como pregunta académica sobre CURSOS:
-    # la pregunta quedaba en 0.0 para toda métrica que no fuera de cursos y se
-    # iba sin respuesta. Lo mismo habría pasado con "concurso", "discurso" o
-    # "recurso". Ahora se compara por palabra completa y se descarta
-    # explícitamente el giro temporal "en curso" (= actual, en marcha).
+    # 2. Discriminador académico frente a totales escalares.
+    # Se compara por palabra completa y no por subcadena (`in`): de lo
+    # contrario, «ventas del mes en curso», «concurso» o «recurso» contarían
+    # como preguntas académicas sobre cursos y quedarían en 0.0 para toda
+    # métrica que no fuera de cursos. También se descarta el giro temporal
+    # «en curso» (actual, en marcha).
     pregunta_academica_norm = re.sub(r"\ben curso\b", " ", pregunta_norm)
 
     def _tiene_palabra(texto: str, palabras: tuple[str, ...]) -> bool:
@@ -215,7 +216,7 @@ def _score(pregunta_norm: str, metrica: dict) -> float:
     if tienen_desglose_curso and "curso" not in m_id and "paralelo" not in m_id:
         return 0.0
 
-    # 3. Discriminador RRHH vs Académico
+    # 3. Discriminador RRHH frente a académico.
     es_pregunta_rrhh = _tiene_palabra(pregunta_norm, ("empleado", "empleados", "trabajador", "trabajadores", "personal", "nomina"))
     es_pregunta_academica = _tiene_palabra(
         pregunta_academica_norm,
@@ -246,10 +247,11 @@ def _score(pregunta_norm: str, metrica: dict) -> float:
 
 
 def _extraer_anio(pregunta_norm: str) -> tuple[Optional[int], bool]:
-    """
-    Detecta el año pedido explícitamente en la pregunta.
-    Retorna (año, explicito). Si no hay año explícito, año=None — el llamador
-    decide el fallback (año calendario actual o año más reciente con datos).
+    """Detecta el año pedido explícitamente en la pregunta.
+
+    Returns:
+        (año, explícito). Si no hay año explícito, año es None y quien llama
+        decide el respaldo (año calendario actual o año más reciente con datos).
     """
     actual = datetime.now().year
     m = re.search(r"\b(20\d{2})\b", pregunta_norm)
@@ -261,17 +263,14 @@ def _extraer_anio(pregunta_norm: str) -> tuple[Optional[int], bool]:
 
 
 def _instanciar_sql(metrica: dict, pregunta_norm: str) -> str:
-    """
-    Reemplaza el placeholder {year} en el SQL.
+    """Reemplaza el marcador {year} del SQL de la métrica.
 
-    Si la pregunta pide un año explícito (o "año pasado"), se sustituye ese
-    año literal. Si NO hay año explícito, en vez de asumir el año calendario
-    actual (que muchas empresas aún no tienen cargado), se usa el año MÁS
-    RECIENTE que realmente tenga datos en la tabla de la métrica —evitando
-    falsos "vacío" en empresas con carga desactualizada (ver validación
-    multi-empresa del 23/07/2026, que encontró esto en varias empresas).
-    Requiere que la métrica declare "tabla_fecha" en el catálogo; si no la
-    declara, se usa el año calendario actual como antes (comportamiento
+    Si la pregunta pide un año explícito (o «año pasado»), se sustituye ese año
+    literal. Si no, en lugar de asumir el año calendario actual (que muchas
+    empresas aún no tienen cargado), se usa el año más reciente con datos en la
+    tabla de la métrica, para evitar resultados vacíos falsos en empresas con
+    carga desactualizada. Esto requiere que la métrica declare "tabla_fecha";
+    si no la declara, se usa el año calendario actual (comportamiento
     conservador para métricas no revisadas).
     """
     sql = metrica.get("sql", "")
@@ -300,17 +299,13 @@ _MESES_ESPANOL = {
     "julio", "agosto", "septiembre", "setiembre", "octubre", "noviembre", "diciembre"
 }
 
-# Señales de que el usuario pide un DESGLOSE (varias filas), no un número único.
+# Señales de que el usuario pide un desglose (varias filas), no un número único.
 #
-# CUIDADO con las palabras sueltas de tiempo: "mes", "dia" y "trimestre" estaban
-# aquí como palabras sueltas y eso rompía las preguntas escalares más comunes del
-# día a día — "cuanto hemos vendido este mes", "costo de la nómina del último
-# mes", "headcount del último mes" contienen la palabra "mes" pero piden UN
-# valor, no una tabla mes a mes. Al marcarlas como desglose, toda métrica
-# escalar quedaba bloqueada y la pregunta terminaba sin respuesta.
-# Por eso ahora solo cuentan como desglose las formas que realmente implican
-# agrupar por periodo ("por mes", "mes a mes", "mensual"...), no la mención
-# suelta del periodo.
+# Las palabras sueltas de tiempo («mes», «día», «trimestre») no se incluyen a
+# propósito: «cuánto hemos vendido este mes» o «costo de la nómina del último
+# mes» piden un solo valor, y marcarlas como desglose bloquearía toda métrica
+# escalar. Solo cuentan las formas que implican agrupar por periodo («por mes»,
+# «mes a mes», «mensual»...).
 _PALABRAS_DESGLOSE = {
     "meses", "mensual", "mensualmente",
     "por mes", "mes a mes", "cada mes",
@@ -325,36 +320,36 @@ _PALABRAS_DESGLOSE = {
 
 
 def resolver_metrica(pregunta: str) -> Optional[dict]:
-    """
-    Busca un match fuerte con una métrica CERTIFICADA.
-    Retorna dict con: id, nombre, sql (instanciado), explanation,
-    visualization_type, score — o None si no hay match ejecutable.
+    """Busca una coincidencia fuerte con una métrica certificada.
+
+    Returns:
+        Dict con id, nombre, descripcion, sql (ya instanciado),
+        visualization_type y score, o None si no hay una métrica ejecutable.
     """
     pregunta_norm = _normalizar(pregunta)
     if not pregunta_norm or len(pregunta_norm) < 4:
         return None
 
-    # Si la pregunta combina múltiples módulos (ej: compras Y ventas), NO
-    # disparamos una métrica unilateral: responder solo ventas a quien preguntó
+    # Si la pregunta combina varios módulos (p. ej., compras y ventas), no se
+    # dispara una métrica unilateral: responder solo ventas a quien preguntó
     # por ambas sería engañoso.
     #
-    # EXCEPCIÓN: el margen bruto ES, por definición, ventas menos compras. La
-    # regla lo estaba bloqueando ("cuanto ganamos entre ventas y compras" se
-    # quedaba sin respuesta) justo por contener las dos palabras que la métrica
-    # necesita. El corte se hace ahora DESPUÉS de puntuar: si la mejor métrica
-    # es precisamente la que combina ambos módulos, se deja pasar.
+    # Excepción: el margen bruto es, por definición, ventas menos compras, y
+    # «cuánto ganamos entre ventas y compras» contiene justo esas dos palabras.
+    # Por eso el corte se hace después de puntuar: si la mejor métrica es la
+    # que combina ambos módulos, se deja pasar.
     combina_modulos = "compra" in pregunta_norm and "venta" in pregunta_norm
 
-    # Para puntuar contra el catálogo, se ignoran verbos de mando y el tipo de
-    # gráfico pedido ("muestra una grafica de barras con...") — el usuario
-    # casi siempre envuelve su pregunta real en frases así, y sin limpiarlas
-    # el match cae por debajo del umbral aunque exista una métrica exacta.
+    # Para puntuar contra el catálogo se ignoran los verbos de mando y el tipo
+    # de gráfico pedido («muestra una gráfica de barras con...»): el usuario
+    # suele envolver su pregunta real en frases así y, sin limpiarlas, la
+    # coincidencia cae bajo el umbral aunque exista una métrica exacta.
     pregunta_score = _limpiar_decoradores(pregunta_norm)
 
-    # Si la pregunta solicita desglose temporal o dimensional, evaluamos con cuidado:
-    # - Si la métrica candidata ES un desglose (viz_type=table/bar/line), la dejamos pasar
-    # - Si la métrica candidata es ESCALAR (viz_type=value/kpi), la bloqueamos para que la IA genere el desglose
-    # Esto permite que "ventas por mes" active la métrica ventas_por_mes en lugar de fallar
+    # Si la pregunta pide un desglose temporal o dimensional:
+    # - una métrica candidata que ya es un desglose (table/bar/line) puede pasar;
+    # - una métrica escalar (value/kpi) se bloquea para que la IA genere el desglose.
+    # Así «ventas por mes» activa la métrica ventas_por_mes en lugar de fallar.
     solicita_desglose = any(re.search(r"\b" + palabra + r"\b", pregunta_norm) for palabra in _PALABRAS_DESGLOSE)
     multiples_anios = len(re.findall(r"\b(20\d\d)\b", pregunta_norm)) > 1
 
@@ -363,20 +358,20 @@ def resolver_metrica(pregunta: str) -> Optional[dict]:
     mejor_metrica, mejor_score = None, 0.0
     for m in _cargar_catalogo():
         if not m.get("certificada", False):
-            continue  # Solo certificadas se ejecutan directo
+            continue  # Solo las certificadas se ejecutan directamente.
 
         metric_viz = m.get("visualization_type", "table")
         es_metrica_escalar = metric_viz in ("value", "kpi")
 
-        # Si hay múltiples años, bloqueamos siempre (la IA debe comparar)
+        # Con varios años se bloquea siempre: la comparación la hace la IA.
         if multiples_anios:
             continue
 
-        # Si el usuario pide desglose Y la métrica es escalar → bloqueamos (la IA hará el agrupamiento)
+        # Si se pide un desglose y la métrica es escalar, se bloquea (la IA hará el agrupamiento).
         if solicita_desglose and es_metrica_escalar:
             continue
 
-        # Si la pregunta especifica un mes (ej: "junio"), omitimos métricas puramente ANUAL sin filtro de mes
+        # Si la pregunta especifica un mes («junio»), se omiten las métricas anuales sin filtro de mes.
         if contiene_mes and "anual" in m.get("id", ""):
             continue
 
@@ -388,7 +383,7 @@ def resolver_metrica(pregunta: str) -> Optional[dict]:
         return None
 
     # Corte por combinación de módulos (ver nota arriba): solo se permite si la
-    # métrica ganadora está declarada como combinada (cubre ventas Y compras).
+    # métrica ganadora está declarada como combinada (cubre ventas y compras).
     if combina_modulos and not mejor_metrica.get("combina_modulos", False):
         return None
 
@@ -408,9 +403,10 @@ def resolver_metrica(pregunta: str) -> Optional[dict]:
 
 
 def hints_para_prompt(pregunta: str) -> str:
-    """
-    Retorna un bloque de texto con las métricas más afines (certificadas o no)
-    para inyectar al prompt del LLM. Vacío si nada es relevante.
+    """Devuelve un bloque con las métricas más afines (certificadas o no) para el prompt del LLM.
+
+    Incluye como máximo MAX_PISTAS métricas con puntaje de al menos
+    UMBRAL_PISTA; devuelve una cadena vacía si ninguna es relevante.
     """
     pregunta_norm = _normalizar(pregunta)
     if not pregunta_norm:
@@ -438,23 +434,22 @@ def hints_para_prompt(pregunta: str) -> str:
 
 
 def total_metricas() -> tuple[int, int]:
-    """Retorna (certificadas, total) — útil para diagnóstico."""
+    """Devuelve (certificadas, total) de métricas del catálogo, para diagnóstico."""
     metricas = _cargar_catalogo()
     cert = sum(1 for m in metricas if m.get("certificada"))
     return cert, len(metricas)
 
 
 def series_dashboard(anio: Optional[int] = None) -> list[dict]:
-    """
-    Métricas certificadas marcadas con "dashboard_chart": true — devuelven
-    una serie de varias filas (ej. total por mes), pensadas para graficarse
-    como barras/líneas reales en el dashboard, no como una tarjeta de un
-    solo valor.
+    """Devuelve las métricas certificadas marcadas con "dashboard_chart": true.
 
-    Si `anio` es None (por defecto), usa el año más reciente con datos.
-    Si se pasa un año explícito (ej. desde el selector del dashboard),
-    reutiliza el mismo mecanismo de _extraer_anio/_instanciar_sql que usa
-    el chat cuando el usuario escribe "ventas del año 2024".
+    Son series de varias filas (p. ej., total por mes) pensadas para graficarse
+    como barras o líneas en el tablero, no como una tarjeta de un solo valor.
+
+    Si `anio` es None, usa el año más reciente con datos. Si se pasa un año
+    (p. ej., desde el selector del tablero), reutiliza el mismo mecanismo de
+    _extraer_anio/_instanciar_sql que el chat cuando el usuario escribe
+    «ventas del año 2024».
     """
     pregunta_norm = str(anio) if anio else ""
     resultado = []
@@ -470,25 +465,23 @@ def series_dashboard(anio: Optional[int] = None) -> list[dict]:
             "descripcion": m.get("descripcion", ""),
             "modulo": m.get("modulo", "GENERAL"),
             "sql": sql,
-            # "bar" = serie temporal (ej. por mes, con flecha de tendencia).
-            # "pie" = distribución por categoría (ej. por área/cargo/proveedor,
-            # sin tendencia porque no hay eje de tiempo).
+            # "bar" = serie temporal (p. ej., por mes, con flecha de tendencia).
+            # "pie" = distribución por categoría (p. ej., por área, cargo o
+            # proveedor; sin tendencia porque no hay eje de tiempo).
             "chart_type": m.get("chart_type", "bar"),
         })
     return resultado
 
 
 def metricas_dashboard(anio: Optional[int] = None) -> list[dict]:
-    """
-    Métricas certificadas marcadas con "dashboard_card": true en el catálogo —
-    Fase 2 (dashboards vivos). Devuelve el SQL ya instanciado.
+    """Devuelve las métricas certificadas marcadas con "dashboard_card": true, con el SQL instanciado.
 
-    Si `anio` es None (por defecto), usa el período más reciente con datos
-    vía tabla_fecha (igual que en el chat). Si se pasa un año explícito,
-    lo respeta — mismo mecanismo que un usuario escribiendo "del año 2024".
+    Si `anio` es None, usa el periodo más reciente con datos vía tabla_fecha
+    (igual que en el chat). Si se pasa un año explícito, lo respeta, con el
+    mismo mecanismo que una pregunta «del año 2024».
 
-    Marlon puede sumar/quitar tarjetas del dashboard editando el JSON —
-    no requiere tocar código (misma filosofía que el resto del catálogo).
+    Las tarjetas del tablero se agregan o quitan editando el JSON, sin tocar
+    código, como el resto del catálogo.
     """
     pregunta_norm = str(anio) if anio else ""
     resultado = []

@@ -1,6 +1,32 @@
+/**
+ * @file Exportación del reporte ejecutivo en PDF (jsPDF + jspdf-autotable).
+ * Arma un documento A4 con encabezado, datos de la empresa, síntesis
+ * ejecutiva, tabla de indicadores y pie paginado; lo invoca el tablero
+ * BentoDashboard.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+/**
+ * Genera y descarga el reporte ejecutivo en PDF.
+ * @param {object} opciones
+ * @param {string} [opciones.companyName] Nombre comercial de la empresa.
+ * @param {string} [opciones.companyRuc] RUC de la empresa.
+ * @param {string} [opciones.companyCode] Código interno de la base; solo se
+ *   usa en el nombre del archivo si falta `companyName`.
+ * @param {string} [opciones.period] Período reportado.
+ * @param {Array<{title?: string, value?: *, change?: *, status?: string}>} [opciones.kpiCards=[]]
+ *   Indicadores para la tabla principal; sin indicadores se usan filas de
+ *   ejemplo fijas.
+ * @param {string} [opciones.executiveBrief=''] Síntesis ejecutiva (se quitan
+ *   las marcas de Markdown `**` y `#`).
+ * @param {string} [opciones.generatedBy='AURA Executive BI'] Usuario que se
+ *   muestra en el pie de página.
+ * @returns {void}
+ */
 export function exportExecutivePdf({
   companyName,
   companyRuc,
@@ -21,15 +47,15 @@ export function exportExecutivePdf({
   const darkTextColor = [30, 41, 59];
   const lightGray = [241, 245, 249];
 
-  // Header Banner
+  // Banda del encabezado
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, 210, 32, 'F');
 
-  // Accent line
+  // Línea de acento
   doc.setFillColor(...accentColor);
   doc.rect(0, 32, 210, 2, 'F');
 
-  // Title in header
+  // Título del encabezado
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
@@ -43,7 +69,7 @@ export function exportExecutivePdf({
   const fechaStr = new Date().toLocaleString('es-EC');
   doc.text(`Fecha: ${fechaStr}`, 145, 25);
 
-  // Company Information Block
+  // Bloque con los datos de la empresa
   doc.setTextColor(...darkTextColor);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
@@ -54,7 +80,7 @@ export function exportExecutivePdf({
   doc.setTextColor(100, 116, 139);
   doc.text(`RUC: ${companyRuc || 'N/D'}   •   Período: ${period || 'Más reciente (2026)'}`, 14, 50);
 
-  // Executive Summary Card
+  // Tarjeta de síntesis ejecutiva (máximo 4 líneas)
   doc.setFillColor(...lightGray);
   doc.roundedRect(14, 56, 182, 30, 2, 2, 'F');
 
@@ -73,7 +99,7 @@ export function exportExecutivePdf({
   const splitBrief = doc.splitTextToSize(cleanBrief, 174);
   doc.text(splitBrief.slice(0, 4), 18, 69);
 
-  // KPIs Table
+  // Tabla de indicadores; sin indicadores muestra filas de ejemplo fijas
   const tableData = kpiCards.map((card) => [
     card.title || 'Métrica',
     String(card.value || '-'),
@@ -107,7 +133,7 @@ export function exportExecutivePdf({
     margin: { left: 14, right: 14 },
   });
 
-  // Second table: Commercial and operational breakdown
+  // Segunda tabla: desglose comercial y operativo con valores fijos
   const finalY = doc.lastAutoTable?.finalY || 150;
 
   doc.setFont('helvetica', 'bold');
@@ -140,7 +166,7 @@ export function exportExecutivePdf({
     margin: { left: 14, right: 14 },
   });
 
-  // Footer & Signature
+  // Pie de página en todas las páginas
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -154,9 +180,9 @@ export function exportExecutivePdf({
     doc.text('DOCUMENTO EJECUTIVO CONFIDENCIAL', 145, 288);
   }
 
-  // Download — el nombre del archivo usa la empresa real, nunca el código
-  // interno de la base (ej. "SONG"): ese código es solo un identificador
-  // técnico del ingeniero de bases, no el nombre de la empresa.
+  // Descarga: el nombre del archivo usa el nombre real de la empresa y no el
+  // código interno de la base (p. ej. "SONG"), que es solo un identificador
+  // técnico.
   const slug = String(companyName || companyCode || 'Empresa')
     .normalize('NFD').replace(/\p{Diacritic}/gu, '')
     .replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'Empresa';

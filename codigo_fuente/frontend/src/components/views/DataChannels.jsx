@@ -1,16 +1,11 @@
 /**
- * DataChannels.jsx — Orquestador de "Orígenes de Datos".
- *
- * Responsabilidades (únicas):
- *   1. Estado compartido: switchingDatabase, isConnecting, connectError,
- *      companies, recentServers, etc.
- *   2. Handlers de negocio: handleConnect, loadCompaniesInternal,
- *      handleSelectDatabase, handleDirectDatabaseConnect, etc.
- *   3. Computed values: discoveredDatabases, companyRows.
- *   4. Renderiza el encabezado + descripción + <ConnectionCard />.
- *
- * Este archivo pasó de ~870 líneas a ~220 delegando todo el JSX de la
- * tarjeta de conexión a ConnectionCard.jsx (extraído el 28/07/2026).
+ * @file Vista «Orígenes de Datos». Orquesta la conexión a un servidor SQL Server:
+ * guarda el estado compartido (conexión en curso, errores, empresas, servidores
+ * recientes y autorizados), resuelve la conexión, la exploración de bases y la carga
+ * del catálogo de empresas (/api/servers, /api/companies) y delega el formulario y la
+ * lista de bases en ConnectionCard.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -27,7 +22,7 @@ import {
 import { apiGet, apiPost } from '../../services/api';
 import { normalizeSqlServerHost } from '../../utils/sqlServer';
 
-// ── Helpers de servidores recientes ──────────────────────────────────
+// ── Servidores recientes (localStorage, máximo 8) ────────────────────
 const RECENT_SERVERS_KEY = 'quantum_recent_servers';
 
 function getRecentServers() {
@@ -44,9 +39,22 @@ function saveRecentServer(host) {
         const prev = getRecentServers();
         const updated = [host, ...prev.filter(h => h !== host)].slice(0, 8);
         localStorage.setItem(RECENT_SERVERS_KEY, JSON.stringify(updated));
-    } catch { /* silent */ }
+    } catch { /* silencioso */ }
 }
 
+/**
+ * Muestra la vista de orígenes de datos y coordina la conexión, la exploración de
+ * bases y la selección de empresa.
+ *
+ * @param {object} props
+ * @param {object} [props.connInfo={}] - Datos de conexión (`host`, `auth_type`, `user`, `password`, `driver`, `database`...).
+ * @param {Function} props.setConnInfo - Actualiza los datos de conexión.
+ * @param {Array<string|object>} [props.availableDBs=[]] - Bases descubiertas en el servidor.
+ * @param {boolean} [props.fetchingDBs=false] - Si la exploración de bases está en curso.
+ * @param {Function} props.loadDatabases - Explora las bases del servidor con los parámetros recibidos.
+ * @param {Function} props.handleConnect - Abre la conexión; recibe `(evento, datos, opciones)`.
+ * @returns {JSX.Element} Vista de orígenes de datos.
+ */
 export function DataChannels({
     connInfo = {},
     setConnInfo,
@@ -69,10 +77,10 @@ export function DataChannels({
     const [connectError, setConnectError] = useState('');
     const [connectSuccess, setConnectSuccess] = useState(false);
     const [recentServers, setRecentServers] = useState(getRecentServers);
-    // Catálogo de servidores AUTORIZADOS (backend/main.py::SERVERS_CATALOG) —
-    // a diferencia de "recientes" (lo que el usuario tecleó antes, por
-    // navegador), esto es la lista curada que existe para este despliegue,
-    // igual que un registro de conexiones en un banco.
+    // Catálogo de servidores AUTORIZADOS (backend/main.py::SERVERS_CATALOG). A
+    // diferencia de los recientes (lo que el usuario escribió antes en este
+    // navegador), es la lista curada para este despliegue, como un registro de
+    // conexiones.
     const [knownServers, setKnownServers] = useState([]);
 
     const autoLoadedHostRef = useRef('');
@@ -88,7 +96,7 @@ export function DataChannels({
         return () => { cancelado = true; };
     }, []);
 
-    // Limpiar lista de empresas si el host cambia
+    // Limpia la lista de empresas si cambia el host.
     useEffect(() => {
         const normalized = normalizeSqlServerHost(connInfo.host);
         if (autoLoadedHostRef.current && normalized !== autoLoadedHostRef.current) {
@@ -98,7 +106,7 @@ export function DataChannels({
         autoLoadedHostRef.current = normalized;
     }, [connInfo.host]);
 
-    // ── Handlers de formulario ────────────────────────────────────────
+    // ── Manejadores del formulario ────────────────────────────────────
     const updateConnField = (field, value) => {
         if (typeof setConnInfo === 'function') {
             setConnInfo((prev) => ({ ...prev, [field]: value }));
@@ -109,7 +117,7 @@ export function DataChannels({
         }
     };
 
-    // Cuando cambia de auth type, limpiar credenciales si se va a Windows Auth
+    // Al pasar a Windows Authentication se limpian las credenciales SQL.
     const handleAuthTypeChange = (value) => {
         if (value === 'Windows Authentication') {
             if (typeof setConnInfo === 'function') {
@@ -120,7 +128,7 @@ export function DataChannels({
         }
     };
 
-    // --- CANCEL CONNECT ---
+    // Cancela la conexión en curso.
     const handleCancelConnect = () => {
         if (connectAbortRef.current) {
             connectAbortRef.current.abort();
@@ -130,7 +138,8 @@ export function DataChannels({
         setConnectError('Conexión cancelada. Corrige los datos e intenta nuevamente.');
     };
 
-    // --- CONNECT ---
+    // Conecta al servidor (base master) y luego explora sus bases y el catálogo
+    // de empresas.
     const handleConnectButton = async () => {
         const isLocalHostRequested = (host) => {
             const h = host?.toLowerCase() || '';
@@ -149,23 +158,23 @@ export function DataChannels({
             return;
         }
 
-        // Limpiar estado anterior del host previo
+        // Limpia el estado del host anterior.
         setCompanies([]);
         clearDbCatalog();
         setConnectError('');
         setConnectSuccess(false);
         setIsConnecting(true);
 
-        // Crear AbortController para permitir cancelación
+        // AbortController para permitir la cancelación.
         const abortController = new AbortController();
         connectAbortRef.current = abortController;
 
-        // Para Windows Auth nunca mandamos credenciales SQL
+        // Con Windows Authentication nunca se envían credenciales SQL.
         const connectData = {
             ...connInfo,
             host: normalizedHost,
-            database: 'master',          // Conectamos a master para explorar
-            selected_company_code: '',   // Limpiamos empresa previa
+            database: 'master',          // Se conecta a master para explorar
+            selected_company_code: '',   // Se limpia la empresa previa
             ...(connInfo.auth_type === 'Windows Authentication'
                 ? { user: '', password: '' }
                 : {}),
@@ -177,26 +186,26 @@ export function DataChannels({
             saveRecentServer(normalizedHost);
             setRecentServers(getRecentServers());
             updateConnField('host', normalizedHost);
-            // Limpiar empresa activa para que el usuario elija una fresca
+            // Se limpia la empresa activa para que el usuario elija una nueva.
             if (typeof setConnInfo === 'function') {
                 setConnInfo(prev => ({
                     ...prev,
                     host: normalizedHost,
-                    database: '', // No activamos 'master' como base visible
+                    database: '', // 'master' no se activa como base visible
                     selected_company_code: '',
                 }));
             }
             setConnectSuccess(true);
 
-            // Auto-explorar bases y cargar catálogo tras conectar
-            // IMPORTANTE: pasamos connectData COMPLETO para evitar estado stale de connInfo
+            // Tras conectar, explora las bases y carga el catálogo. Se pasa
+            // connectData COMPLETO porque connInfo aún no refleja el estado nuevo.
             if (typeof loadDatabases === 'function') {
                 loadDatabases(connectData).catch(() => { });
             }
             loadCompaniesInternal(normalizedHost, connectData).catch(() => { });
         } catch (err) {
             if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
-                // Cancelado por el usuario — no mostrar error
+                // Cancelado por el usuario: no se muestra error.
             } else {
                 setConnectError(err?.response?.data?.detail || err?.message || 'No se pudo conectar al servidor.');
             }
@@ -206,43 +215,43 @@ export function DataChannels({
         }
     };
 
-    // --- EXPLORE DATABASES ---
+    // Vuelve a explorar las bases del servidor y sincroniza el catálogo de empresas.
     const handleRefreshDatabases = async () => {
         if (typeof loadDatabases === 'function') {
             const normalizedHost = normalizeSqlServerHost(connInfo.host);
             clearDbCatalog();
-            // Enviar sin credenciales SQL si es Windows Auth
+            // Sin credenciales SQL si es Windows Authentication.
             const safeConnInfo = { ...connInfo, host: normalizedHost };
             if (safeConnInfo.auth_type === 'Windows Authentication') {
                 safeConnInfo.user = '';
                 safeConnInfo.password = '';
             }
             await loadDatabases(safeConnInfo);
-            // Sincronizar automáticamente el catálogo de nombres comerciales al explorar
+            // Sincroniza el catálogo de nombres comerciales al explorar.
             loadCompaniesInternal(normalizedHost, safeConnInfo).catch(() => { });
         }
     };
 
-    // --- LOAD COMPANIES (internal) ---
-    // overrideParams: pasar el connectData al llamar desde handleConnectButton
-    // para evitar usar connInfo stale (React state no se actualizó aún)
+    // Carga el catálogo de empresas desde la base PROYECTO (/api/companies).
+    // overrideParams recibe connectData cuando se llama desde handleConnectButton,
+    // porque el estado connInfo de React todavía no se ha actualizado.
     const loadCompaniesInternal = async (hostOverride, overrideParams = null) => {
         const normalizedHost = hostOverride || normalizeSqlServerHost(connInfo.host);
         if (!normalizedHost) return;
 
-        // Si se especifica un host nuevo (cambio de servidor), limpiar empresas de inmediato
+        // Con un host nuevo (cambio de servidor), se limpian las empresas de inmediato.
         if (hostOverride && hostOverride !== normalizeSqlServerHost(connInfo.host)) {
             setCompanies([]);
         }
 
         setFetchingCompanies(true);
         try {
-            // Usar overrideParams si disponible (evita estado stale), si no, usar connInfo
+            // Usa overrideParams si existe (evita estado desactualizado); si no, connInfo.
             const src = overrideParams || connInfo;
             const authType = src.auth_type || 'SQL Server Authentication';
             const payload = {
                 host: normalizedHost,
-                database: 'PROYECTO',         // Siempre buscar en PROYECTO (catálogo empresas)
+                database: 'PROYECTO',         // El catálogo de empresas siempre está en PROYECTO
                 auth_type: authType,
                 user: authType === 'Windows Authentication' ? '' : (src.user || ''),
                 password: authType === 'Windows Authentication' ? '' : (src.password || ''),
@@ -253,7 +262,7 @@ export function DataChannels({
                 setCompanies(response.data.companies);
                 replaceDbCatalog(response.data.companies);
             } else {
-                // Si falla o retorna vacío, limpiar para no mostrar datos anteriores
+                // Si falla o viene vacío, se limpia para no mostrar datos anteriores.
                 setCompanies([]);
             }
         } catch {
@@ -265,7 +274,7 @@ export function DataChannels({
 
     const loadCompanies = () => loadCompaniesInternal();
 
-    // --- SELECT COMPANY ---
+    // Activa una empresa (o CHAT/PROYECTO) como base de trabajo.
     const handleSelectDatabase = async (database) => {
         if (typeof handleConnect !== 'function') return;
         const dbUpper = database.toUpperCase().trim();
@@ -289,8 +298,8 @@ export function DataChannels({
                 database: targetDatabase,
                 selected_company_code: companyCode,
             }, { dbSwitch: true });
-            // 'superseded' = el usuario eligió otra empresa mientras esta
-            // esperaba su turno; no tocamos el filtro para no interferir.
+            // 'superseded': el usuario eligió otra empresa mientras esta
+            // esperaba su turno; no se toca el filtro para no interferir.
             if (connectResult?.status === 'superseded') return;
             setDbFilter('');
         } catch (err) {
@@ -301,7 +310,7 @@ export function DataChannels({
         }
     };
 
-    // --- DIRECT DB CONNECT (from discovered list) ---
+    // Conecta directamente a una base de la lista descubierta.
     const handleDirectDatabaseConnect = async (databaseName) => {
         if (typeof handleConnect !== 'function') return;
         const normalizedHost = normalizeSqlServerHost(connInfo.host);
@@ -320,14 +329,14 @@ export function DataChannels({
                 database: targetDatabase,
                 selected_company_code: companyCode,
             }, { dbSwitch: true });
-        } catch { /* silent */ } finally {
-            // Solo limpiamos el indicador si sigue siendo el nuestro.
+        } catch { /* silencioso */ } finally {
+            // Solo se limpia el indicador si sigue siendo el de esta conexión.
             setSwitchingDatabase((actual) => (actual === targetDatabase ? '' : actual));
             setSwitchingCompanyCode((actual) => (actual === companyCode ? '' : actual));
         }
     };
 
-    // Auto-load companies when host changes
+    // Carga automáticamente las empresas cuando cambia el host.
     useEffect(() => {
         const normalizedHost = normalizeSqlServerHost(connInfo.host);
         if (!normalizedHost || fetchingCompanies) return;
@@ -336,11 +345,13 @@ export function DataChannels({
         void loadCompaniesInternal(normalizedHost);
     }, [connInfo.host]);
 
-    // ── Computed values ───────────────────────────────────────────────
+    // ── Valores derivados ─────────────────────────────────────────────
     const discoveredDatabases = availableDBs
         .map((db) => (typeof db === 'object' && db !== null ? db.database : String(db || '').trim()))
         .filter(Boolean);
 
+    // Une catálogo guardado, empresas cargadas, base activa, bases de la conexión
+    // y bases descubiertas en una lista única por código, ordenada por nombre.
     const companyRows = useMemo(() => {
         if (!connInfo.host) return [];
         const index = new Map();
@@ -357,7 +368,7 @@ export function DataChannels({
             index.set(db, { ...(index.get(db) || {}), ...entry, database: db });
         });
 
-        // Inyectar el contexto de la base activa si tiene business_name (prioridad)
+        // La base activa con business_name tiene prioridad.
         if (connInfo.database && connInfo.business_name) {
             const activeDb = String(connInfo.database).trim().toUpperCase();
             index.set(activeDb, {
@@ -375,7 +386,7 @@ export function DataChannels({
             const bizName = typeof dbObj === 'object' ? dbObj.business_name : null;
             const existingBiz = index.get(db)?.business_name;
 
-            // Si el nombre que viene es nulo o igual al ID de la base, intentar el fallback descriptivo
+            // Si el nombre es nulo o igual al código de la base, se usa el nombre descriptivo de respaldo.
             const finalBizName = (bizName && bizName !== db)
                 ? bizName
                 : (existingBiz && existingBiz !== db)
@@ -391,7 +402,7 @@ export function DataChannels({
             });
         });
 
-        // Asegurar que TODAS las bases físicas descubiertas estén en el índice
+        // Asegura que TODAS las bases físicas descubiertas estén en el índice.
         discoveredDatabases.forEach((dbName) => {
             const db = String(dbName || '').trim().toUpperCase();
             if (!db || index.has(db)) return;
@@ -419,8 +430,8 @@ export function DataChannels({
         >
             <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 overflow-hidden">
 
-                {/* Cabecera y contexto fijos (no scrollean); solo el contenido
-                    inferior se desplaza, igual que en el panel de auditoría. */}
+                {/* Cabecera y contexto fijos (no se desplazan); solo el contenido
+                    inferior hace scroll, igual que en el panel de auditoría. */}
                 <div className="flex shrink-0 flex-col gap-4">
                     <div className="flex items-center gap-3">
                         <Database className="text-cyan-400" size={24} />

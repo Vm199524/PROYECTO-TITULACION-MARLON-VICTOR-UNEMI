@@ -7,6 +7,9 @@ ANTICIPA el abandono" (sección 1.3 del documento):
   2. Las características de t solo usan información hasta t (sin fuga).
   3. Dos trayectorias del mismo alumno (otra carrera, o una segunda
      matrícula del mismo módulo en OULAD) no se mezclan.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os

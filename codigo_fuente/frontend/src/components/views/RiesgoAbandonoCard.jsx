@@ -1,18 +1,22 @@
+/**
+ * @file Tarjeta de riesgo de abandono estudiantil del panel. Lee /ml/prediccion-abandono,
+ * que sirve la misma vista (VIS_PREDICCION_ABANDONO) que consulta el chat NL2SQL, de
+ * modo que panel y chat nunca muestran cifras distintas. El modelo
+ * (backend/ml/entrenar_abandono.py) se entrena sobre el panel alumno-periodo y estima
+ * el riesgo de abandonar en el PRÓXIMO periodo; cada alumno trae sus tres factores
+ * principales (SHAP) y la tarjeta muestra las métricas de validación temporal
+ * (VIS_EVALUACION_MODELO, vía /ml/evaluacion-modelo) para indicar cuánto confiar.
+ * BentoDashboard la muestra cuando el rol tiene habilitado el módulo ACADEMICO.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, GraduationCap, TrendingDown } from 'lucide-react';
 
 import { apiGet } from '../../services/api';
 
-// Panel de riesgo de abandono estudiantil: lee /ml/prediccion-abandono, que
-// sirve exactamente la misma vista (VIS_PREDICCION_ABANDONO) que el chat
-// NL2SQL consulta cuando se le pregunta en lenguaje natural — panel y chat
-// nunca pueden mostrar numeros distintos porque comparten la fuente.
-// El modelo (backend/ml/entrenar_abandono.py) se entrena sobre el panel
-// alumno-periodo: con los datos hasta el periodo actual estima el riesgo de
-// abandonar en el PRÓXIMO periodo. Cada alumno trae sus tres factores
-// principales (SHAP) y la tarjeta muestra las métricas reales de validación
-// (VIS_EVALUACION_MODELO) para que la autoridad sepa cuánto confiar.
+// Aviso sobre el origen de los datos, según la base conectada.
 const AVISO_DATOS = {
     UNEMI_PRUEBAS: 'Datos de prueba sintéticos y anonimizados: las métricas muestran que la arquitectura funciona, no el desempeño esperado con datos reales.',
     OULAD_UK: 'Datos reales anonimizados del Open University Learning Analytics Dataset (Kuzilek et al., 2017).',
@@ -24,6 +28,8 @@ const RIESGO_STYLE = {
     BAJO: { text: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10' },
 };
 
+// Devuelve el valor de una métrica de la validación temporal del modelo de
+// predicción, o null si no está registrada.
 function metricaTemporal(metricas, nombre) {
     const fila = (metricas || []).find(
         (m) => m.componente === 'PREDICCION' && m.esquema_validacion === 'TEMPORAL' && m.metrica === nombre,
@@ -31,6 +37,16 @@ function metricaTemporal(metricas, nombre) {
     return fila ? Number(fila.valor) : null;
 }
 
+/**
+ * Muestra el resumen por nivel de riesgo, los alumnos con mayor probabilidad de
+ * abandono y la confiabilidad del modelo. Se oculta si no hay base, si la consulta
+ * falla o si no hay alumnos evaluados.
+ *
+ * @param {object} props
+ * @param {string} props.targetDb - Base de datos de la institución que se consulta.
+ * @param {number} [props.delay=0] - Retardo, en segundos, de la animación de entrada.
+ * @returns {JSX.Element|null} La tarjeta, o null si no hay predicciones que mostrar.
+ */
 export function RiesgoAbandonoCard({ targetDb, delay = 0 }) {
     const [data, setData] = useState(null);
     const [metricas, setMetricas] = useState(null);
@@ -53,10 +69,10 @@ export function RiesgoAbandonoCard({ targetDb, delay = 0 }) {
             })
             .catch((err) => {
                 if (cancelled) return;
-                // 400/503: la vista aun no tiene predicciones calculadas para esta
-                // empresa (nadie ha corrido `python -m ml.predecir_abandono` todavia)
-                // o no hay base conectada — el panel se oculta en silencio, no es un
-                // error del usuario.
+                // 400/503: la vista aún no tiene predicciones calculadas para esta
+                // base (falta ejecutar `python -m ml.predecir_abandono`) o no hay base
+                // conectada. El panel se oculta en silencio porque no es un error
+                // del usuario.
                 setError(err?.response?.status || 'error');
             })
             .finally(() => {

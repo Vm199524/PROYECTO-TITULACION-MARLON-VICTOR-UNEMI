@@ -1,3 +1,13 @@
+/**
+ * @file Pruebas de humo de la interfaz. Montan los componentes principales
+ * (historial de sesiones, chat, canales de datos, áreas de análisis y el
+ * tablero móvil con sus pestañas) con datos simulados para detectar errores
+ * de montaje, y verifican que el grupo Administración del menú móvil solo
+ * aparezca para el rol ADMINISTRADOR.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/react';
@@ -113,12 +123,10 @@ describe('UI smoke tests', () => {
         expect(true).toBe(true);
     });
 
-    // Rediseño móvil (29/08/2026): DashboardMobile ahora monta las mismas
-    // vistas pesadas que escritorio (BentoDashboard, DataChannels,
-    // AdminUsuarios, AdminAuditoria) detrás de una barra de navegación
-    // nueva — este smoke test es la única prueba automatizada de que ese
-    // cableado no revienta al montar, dado que no hay forma de correr un
-    // navegador real en este entorno para verlo con los ojos.
+    // DashboardMobile monta las mismas vistas pesadas que escritorio
+    // (BentoDashboard, DataChannels, AdminUsuarios, AdminAuditoria) detrás
+    // de su propia barra de navegación; estas pruebas comprueban que ese
+    // cableado se monte sin errores.
     const propsBaseDashboardMobile = {
         isSidebarOpen: false, setIsSidebarOpen: () => {},
         chatHistory: [], setChatHistory: () => {},

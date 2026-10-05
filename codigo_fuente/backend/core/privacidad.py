@@ -1,23 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-privacidad.py — minimización de datos personales antes de enviarlos a un
-proveedor EXTERNO de IA (Avance 2, RNF de privacidad; LOPDP, principios de
-minimización y finalidad).
+Minimización de datos personales antes de enviarlos a un proveedor externo de IA.
 
-Dónde aplica: el SQL lo genera la IA a partir de la pregunta y del esquema
-de las vistas VIS_* (sin filas). Las filas de resultado solo salen del
-sistema cuando se le pide a un modelo externo que REDACTE la explicación de
-un resultado ya calculado:
-  - core/narrativa_rapida.py::_intentar_proveedor   (Gemini/Groq/NVIDIA/DeepSeek)
-Para redactar "hay 3 alumnos en riesgo alto en Enfermería" el modelo no
-necesita saber QUIÉNES son: las columnas que identifican a una persona se
-reemplazan por un seudónimo estable dentro de la misma llamada ("Alumno 1",
-"Alumno 2", ...) — así la narración sigue siendo correcta (cuenta personas
-distintas) sin exponer su identidad. Además, cualquier número con forma de
-cédula que aparezca en otra columna se oculta.
+Implementa el RNF de privacidad (LOPDP: minimización y finalidad). El SQL se
+genera solo con la pregunta y el esquema; las filas salen del sistema únicamente
+cuando narrativa_rapida.py pide a Gemini, Groq, NVIDIA NIM o DeepSeek redactar
+la explicación. Las columnas que identifican a una persona se reemplazan por un
+seudónimo estable («Alumno 1», «Alumno 2») y las cédulas en texto libre se
+ocultan. Lo que ve en pantalla el usuario autorizado no pasa por aquí.
 
-La pantalla del usuario autorizado NO pasa por aquí: esto protege lo que
-sale hacia terceros, no lo que ve quien tiene permiso de verlo.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -42,6 +35,7 @@ TEXTO_OCULTO = '[dato personal oculto]'
 
 
 def _normalizar(nombre: Any) -> str:
+    """Normaliza un nombre de columna: minúsculas, sin tildes y con guion bajo en lugar de espacios."""
     s = str(nombre or '').strip().lower()
     for a, b in (('á', 'a'), ('é', 'e'), ('í', 'i'), ('ó', 'o'), ('ú', 'u'), ('ñ', 'n'), (' ', '_')):
         s = s.replace(a, b)
@@ -49,21 +43,26 @@ def _normalizar(nombre: Any) -> str:
 
 
 def es_columna_personal(nombre: Any) -> bool:
+    """Indica si el valor de la columna identifica a una persona (cédula, nombre, correo, etc.)."""
     n = _normalizar(nombre)
     return n in _COLUMNAS_EXACTAS or bool(_PATRON_COLUMNA.search(n))
 
 
 def _ocultar_en_texto(valor: Any) -> Any:
+    """Oculta los números con forma de cédula o RUC dentro de un texto."""
     if isinstance(valor, str):
         return _PATRON_CEDULA.sub(TEXTO_OCULTO, valor)
     return valor
 
 
 def enmascarar_filas(columns: list | None, rows: list | None) -> tuple[list, list]:
-    """Devuelve (columns, rows) sin datos personales, con la misma forma de
-    entrada (filas como listas/tuplas o como dicts). Las columnas personales
-    se conservan (el modelo sabe que existían) pero su valor pasa a ser un
-    seudónimo estable por persona dentro de esta llamada."""
+    """Devuelve (columns, rows) sin datos personales y con la misma forma de entrada.
+
+    Acepta filas como listas, tuplas o dicts. Las columnas personales se
+    conservan para que el modelo sepa que existían, pero su valor pasa a ser un
+    seudónimo estable por persona dentro de esta llamada; así la narración
+    sigue contando bien a personas distintas sin exponer su identidad.
+    """
     columns = list(columns or [])
     rows = list(rows or [])
     if not rows:
@@ -102,6 +101,6 @@ def enmascarar_filas(columns: list | None, rows: list | None) -> tuple[list, lis
 
 
 def enmascarar_cedula(cedula: Any) -> str:
-    """Para mostrar en pantalla: ******1234."""
+    """Enmascara una cédula para mostrarla en pantalla dejando visibles los últimos 4 dígitos (******1234)."""
     s = str(cedula or '')
     return ('*' * max(len(s) - 4, 0)) + s[-4:] if len(s) > 4 else '****'

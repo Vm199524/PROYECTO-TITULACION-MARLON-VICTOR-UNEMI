@@ -1,3 +1,11 @@
+/**
+ * @file Cabecera del panel de escritorio. Muestra la marca, la insignia «Empresa Activa»
+ * (que abre CompanySelector para cambiar de base), el avatar con el nombre y el rol del
+ * usuario (que abre PerfilPanel) y el botón para desconectar. Lee la foto de perfil de
+ * /api/profile.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LogOut, Building2, ChevronDown } from 'lucide-react';
 import { dbToBusinessName, INTERNAL_DB_IDS, getDbProfile } from '../constants/appConfig';
@@ -8,13 +16,25 @@ import { roleLabel } from '../utils/roles';
 
 const INTERNAL_DB_SET = new Set(INTERNAL_DB_IDS);
 
+/**
+ * Muestra la cabecera superior del panel de escritorio.
+ *
+ * @param {object} props
+ * @param {object|null} props.userAuth - Usuario autenticado (`name`, `role`); null mientras se confirma.
+ * @param {object} props.connInfo - Conexión activa (`database`, `selected_company_code`, `business_name`).
+ * @param {Function} props.handleLogout - Cierra la sesión.
+ * @param {Function} [props.openQuantumCore] - Se recibe, pero esta cabecera no lo usa.
+ * @param {Array<string|object>} [props.availableDBs=[]] - Bases disponibles, como códigos o como objetos `{database, business_name}`.
+ * @param {boolean} [props.fetchingDBs=false] - Si la lista de bases se está cargando.
+ * @param {Function} [props.loadDatabases] - Carga la lista de bases al abrir el selector si aún está vacía.
+ * @param {Function} props.handleConnect - Reconecta con la empresa elegida.
+ * @returns {JSX.Element} Cabecera del panel.
+ */
 export function DesktopHeader({
     userAuth, connInfo, handleLogout, openQuantumCore,
-    // Unificación del selector de empresa (Fase 1 — corto plazo): la insignia
-    // de "Empresa Activa" deja de ser un rótulo de solo lectura y se convierte
-    // en el punto de entrada al mismo CompanySelector que ya se usa en
-    // "Orígenes de Datos", en vez de mantener flujos de cambio de empresa
-    // distintos según la pantalla.
+    // La insignia «Empresa Activa» es el punto de entrada al mismo
+    // CompanySelector de «Orígenes de Datos», para no mantener flujos de
+    // cambio de empresa distintos según la pantalla.
     availableDBs = [], fetchingDBs = false, loadDatabases, handleConnect,
 }) {
     const [selectorOpen, setSelectorOpen] = useState(false);
@@ -22,16 +42,13 @@ export function DesktopHeader({
     const [perfilOpen, setPerfilOpen] = useState(false);
     const [avatarUrl, setAvatarUrl] = useState(null);
 
-    // Se trae la foto guardada una sola vez al montar el header (no hace
-    // falta esperar a abrir "Mi Perfil" para saber si el usuario ya tiene
-    // avatar). Si falla (ej. token vencido), se queda con las iniciales.
+    // Se trae la foto guardada al montar la cabecera, sin esperar a que se abra
+    // «Mi Perfil». Si falla (p. ej. token vencido), se muestran las iniciales.
     useEffect(() => {
-        // Guard con `userAuth` (30/08/2026, login instantáneo): el shell puede
-        // montarse de forma OPTIMISTA antes de que /login responda y exista un
-        // token real. Sin este guard, este fetch salía sin Authorization,
-        // fallaba en silencio (el .catch ya lo tapaba) y el avatar quedaba
-        // vacío para siempre porque el efecto no reintentaba al llegar el
-        // token real. Ahora se dispara recién cuando `userAuth` es real.
+        // El shell puede montarse de forma optimista antes de que /login
+        // responda y exista un token real. Sin esta guarda, la petición saldría
+        // sin Authorization, fallaría en silencio y el avatar quedaría vacío.
+        // Por eso se dispara solo cuando `userAuth` existe.
         if (!userAuth) return undefined;
         let cancelled = false;
         apiGet('/profile')
@@ -40,12 +57,11 @@ export function DesktopHeader({
         return () => { cancelled = true; };
     }, [userAuth]);
 
-    // `availableDBs` no siempre es un array de códigos de texto: cuando el
+    // `availableDBs` no siempre es un arreglo de códigos de texto: cuando el
     // catálogo enriquecido (sys300) todavía no se cargó, /api/databases
-    // devuelve objetos {database, business_name} crudos. Hay que extraer el
-    // código y el nombre de cada forma explícitamente — nunca asignar el
-    // objeto completo como si fuera el código, o React truena al intentar
-    // renderizarlo como texto (bug real detectado el 2026-08-07).
+    // devuelve objetos {database, business_name} crudos. Se extraen el código
+    // y el nombre de cada forma explícitamente; asignar el objeto completo
+    // como si fuera el código hace fallar a React al renderizarlo como texto.
     const companies = useMemo(
         () => availableDBs
             .map((entry) => {
@@ -92,7 +108,8 @@ export function DesktopHeader({
     const selectedCompanyCode = String(connInfo?.selected_company_code || '').trim().toUpperCase();
     const selectedCompany = selectedCompanyCode ? getDbProfile(selectedCompanyCode) : null;
 
-    // Logica de nombre de empresa: Priorizar el nombre comercial real devuelto por SQL
+    // Nombre de la empresa: se prioriza el nombre comercial real que devuelve la
+    // conexión o el catálogo sobre el derivado del código de la base.
     const dbProfile = getDbProfile(selectedDb);
     const companyName = dbProfile?.business_name || dbToBusinessName(selectedDb);
     const displayCompanyName = (isChatDB ? 'Mente VicMar Data AI' : (connInfo?.business_name || companyName));
@@ -101,16 +118,14 @@ export function DesktopHeader({
                              selectedDb !== 'MASTER' && 
                              selectedDb !== '';
 
-    // Identidad del usuario en el header.
+    // Identidad del usuario en la cabecera.
     //
-    // La regla es no inventar identidades: mientras no se sepa quién es, no se
-    // afirma nada. Se muestra un esqueleto neutro y, apenas llega `userAuth`,
-    // aparece el nombre y el rol reales. (Bug del 31/08/2026: el login abría
-    // el shell antes de que /login respondiera y el header rellenaba ese hueco
-    // con la palabra "Analista" — alguien entraba con ADMINISTRADOR y leía un
-    // perfil ajeno. Con el login actual — App.jsx > handleAuthLogin — el shell
-    // se pinta con `userAuth` ya confirmado; este esqueleto solo queda como
-    // red para flujos como conectar empresa o restaurar sesión.)
+    // No se inventan identidades: mientras no se sepa quién es el usuario, se
+    // muestra un esqueleto neutro y, al llegar `userAuth`, el nombre y el rol
+    // reales. Rellenar el hueco con un rol por defecto (p. ej. «Analista»)
+    // mostraría un perfil ajeno a quien entra como ADMINISTRADOR. El login de
+    // App.jsx (handleAuthLogin) ya pinta el shell con `userAuth` confirmado; el
+    // esqueleto cubre flujos como conectar empresa o restaurar sesión.
     const perfilListo = Boolean(userAuth?.name);
     const userLabel = userAuth?.name || '';
     const userRoleLabel = perfilListo ? roleLabel(userAuth?.role) : '';
@@ -155,9 +170,8 @@ export function DesktopHeader({
 
             {/* ── Derecha: Contexto y Usuario ── */}
             <div className="flex items-center gap-6">
-                {/* Visualizador de Empresa Activa — ahora es también el único punto
-                    de entrada para cambiar de empresa desde el dashboard de
-                    escritorio (antes había que ir a "Orígenes de Datos"). */}
+                {/* Insignia de la empresa activa: también es el punto de entrada
+                    para cambiar de empresa desde el panel de escritorio. */}
                 {showCompanyBadge && (
                     <div ref={popoverRef} className="relative">
                         <button
@@ -183,10 +197,9 @@ export function DesktopHeader({
                                 <span style={{ fontSize: 11, fontWeight: 900, color: 'rgba(34, 211, 238, 0.6)', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 1 }}>
                                     Empresa Activa
                                 </span>
-                                {/* Solo el nombre comercial real de la empresa — nunca el código
-                                    interno de la base (ej. "SONG"), que es un identificador
-                                    técnico del ingeniero de bases, no el nombre de la empresa
-                                    (2026-09-08). */}
+                                {/* Solo el nombre comercial de la empresa, nunca el código
+                                    interno de la base (p. ej. «SONG»), que es un
+                                    identificador técnico y no el nombre de la empresa. */}
                                 <span style={{ fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
                                     {displayCompanyName}
                                 </span>
@@ -216,9 +229,7 @@ export function DesktopHeader({
                 )}
 
                 <div className="flex items-center gap-4">
-                    {/* Avatar + nombre — abre "Mi Perfil" (Fase 5, 28/08/2026,
-                        por requisito: antes esto era solo una etiqueta,
-                        sin ninguna accion al hacer clic). */}
+                    {/* Avatar y nombre: abre «Mi Perfil». */}
                     <button
                         type="button"
                         onClick={() => setPerfilOpen(true)}
@@ -249,9 +260,9 @@ export function DesktopHeader({
                                     <span style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{userRoleLabel}</span>
                                 </>
                             ) : (
-                                /* Esqueleto mientras /login confirma quién es. Mismas alturas
-                                   que el nombre y el rol reales, para que al llegar el dato no
-                                   se mueva nada alrededor. */
+                                /* Esqueleto mientras /login confirma la identidad. Tiene las
+                                   mismas alturas que el nombre y el rol reales, para que al
+                                   llegar el dato no se mueva nada alrededor. */
                                 <span aria-label="Cargando perfil" className="flex flex-col items-start gap-1 py-0.5">
                                     <span style={{ display: 'block', width: 72, height: 9, borderRadius: 4, background: 'var(--border)', opacity: 0.7 }} />
                                     <span style={{ display: 'block', width: 46, height: 7, borderRadius: 4, background: 'var(--border)', opacity: 0.45 }} />

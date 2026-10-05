@@ -1,48 +1,14 @@
 """
-memoria_empresa.py — Memoria de largo plazo de VicMar Data AI, por empresa.
+Memoria de largo plazo por empresa.
 
-PROBLEMA QUE RESUELVE
----------------------
-Hasta ahora el sistema no recordaba NADA entre conversaciones. Al usuario le
-decia "Entendido, he registrado en la memoria..." y no se escribia una sola
-linea en ningun lado: era texto generado por el modelo, no una accion. Al
-abrir un chat nuevo el contexto era cero, porque el frontend solo envia los
-ultimos 4 mensajes de la conversacion ABIERTA (`chatHistory.slice(-4)` en
-App.jsx). Resultado: la misma correccion habia que repetirla cada vez.
+Guarda reglas de negocio cortas en lenguaje natural (p. ej., «advertir que 5
+alumnos no se cuentan por no tener curso asignado») y las inyecta en el prompt
+de todas las consultas posteriores de esa empresa, en cualquier chat y tras
+reiniciar el backend. Cada regla vive bajo el código de su empresa y nunca se
+sirve a otra: una memoria mal aislada sería una fuga de datos entre empresas.
 
-Lo unico persistente que existia era:
-  · `cache/semantic_query_cache.json` — pregunta exacta -> SQL. Repeticion
-    literal, no aprendizaje: cambia una palabra y ya no aplica.
-  · `knowledge/consolidated_patterns.json` — nombres de tablas frecuentes.
-  · `cache/session_history.json` — archivo de conversaciones para el panel
-    lateral; el motor nunca lo lee.
-
-QUE GUARDA ESTE MODULO
-----------------------
-Reglas de negocio en lenguaje natural, cortas, que la IA debe tener presentes
-al responder sobre UNA empresa concreta. Por ejemplo, para MONT:
-
-    "Al presentar alumnos por curso, advertir que 5 alumnos no se contabilizan
-     porque estan en estado 'sin curso asignado' (1.033 con curso + 5 = 1.038)."
-
-Esas reglas se inyectan en el prompt de TODAS las consultas posteriores de esa
-empresa, en cualquier chat, tambien despues de reiniciar el backend.
-
-AISLAMIENTO POR EMPRESA (NO NEGOCIABLE)
----------------------------------------
-Cada regla vive bajo el codigo de empresa y jamas se sirve a otra. Este
-producto ya sufrio una fuga de datos entre empresas por compartir un cache
-con clave global (incidente de fuga de datos entre empresas del 27/07/2026); una memoria mal aislada
-seria la misma falla con otro nombre. `bloque_para_prompt("AGGO")` no puede
-devolver una sola palabra aprendida en MONT.
-
-TRAZABILIDAD
-------------
-Cada regla guarda de donde salio (`origen`), la pregunta que la motivo
-(`evidencia`) y cuando se creo. Como el aprendizaje es automatico, esto es lo
-que permite auditar despues que aprendio el sistema y borrar lo que este mal:
-una regla incorrecta que nadie puede ver ni quitar contamina en silencio todas
-las respuestas futuras de esa empresa.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 from __future__ import annotations
@@ -59,12 +25,12 @@ from config import CACHE_DIR
 MEMORIA_FILE = CACHE_DIR / "memoria_empresa.json"
 
 # Tope de reglas por empresa. Existe por dos razones: el bloque se inyecta en
-# CADA prompt (mas reglas = mas tokens en cada consulta) y una memoria sin
-# limite acaba siendo un vertedero donde lo util se pierde entre lo anecdotico.
+# cada prompt (más reglas son más tokens por consulta) y una memoria sin
+# límite termina mezclando lo útil con lo anecdótico.
 MAX_REGLAS_POR_EMPRESA = 40
 
-# Tope de caracteres de una regla. Lo que se inyecta al prompt tiene que ser
-# una instruccion, no un ensayo.
+# Tope de caracteres de una regla: lo que se inyecta al prompt debe ser una
+# instrucción, no un ensayo.
 MAX_LARGO_REGLA = 400
 
 _LOCK = threading.Lock()
@@ -82,7 +48,7 @@ def _leer() -> dict:
         return datos if isinstance(datos, dict) else {}
     except Exception:
         # Un JSON corrupto no puede tumbar una consulta: sin memoria se
-        # responde igual que antes de que este modulo existiera.
+        # responde con el prompt base.
         return {}
 
 
@@ -103,11 +69,11 @@ def _ahora() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-# ─── Normalizacion y deduplicacion ──────────────────────────────────────────
+# ─── Normalización y deduplicación ──────────────────────────────────────────
 
 
 def _normalizar(texto: str) -> str:
-    """Minusculas, sin tildes ni puntuacion. Solo para comparar reglas."""
+    """Pasa el texto a minúsculas sin tildes ni puntuación; solo se usa para comparar reglas."""
     txt = str(texto or "").lower()
     txt = unicodedata.normalize("NFD", txt)
     txt = "".join(c for c in txt if unicodedata.category(c) != "Mn")
@@ -116,14 +82,13 @@ def _normalizar(texto: str) -> str:
 
 
 def _es_duplicada(texto_nuevo: str, reglas: list[dict]) -> dict | None:
-    """
-    Devuelve la regla existente equivalente, si la hay.
+    """Devuelve la regla existente equivalente, si la hay.
 
-    La comparacion es por solapamiento de palabras y no por igualdad exacta:
-    el extractor es un modelo de lenguaje y redacta la misma regla distinto
-    cada vez ("faltan 5 alumnos sin curso" / "5 alumnos no se cuentan por no
-    tener curso asignado"). Sin esto, repetir la correccion tres veces mete
-    tres reglas casi identicas en el prompt.
+    La comparación es por solapamiento de palabras (70 % o más) y no por
+    igualdad exacta: el extractor es un modelo de lenguaje y redacta la misma
+    regla de forma distinta cada vez («faltan 5 alumnos sin curso» frente a
+    «5 alumnos no se cuentan por no tener curso asignado»). Sin esto, repetir
+    una corrección tres veces metería tres reglas casi idénticas en el prompt.
     """
     nuevas = set(_normalizar(texto_nuevo).split())
     if not nuevas:
@@ -139,11 +104,11 @@ def _es_duplicada(texto_nuevo: str, reglas: list[dict]) -> dict | None:
     return None
 
 
-# ─── API publica ────────────────────────────────────────────────────────────
+# ─── API pública ────────────────────────────────────────────────────────────
 
 
 def reglas_de(empresa: str | None, solo_activas: bool = True) -> list[dict]:
-    """Reglas aprendidas de UNA empresa. Nunca mezcla empresas."""
+    """Devuelve las reglas aprendidas de una sola empresa; nunca mezcla empresas."""
     clave = _clave_empresa(empresa)
     if not clave:
         return []
@@ -163,12 +128,15 @@ def recordar(
     evidencia: str = "",
     tema: str = "",
 ) -> dict | None:
-    """
-    Guarda una regla para esa empresa y la devuelve. None si no se guardo.
+    """Guarda una regla para la empresa y la devuelve; None si no se guardó.
 
     Si ya existe una regla equivalente no se duplica: se refresca su marca de
-    tiempo y se suma un refuerzo, lo que sirve para saber que esa correccion
-    se repitio y por tanto importa.
+    tiempo y se suma un refuerzo, lo que indica que esa corrección se repitió
+    y por tanto importa.
+
+    Cada regla guarda su origen, la pregunta que la motivó (`evidencia`) y su
+    fecha. Como el aprendizaje es automático, eso permite auditar lo aprendido
+    y borrar lo incorrecto antes de que contamine las respuestas futuras.
     """
     clave = _clave_empresa(empresa)
     texto_limpio = " ".join(str(texto or "").split())[:MAX_LARGO_REGLA]
@@ -201,9 +169,9 @@ def recordar(
         }
         reglas.append(regla)
 
-        # Si se pasa del tope, se descarta lo mas antiguo con menos refuerzos:
-        # una regla que el usuario ha reforzado varias veces vale mas que una
-        # que se aprendio una vez y nunca volvio a aparecer.
+        # Si se pasa del tope, se descarta lo más antiguo con menos refuerzos:
+        # una regla reforzada varias veces vale más que una que se aprendió
+        # una vez y no volvió a aparecer.
         if len(reglas) > MAX_REGLAS_POR_EMPRESA:
             reglas.sort(key=lambda r: (int(r.get("refuerzos", 1)), r.get("actualizada", "")))
             del reglas[: len(reglas) - MAX_REGLAS_POR_EMPRESA]
@@ -213,7 +181,7 @@ def recordar(
 
 
 def olvidar(empresa: str | None, regla_id: str) -> bool:
-    """Elimina una regla concreta. True si existia."""
+    """Elimina una regla concreta; devuelve True si existía."""
     clave = _clave_empresa(empresa)
     if not clave or not regla_id:
         return False
@@ -229,7 +197,7 @@ def olvidar(empresa: str | None, regla_id: str) -> bool:
 
 
 def olvidar_todo(empresa: str | None) -> int:
-    """Borra la memoria completa de una empresa. Devuelve cuantas reglas cayeron."""
+    """Borra la memoria completa de una empresa y devuelve cuántas reglas se eliminaron."""
     clave = _clave_empresa(empresa)
     if not clave:
         return 0
@@ -243,14 +211,13 @@ def olvidar_todo(empresa: str | None) -> int:
 
 
 def bloque_para_prompt(empresa: str | None, limite: int = 15) -> str:
-    """
-    Fragmento que se inyecta en el SYSTEM_PROMPT del motor.
+    """Arma el fragmento de memoria que se inyecta en el SYSTEM_PROMPT del motor.
 
-    Devuelve cadena vacia cuando no hay nada aprendido, para que el prompt
-    quede exactamente igual que antes de que existiera la memoria.
+    Devuelve una cadena vacía cuando no hay nada aprendido, para que el prompt
+    quede igual al prompt base.
 
-    Las reglas mas reforzadas van primero: si hay que recortar por el limite,
-    se conserva lo que el usuario ha tenido que corregir mas veces.
+    Las reglas más reforzadas van primero: si hay que recortar por `limite`,
+    se conserva lo que el usuario ha tenido que corregir más veces.
     """
     reglas = reglas_de(empresa)
     if not reglas:

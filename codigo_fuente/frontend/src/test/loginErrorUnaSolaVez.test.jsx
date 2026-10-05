@@ -1,17 +1,11 @@
 /**
- * loginErrorUnaSolaVez.test.jsx — el error de credenciales se dice UNA vez.
- *
- * Defecto detectado en pruebas (31/08/2026): al escribir mal la
- * contraseña, "Fallo de Autoridad: Verifique Identificador y Código" aparecía
- * dos veces en la misma pantalla — en la franja roja del formulario, que es la
- * que corresponde, y otra vez debajo del botón en un panel azul con un botón
- * "Refrescar Sistema". Ese panel es para cuando el sistema no responde:
- * recargar la página no arregla una contraseña equivocada, así que ofrecerlo
- * ahí solo confunde y hace parecer que el sistema falló.
- *
- * La regla que fijan estas pruebas: el panel de "refrescar" se muestra solo
- * cuando el error es del sistema (`errorDeSistema`), nunca para un fallo de
- * credenciales.
+ * @file Pruebas de los avisos de error de `LoginView`. Verifican que cada error
+ * se muestre una sola vez: un fallo de credenciales va en la franja roja del
+ * formulario y sin el botón «Refrescar Sistema» (recargar no corrige una
+ * contraseña equivocada y haría parecer que el sistema falló), y un error del
+ * sistema (`errorDeSistema`) va solo en el panel azul con ese botón.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 import React from 'react';
 import { describe, it, expect } from 'vitest';
@@ -62,9 +56,8 @@ describe('Login — el error no se duplica', () => {
     it('un fallo del sistema se muestra una sola vez, en el panel azul', () => {
         render(<LoginView {...propsBase({ error: ERROR_SISTEMA, errorDeSistema: true })} />);
 
-        // El mensaje aparece EXACTAMENTE una vez — en el panel azul con
-        // "Refrescar Sistema" — y no se repite en la franja roja del
-        // formulario (bug reportado 31/08/2026: salía 2 veces repetido).
+        // El mensaje aparece exactamente una vez, en el panel azul con
+        // «Refrescar Sistema», y no se repite en la franja roja del formulario.
         expect(screen.getAllByText(ERROR_SISTEMA)).toHaveLength(1);
         expect(screen.getByRole('button', { name: /refrescar sistema/i })).toBeTruthy();
     });

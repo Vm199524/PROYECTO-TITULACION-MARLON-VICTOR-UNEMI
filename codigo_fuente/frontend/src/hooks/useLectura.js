@@ -1,39 +1,21 @@
 /**
- * hooks/useLectura.js — Lectura en voz alta de las respuestas.
- *
- * DOS MOTORES, UNO DE RESPALDO DEL OTRO:
- *
- * 1. FAL AI (ElevenLabs Multilingual v2) — voz natural y consistente. El
- *    texto SÍ sale de la máquina hacia el backend, que lo reenvía a FAL. Esto
- *    puede incluir datos del negocio (sueldos, totales de ventas, nombres de
- *    proveedores) — el usuario aceptó explícitamente esta contrapartida el
- *    30/08/2026, a cambio de una voz mucho mejor que la de Windows. Cuesta
- *    crédito de FAL: $0.10 cada 1000 caracteres (ver backend/core/voz_fal.py).
- *
- * 2. `speechSynthesis` del navegador — 100% local, el texto nunca sale de la
- *    máquina. Es el respaldo AUTOMÁTICO: si el backend no tiene FAL_KEY
- *    configurada, si no hay red, o si FAL falla por cualquier motivo, se cae
- *    aquí sin que el usuario tenga que hacer nada ni se quede sin voz.
- *
- * El intento con FAL SIEMPRE tiene un límite de tiempo corto (ver
- * `TIMEOUT_FAL_MS` en `hablar()`): la voz es para responder RÁPIDO, no vale
- * la pena hacer esperar al usuario varios segundos por una llamada de red
- * cuando la voz local ya está lista para hablar de inmediato.
+ * @file Hook de lectura en voz alta de las respuestas, con dos motores. El
+ * principal es FAL AI (ElevenLabs Multilingual v2) vía `/query/speak` del
+ * backend: voz natural, pero el texto sale del equipo y puede incluir datos
+ * consultados; cuesta crédito de FAL (ver backend/core/voz_fal.py). El
+ * respaldo automático es `speechSynthesis` del navegador, 100 % local, que se
+ * usa si el backend no tiene FAL_KEY, si no hay red o si FAL falla o tarda más
+ * de `TIMEOUT_FAL_MS`.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiPost } from '../services/api';
 
 const sintetizador = typeof window !== 'undefined' ? window.speechSynthesis : null;
+/** Indica si el navegador ofrece síntesis de voz local. */
 export const lecturaDisponible = Boolean(sintetizador);
 
-/**
- * Prepara el texto para ser escuchado, no leído.
- *
- * Una respuesta de BI trae markdown y a veces tablas de 16 filas. Leer eso
- * literalmente sería insoportable: nadie quiere oír "guion guion guion" ni
- * dieciséis nombres de proveedor seguidos. Se limpia el formato y las tablas
- * se anuncian en vez de recitarse.
- */
 /** Convierte un valor de la base en algo que suene bien dicho en voz alta. */
 function valorHablado(valor) {
     if (valor === null || valor === undefined || valor === '') return 'sin dato';
@@ -62,15 +44,14 @@ function etiquetaHablada(columna) {
 /**
  * Construye lo que se va a DECIR, priorizando el dato sobre la explicación.
  *
- * PROBLEMA QUE RESUELVE:
- * La IA devuelve por un lado un texto explicativo ("Se presenta el total de
- * empleados registrados en la ficha maestra...") y por otro los datos, que la
- * pantalla dibuja como tarjeta o tabla. Al leer solo el texto, la voz recitaba
- * el contexto y NUNCA pronunciaba la cifra: preguntabas cuántos empleados hay
- * y no te decía el número.
- *
- * Aquí la respuesta se arma desde los datos. Si preguntas un total, lo primero
- * que oyes es el total.
+ * El modelo devuelve por un lado un texto explicativo ("Se presenta el total
+ * de empleados registrados...") y por otro los datos, que la pantalla dibuja
+ * como tarjeta o tabla. Leer solo el texto recitaría el contexto sin
+ * pronunciar la cifra, así que la respuesta se arma desde los datos: si se
+ * pregunta un total, lo primero que se oye es el total.
+ * @param {{content?: string, result?: {rows?: Array<Array<*>>, columns?: string[], explanation?: string}}} [mensaje={}]
+ *   Mensaje del chat con su resultado normalizado.
+ * @returns {string} Texto que se va a pronunciar.
  */
 export function construirRespuestaHablada(mensaje = {}) {
     const resultado = mensaje.result || {};
@@ -84,22 +65,22 @@ export function construirRespuestaHablada(mensaje = {}) {
         ? 'Atención: este dato de personal podría no corresponder a esta empresa. '
         : '';
 
-    // ── Caso 1: un solo número. Es la mayoría de preguntas de gerencia
-    // ("cuántos empleados", "total de ventas") y la respuesta ES la cifra.
+    // Caso 1: un solo número. Es la mayoría de preguntas de gerencia
+    // ("cuántos empleados", "total de ventas") y la respuesta es la cifra.
     if (filas.length === 1 && filas[0]?.length === 1) {
         const etiqueta = etiquetaHablada(columnas[0]);
         const valor = valorHablado(filas[0][0]);
         return `${aviso}${etiqueta ? `${etiqueta}: ` : ''}${valor}.`;
     }
 
-    // ── Caso 2: una fila con varias columnas (ej. ventas y compras juntas).
+    // Caso 2: una fila con varias columnas (p. ej. ventas y compras juntas).
     if (filas.length === 1 && filas[0]?.length > 1) {
         const partes = filas[0].map((v, i) => `${etiquetaHablada(columnas[i])} ${valorHablado(v)}`);
         return `${aviso}${partes.join(', ')}.`;
     }
 
-    // ── Caso 3: tabla. Se dicen los primeros y se anuncia el resto, en vez
-    // de recitar dieciséis proveedores seguidos.
+    // Caso 3: tabla. Se dicen los tres primeros y se anuncia el resto, en
+    // vez de recitar todas las filas seguidas.
     if (filas.length > 1) {
         const cuantos = Math.min(3, filas.length);
         const primeros = filas.slice(0, cuantos).map((fila) => {
@@ -114,27 +95,34 @@ export function construirRespuestaHablada(mensaje = {}) {
         return `${aviso}${primeros.join('. ')}.${cola}`;
     }
 
-    // ── Caso 4: sin datos (saludos, respuestas conversacionales). Aquí sí se
+    // Caso 4: sin datos (saludos, respuestas conversacionales). Aquí sí se
     // lee el texto, porque es todo lo que hay.
     return prepararTextoParaVoz(texto, filas);
 }
 
+/**
+ * Prepara un texto para ser escuchado, no leído. Una respuesta trae Markdown
+ * y a veces tablas largas: se limpia el formato y las tablas se anuncian en
+ * vez de recitarse.
+ * @param {string} texto Texto de la respuesta, con Markdown.
+ * @param {Array<*>} [filas=[]] Filas del resultado; si hay más de una, se
+ *   anuncia cuántos registros tiene la tabla.
+ * @returns {string} Texto limpio, con puntuación que marca las pausas.
+ */
 export function prepararTextoParaVoz(texto, filas = []) {
     let limpio = String(texto || '');
 
-    // ── Advertencia de integridad ────────────────────────────────────────
-    // El aviso completo son ~60 palabras técnicas (nombres de vistas, fechas,
-    // el nombre del procedimiento a corregir). Leerlo entero en voz alta antes
-    // de cada respuesta lo vuelve insoportable y el usuario terminaría
-    // ignorándolo. Pero callarlo del todo sería peor: alguien podría preguntar
-    // por voz cuánto personal tiene y recibir una cifra equivocada dicha con
-    // total seguridad. Se sustituye por una frase corta, y el texto completo
-    // sigue estando en el chat escrito.
+    // Advertencia de integridad. El aviso completo tiene unas 60 palabras
+    // técnicas (nombres de vistas, fechas, el procedimiento a corregir);
+    // leerlo entero antes de cada respuesta haría que se ignore, pero
+    // omitirlo dejaría una cifra posiblemente equivocada dicha con total
+    // seguridad. Se sustituye por una frase corta y el texto completo sigue
+    // en el chat escrito.
     let avisoBreve = '';
     if (/dato no verificable por empresa/i.test(limpio)) {
         avisoBreve = 'Atención: este dato de personal podría no corresponder a esta empresa. ';
-        // Se elimina el párrafo del aviso (va desde el emoji hasta el final
-        // de esa frase larga) para quedarnos solo con la respuesta real.
+        // Se elimina el párrafo del aviso (desde el emoji hasta el final de
+        // esa frase larga) para conservar solo la respuesta.
         limpio = limpio.replace(/⚠️[\s\S]*?empresa seleccionada\.\s*/i, '');
     }
 
@@ -148,7 +136,7 @@ export function prepararTextoParaVoz(texto, filas = []) {
         .trim();
 
     // Al quitar la tabla suele quedar la frase que la introducía colgando de
-    // dos puntos ("A continuación los proveedores:"), que al oírse queda en
+    // dos puntos ("A continuación el detalle:"), que al oírse queda en
     // suspenso. Se recorta esa puntuación huérfana del final.
     limpio = limpio.replace(/[\s:,;.]+$/, '');
 
@@ -166,10 +154,22 @@ export function prepararTextoParaVoz(texto, filas = []) {
     return `${avisoBreve}${limpio}`.trim();
 }
 
-// Límite de espera por voz externa (ms). Si no responde rápido, se utiliza de inmediato
-// el sintetizador nativo del navegador para garantizar una experiencia fluida sin pausas.
+// Límite de espera de la voz de FAL (ms). La voz es para responder rápido: si
+// FAL no responde a tiempo, se usa de inmediato el sintetizador del navegador,
+// que ya está listo para hablar.
 const TIMEOUT_FAL_MS = 1000;
 
+/**
+ * Controla la lectura en voz alta: intenta la voz de FAL y, si no está
+ * disponible, usa la mejor voz local en español (prefiere voces neuronales y
+ * latinoamericanas).
+ * @param {object} [opciones]
+ * @param {string} [opciones.idioma='es'] Prefijo de idioma de las voces locales.
+ * @returns {{hablar: function(string): void, detener: function(): void,
+ *   hablando: boolean, disponible: boolean, vozEsLocal: boolean,
+ *   nombreVoz: string}} Controles y estado de la lectura; `hablar` con el
+ *   mismo texto que se está leyendo funciona como interruptor.
+ */
 export function useLectura({ idioma = 'es' } = {}) {
     const [hablando, setHablando] = useState(false);
     const [vozLocal, setVozLocal] = useState(null);
@@ -200,7 +200,7 @@ export function useLectura({ idioma = 'es' } = {}) {
             || enEspanol[0];
     }, [idioma]);
 
-    // La lista de voces se carga de forma asíncrona en los navegadores
+    // La lista de voces se carga de forma asíncrona en los navegadores.
     useEffect(() => {
         if (!sintetizador) return undefined;
 
@@ -239,7 +239,7 @@ export function useLectura({ idioma = 'es' } = {}) {
             sintetizador.resume();
         } catch (_) { /* nada */ }
 
-        // Si aún no se asignó vozLocal, intentar resolverla ahora
+        // Si aún no se asignó vozLocal, se intenta resolverla ahora.
         const vozActual = vozLocal || elegirMejorVoz(sintetizador.getVoices());
         if (vozActual && !vozLocal) {
             setVozLocal(vozActual);
@@ -259,7 +259,7 @@ export function useLectura({ idioma = 'es' } = {}) {
         };
         enunciado.onerror = (e) => {
             limpiarKeepAlive();
-            // Errores comunes que no son fatales (como interrupted al cancelar)
+            // 'interrupted' y 'canceled' son normales al cancelar; no se registran.
             if (e.error !== 'interrupted' && e.error !== 'canceled') {
                 console.warn('SpeechSynthesis error:', e.error);
             }
@@ -273,7 +273,8 @@ export function useLectura({ idioma = 'es' } = {}) {
 
         try {
             sintetizador.speak(enunciado);
-            // Workaround para el bug de Chrome donde speechSynthesis se congela tras 14s
+            // Chrome congela speechSynthesis tras unos 14 s de habla continua;
+            // pausar y reanudar cada 8 s lo mantiene activo.
             keepAliveTimerRef.current = setInterval(() => {
                 if (sintetizador.speaking && !sintetizador.paused) {
                     sintetizador.pause();
@@ -293,13 +294,13 @@ export function useLectura({ idioma = 'es' } = {}) {
 
         const textoLimpio = String(texto).trim();
 
-        // Si ya estaba hablando EXACTAMENTE el mismo texto, actúa como interruptor
+        // Si ya estaba leyendo exactamente el mismo texto, actúa como interruptor.
         if (hablando && textoActualRef.current === textoLimpio) {
             detener();
             return;
         }
 
-        // Si estaba hablando otra cosa, se detiene primero para dar paso al nuevo mensaje
+        // Si estaba leyendo otra cosa, se detiene primero para dar paso al nuevo mensaje.
         if (hablando || audioFalRef.current || sintetizador?.speaking) {
             detener();
         }
@@ -307,7 +308,7 @@ export function useLectura({ idioma = 'es' } = {}) {
         setHablando(true);
         textoActualRef.current = textoLimpio;
 
-        // Intentar endpoint de síntesis rápida o caer a voz local nativa de inmediato
+        // Se intenta la voz de FAL; ante cualquier fallo o `use_local`, se usa la voz local.
         apiPost('/query/speak', { text: textoLimpio }, { timeout: TIMEOUT_FAL_MS })
             .then((res) => {
                 const audioUrl = res?.data?.audio_url;
@@ -337,7 +338,7 @@ export function useLectura({ idioma = 'es' } = {}) {
             });
     }, [hablando, hablarLocal, detener]);
 
-    // Limpieza al desmontar
+    // Limpieza al desmontar.
     useEffect(() => () => {
         limpiarKeepAlive();
         try { sintetizador?.cancel(); } catch (_) { /* nada */ }

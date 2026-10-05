@@ -1,23 +1,17 @@
 """
-tests/test_mirror_manager_aislamiento.py — Verificación en vivo antes de que
-Reportes BI confíe en una vista de CHAT.
+Pruebas de la verificación en vivo de las vistas de CHAT en Reportes BI.
 
-CONTEXTO (bug real, 28/08/2026)
---------------------------------
-Con SONG (FOODGARDEN S.A., empresa agrícola) como empresa activa, Reportes BI
-mostró las tarjetas "Ingresos por Línea de Negocio" y "Top 5 Productos" con
-datos reales de MONT (pensiones de colegio). Causa: CHAT es un namespace de
-vistas COMPARTIDO por todo el servidor (no por sesión) — otra petición
-concurrente había re-apuntado sus vistas a MONT justo antes de que el pulso
-de SONG corriera. Las tres tarjetas afectadas (Balance Comercial, académica,
-y las dos tablas nuevas) construyen su SQL a mano contra `[CHAT].[dbo].[...]`
-y por eso no pasaban por la verificación que sí protege a las métricas del
-catálogo genérico (ver tests/test_integridad_vistas.py).
+CHAT es un espacio de vistas compartido por todo el servidor (no por sesión):
+otra petición concurrente puede reapuntar sus vistas a otra empresa justo antes
+de que Reportes BI las lea y mostrar, por ejemplo, pensiones de colegio en una
+empresa agrícola. Las tarjetas que construyen su SQL a mano contra
+`[CHAT].[dbo].[...]` no pasan por la verificación del catálogo genérico (ver
+tests/test_integridad_vistas.py), así que `MirrorManager._vista_confiable_para`
+confirma en vivo que la definición ACTUAL de la vista apunta a la base de la
+empresa conectada. Reportes BI solo muestra datos de la empresa activa.
 
-`MirrorManager._vista_confiable_para` es el punto único donde se cerró ese
-hueco: antes de leer cualquier vista de CHAT a mano, se confirma en vivo que
-su definición ACTUAL apunta a la misma base que la empresa conectada. Esta
-regla es fija: Reportes BI solo muestra datos de la empresa activa.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import sys
 from pathlib import Path
@@ -56,7 +50,7 @@ def test_confia_cuando_la_vista_apunta_a_la_empresa_conectada():
 
 
 def test_no_confia_cuando_la_vista_apunta_a_otra_empresa():
-    """Reproduce el bug exacto: CHAT.cabecera_factura apuntando a MONT con SONG activa."""
+    """CHAT.cabecera_factura apunta a MONT con SONG activa: la vista no es confiable."""
     conn = FakeConnector("CREATE VIEW cabecera_factura AS SELECT * FROM [MONT].[dbo].[tb_cabmov]")
     mm = MirrorManager(conn)
     assert mm._vista_confiable_para("cabecera_factura", "SONG") is False

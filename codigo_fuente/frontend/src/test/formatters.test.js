@@ -1,11 +1,16 @@
+/**
+ * @file Pruebas de `formatValue` con columnas de fecha. Verifican que un año
+ * suelto («2026») en una columna «Fecha» no pase por el formateador numérico
+ * (que lo mostraría como «2.026», con separador de miles), que las fechas
+ * completas AAAA-MM-DD se sigan formateando y que las columnas numéricas
+ * conserven el separador de miles.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 import { describe, it, expect } from 'vitest';
 import { formatValue } from '../utils/formatters';
 
-// Regresión (29/08/2026): una columna "Fecha" cuyo
-// valor era solo el año ("2026", sin día/mes) no calzaba con el patrón de
-// fecha reconocido y caía en el formateador numérico genérico, mostrándose
-// como "2.026" — con separador de miles, como si fuera dinero. Una columna
-// de fecha nunca debe pasar por ese formateador.
 describe('formatValue — columnas de fecha', () => {
     it('no le pone separador de miles a un año suelto en una columna Fecha', () => {
         expect(formatValue(2026, 'Fecha')).toBe('2026');

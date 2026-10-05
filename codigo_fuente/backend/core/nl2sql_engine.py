@@ -1,28 +1,14 @@
 """
- * ============================================================================
- * FICHA TECNICA DEL SISTEMA [BACKEND-CORE-03]
- * ============================================================================
- * ARCHIVO: nl2sql_engine.py
- * MODULO: AI / Cognitive Processor (The Brain)
- *
- * PROPOSITO GERENCIAL:
- * Es el nucleo del "Pensamiento" de la plataforma. Transforma las preguntas
- * estrategicas de los usuarios (en lenguaje natural) en instrucciones tecnicas
- * precisas que las bases de datos pueden entender y responder.
- *
- * PUNTO DE OPERACION:
- * Capa Cognitiva. Es el componente que "habla" con los modelos avanzados de
- * IA (como DeepSeek) para razonar sobre los datos del negocio.
- *
- * CAPACIDADES PRINCIPALES:
- * - Traduccion Inteligente (NL2SQL): Convierte "Ventas de ayer" en codigo SQL.
- * - Guardrails Eticos y de Negocio: Evita que la IA responda cosas fuera de
- *   lugar (como chistes o temas no empresariales).
- * - Auto-Correccion: Si el primer intento de SQL falla, el sistema "piensa"
- *   de nuevo y corrige el error automaticamente antes de mostrarlo.
- * - Narrativa Ejecutiva: No solo entrega datos, sino que redacta un resumen
- *   explicativo para que el usuarios entienda el "insight" de la respuesta.
- * ============================================================================
+Motor NL2SQL: traduce preguntas en lenguaje natural a SQL de solo lectura.
+
+Arma el prompt con el esquema podado, la lógica de negocio, el alcance y la
+memoria de la empresa; elige el modelo (Instant/Flash, Experto, visión o un
+proveedor puntual) sobre una cascada DeepSeek, Gemini, Groq y NVIDIA NIM con
+.with_fallbacks() de LangChain, y pasa el SQL por el sanitizador. También
+corrige SQL fallido, analiza imágenes y atiende el modo libre y el de Invitado.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -248,9 +234,9 @@ Genera SOLO JSON valido:
 """
 
 
-# ─── Carga de configuracion segura ─────────────────────────────────────────
-# Siempre intentamos config.py primero. Si falla (ej: tests aislados),
-# leemos las variables directamente del entorno.
+# ─── Carga de configuración segura ─────────────────────────────────────────
+# Se intenta primero config.py; si falla (p. ej., en pruebas aisladas), las
+# variables se leen directamente del entorno.
 try:
     from config import (
         DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEEPSEEK_MODEL_PRO, DEEPSEEK_MODEL_VISION,
@@ -279,12 +265,12 @@ except ImportError:
         "nvidia_muse": "meta/muse-glimmer-30b",
     }
     DEEPSEEK_BASE_URL  = os.getenv("DEEPSEEK_BASE_URL",  "https://api.deepseek.com/v1")
-    # OJO: este camino de respaldo se salta la normalización de config.py, así
-    # que el valor por defecto tiene que ser un modelo VIGENTE. Estaba en
-    # "deepseek-chat", descontinuado el 24/07/2026: si config.py no se podía
-    # importar (p. ej. por el orden de PYTHONPATH en el contenedor), el motor
-    # arrancaba apuntando a un modelo inexistente y TODA consulta a la IA
-    # fallaba, aunque el .env o env.yaml tuvieran el modelo correcto.
+    # Este camino de respaldo se salta la normalización de config.py, así que
+    # los valores por defecto deben ser modelos vigentes y los nombres
+    # descontinuados se traducen a sus reemplazos. Si no, un fallo al importar
+    # config.py (p. ej., por el orden de PYTHONPATH en el contenedor) dejaría
+    # al motor apuntando a un modelo inexistente aunque el .env tuviera el
+    # modelo correcto.
     _descontinuados = {"deepseek-chat": "deepseek-v4-flash",
                        "deepseek-reasoner": "deepseek-v4-pro"}
 
@@ -302,8 +288,11 @@ except ImportError:
 
 # ─── Motor Principal ────────────────────────────────────────────────────────
 def _salida_degenerada(texto: str) -> bool:
-    """Vacía o sin contenido real (ej. "!!!!!!!!!!!!", solo signos): el
-    proveedor respondió 200 pero no generó una respuesta utilizable."""
+    """Indica si la salida está vacía o sin contenido real (p. ej., "!!!!!!!!", solo signos).
+
+    Cubre el caso en que el proveedor respondió 200 pero no generó una
+    respuesta utilizable.
+    """
     t = (texto or "").strip()
     if not t:
         return True
@@ -312,68 +301,59 @@ def _salida_degenerada(texto: str) -> bool:
 
 
 class NL2SQLEngine:
-    """Motor de conversión de lenguaje natural a SQL con una cascada de proveedores de LLM
-    (Gemini → Groq → NVIDIA NIM → DeepSeek)."""
+    """Motor de conversión de lenguaje natural a SQL con una cascada de proveedores de LLM.
+
+    DeepSeek es el principal cuando tiene clave; le siguen Gemini, Groq y
+    NVIDIA NIM como respaldo.
+    """
 
     def __init__(self, api_key: str, database_name: str = "CHAT", business_name: str = None) -> None:
         from langchain_openai import ChatOpenAI
 
-        # ChatOpenAI revienta en la CONSTRUCCIÓN (no al invocar) si recibe una
+        # ChatOpenAI falla en la construcción (no al invocar) si recibe una
         # api_key vacía ("Missing credentials"). Con la cascada de respaldo,
-        # DeepSeek puede legítimamente no tener llave (este proyecto la dejó
-        # vacía a propósito) y aun así queremos que el motor arranque y caiga
-        # a Gemini/Groq/NVIDIA. Un placeholder no vacío deja que construya
-        # bien; la llamada real fallará por auth (401) recién al invocar,
+        # DeepSeek puede no tener clave y el motor aun así debe arrancar y usar
+        # Gemini, Groq o NVIDIA. Un marcador no vacío permite construir el
+        # cliente; la llamada real falla por autenticación (401) al invocar,
         # que es justo lo que dispara `.with_fallbacks()`.
         api_key = api_key or "sin-clave-configurada"
 
-        # FASE 4 — punto 6: tres modelos DeepSeek, cada uno para un tipo de
-        # pregunta distinto, en vez de un único cliente fijo para todo.
-        # Reemplaza al Motor 2 (Qwen/Together AI): ese cliente se instanciaba
-        # pero _select_llm() para la generación principal SIEMPRE devolvía
-        # DeepSeek — el único uso real que tenía Qwen era la autocorrección de
-        # SQL fallido (generate_correction), y ese caso es exactamente
-        # "razonamiento complejo", así que ahora lo cubre el modelo Pro de
-        # DeepSeek en vez de mantener una cuenta/API key aparte solo para eso.
+        # Hay un cliente por tipo de pregunta (Flash, Pro, visión y libre) en
+        # lugar de uno fijo para todo. La autocorrección de SQL fallido
+        # (generate_correction) es razonamiento complejo, así que la cubre Pro.
 
-        # Defecto detectado en pruebas (29/08/2026): "total de ventas por
-        # meses 2026" (sin "del") se quedó pensando sin responder NUNCA. Causa
-        # raíz: ninguno de los tres clientes tenía `timeout` propio, así que
-        # heredaban el default del SDK de OpenAI — 600 segundos, más hasta 2
-        # reintentos automáticos (o sea, hasta 30 minutos en el peor caso) — en
-        # vez de fallar rápido y dejar que el manejo de errores que YA existe
-        # (más abajo, `except Exception as exc: return None, f"Error del motor
-        # DeepSeek: {exc}"`) le devuelva al usuario un mensaje claro. Con esto
-        # el peor caso pasa a ser ~90s (45s × 2 intentos) en vez de 30 minutos.
-        # Mismo orden de magnitud que el timeout de 40s ya usado para SQL en
-        # db_connector.execute_query — nunca debe quedar "pensando" en silencio.
+        # Cada cliente tiene un timeout propio: sin él heredaría el del SDK de
+        # OpenAI (600 s y hasta 2 reintentos, hasta 30 minutos en el peor caso)
+        # y la consulta quedaría «pensando» en silencio. Con 45 s y un
+        # reintento, el peor caso ronda los 90 s y el manejo de errores
+        # devuelve un mensaje claro; es del mismo orden que el timeout de 40 s
+        # de db_connector.execute_query.
         # ── Cascada de respaldo gratuita ─────────────────────────────────────
-        # Orden: Gemini (más generoso/capaz) -> Groq (más rápido) -> NVIDIA NIM
-        # (catálogo amplio, estable). DeepSeek sigue siendo el modelo PRIMARIO
-        # de cada rol (flash/pro); si no tiene llave o falla (429/503/timeout),
-        # LangChain's `.with_fallbacks()` prueba el siguiente automáticamente,
-        # sin que el resto del pipeline (parseo, sanitizador) note diferencia.
-        # Solo se agregan al respaldo los proveedores con llave configurada.
-        # Bug real (25/09/2026): kimi-k3 (NVIDIA NIM) en modo razonamiento a
-        # veces deja TODA la respuesta dentro de `reasoning_content`, campo que
-        # LangChain descarta: el contenido llegaba vacío ("No se pudo
-        # estructurar la salida del modelo") aunque el modelo sí respondió.
-        # Verificado en vivo: con thinking=False la respuesta llega en
-        # `content`. NIM ignora esta opción en los modelos que no la soportan.
+        # Orden: Gemini (más generoso y capaz) -> Groq (más rápido) -> NVIDIA NIM
+        # (catálogo amplio y estable). DeepSeek es el modelo primario de cada
+        # rol (flash/pro) cuando tiene clave; si falla (429/503/timeout),
+        # `.with_fallbacks()` de LangChain prueba el siguiente sin que el resto
+        # del pipeline (parseo, sanitizador) note diferencia. Solo se agregan
+        # los proveedores con clave configurada.
+        # En modo razonamiento, kimi-k3 (NVIDIA NIM) puede dejar toda la
+        # respuesta en `reasoning_content`, campo que LangChain descarta, y el
+        # contenido llegaría vacío aunque el modelo sí respondió. Con
+        # thinking=False la respuesta llega en `content`; NIM ignora esta
+        # opción en los modelos que no la soportan.
         _SIN_RAZONAMIENTO_NVIDIA = {"chat_template_kwargs": {"thinking": False}}
 
         def _proveedores_gratuitos(temperature: float, max_tokens: int, timeout: int) -> dict:
-            """Dict (no lista) para poder pedir UNO puntual por nombre — ver
-            `_motor_individual` — además de usarlos todos en orden para la
-            cascada automática de `_construir_cascada`.
+            """Devuelve los proveedores gratuitos con clave configurada, indexados por nombre.
 
-            Bug real (25/09/2026, detectado por eval/evaluar_nl2sql.py): los
-            modelos de la cascada (kimi-k3, gpt-oss) son de RAZONAMIENTO —
-            gastan tokens pensando antes de escribir la respuesta. Con el tope
-            de 600 tokens del rol Flash (pensado para DeepSeek, que no razona)
-            el razonamiento agotaba el presupuesto y la respuesta llegaba
-            VACÍA ("No se pudo estructurar la salida del modelo"). Se garantiza
-            un mínimo propio para la cascada."""
+            Es un dict y no una lista para poder pedir uno puntual por nombre
+            (ver `_motor_individual`), además de usarlos todos en orden en la
+            cascada de `_construir_cascada`.
+
+            Los modelos de la cascada (kimi-k3, gpt-oss) razonan antes de
+            escribir la respuesta y gastan tokens en ello: con el tope de 600
+            del rol Flash, pensado para DeepSeek, la respuesta llegaría vacía.
+            Por eso se garantiza un mínimo propio (LLM_MAX_TOKENS_CASCADA).
+            """
             max_tokens = max(max_tokens, int(os.getenv("LLM_MAX_TOKENS_CASCADA", "3000")))
             disponibles = {}
             if GEMINI_API_KEY:
@@ -395,19 +375,21 @@ class NL2SQLEngine:
             return disponibles
 
         def _cascada_respaldo(temperature: float, max_tokens: int, timeout: int):
+            """Devuelve los proveedores gratuitos configurados como lista, en el orden de la cascada."""
             return list(_proveedores_gratuitos(temperature, max_tokens, timeout).values())
 
         def _motor_individual(proveedor: str, temperature: float, max_tokens: int, timeout: int):
-            """
-            Selector manual (09/09/2026): probar UN
-            proveedor/modelo gratuito puntual por su nombre — incluye los 5
-            modelos de NVIDIA NIM por separado (mismo catálogo del selector
-            del chat: nvidia_deepseek_pro, nvidia_deepseek_flash, nvidia_kimi,
-            nvidia_nemotron, nvidia_muse — ver config.py::NVIDIA_MODELOS_DISPONIBLES),
-            no solo un "nvidia" genérico. Igual que en la cascada automática,
-            si ESE proveedor falla, cae al resto de los gratuitos (Gemini,
-            Groq, NVIDIA genérico) como red de seguridad — elegir uno para
-            probarlo no debe dejar al usuario sin respuesta.
+            """Construye el motor de un proveedor o modelo gratuito puntual, elegido por nombre.
+
+            Incluye por separado los 5 modelos de NVIDIA NIM del selector del
+            chat (nvidia_deepseek_pro, nvidia_deepseek_flash, nvidia_kimi,
+            nvidia_nemotron, nvidia_muse; ver config.py::NVIDIA_MODELOS_DISPONIBLES).
+            Igual que en la cascada automática, si ese proveedor falla se pasa
+            al resto de los gratuitos (Gemini, Groq, NVIDIA genérico): elegir
+            uno para probarlo no debe dejar al usuario sin respuesta.
+
+            Returns:
+                El motor con sus respaldos, o None si el proveedor no tiene clave.
             """
             respaldo = _proveedores_gratuitos(temperature, max_tokens, timeout)
 
@@ -419,10 +401,9 @@ class NL2SQLEngine:
                     temperature=temperature, max_tokens=max_tokens, timeout=timeout, max_retries=0,
                     extra_body=_SIN_RAZONAMIENTO_NVIDIA,
                 )
-                # El respaldo NVIDIA genérico de la cascada apunta al mismo
-                # modelo si el usuario eligió justo "nvidia_deepseek_pro"
-                # (es el que usa NVIDIA_MODEL por defecto) — no tiene sentido
-                # reintentar el mismo modelo dos veces.
+                # Si el modelo elegido es el mismo que NVIDIA_MODEL (por defecto,
+                # "nvidia_deepseek_pro"), se quita el respaldo NVIDIA genérico:
+                # no tiene sentido reintentar el mismo modelo dos veces.
                 if NVIDIA_MODELOS_DISPONIBLES[proveedor] == NVIDIA_MODEL:
                     respaldo.pop("nvidia", None)
             else:
@@ -434,14 +415,11 @@ class NL2SQLEngine:
             return principal.with_fallbacks(resto) if resto else principal
 
         def _construir_cascada(modelo_deepseek: str, temperature: float, max_tokens: int, timeout: int, max_retries: int):
-            """
-            Auditoría 09/09/2026 (#7): antes SIEMPRE se probaba DeepSeek primero
-            aunque DEEPSEEK_API_KEY estuviera vacío (con un placeholder para que
-            ChatOpenAI no reventara en la construcción) — cada pregunta pagaba
-            una llamada HTTP condenada a fallar (401) antes de caer recién ahí a
-            Gemini/Groq/NVIDIA. Si no hay llave real de DeepSeek, se arma la
-            cascada saltándoselo del todo: el primer proveedor CON llave pasa a
-            ser el principal.
+            """Arma la cascada de un rol: DeepSeek como principal si tiene clave, seguido de los gratuitos.
+
+            Sin clave real de DeepSeek se omite por completo, para no pagar en
+            cada pregunta una llamada HTTP condenada a fallar (401); el primer
+            proveedor con clave pasa a ser el principal.
             """
             proveedores = []
             if DEEPSEEK_API_KEY:
@@ -453,8 +431,7 @@ class NL2SQLEngine:
             proveedores.extend(_cascada_respaldo(temperature, max_tokens, timeout))
 
             if not proveedores:
-                # Nadie configurado (ni DeepSeek ni la cascada de respaldo):
-                # mismo comportamiento de siempre — un cliente "vacío" que
+                # Sin ningún proveedor configurado se devuelve un cliente que
                 # falla al invocarse y deja al sistema en modo seguro.
                 return ChatOpenAI(
                     model=modelo_deepseek, api_key=api_key, base_url=DEEPSEEK_BASE_URL,
@@ -465,20 +442,20 @@ class NL2SQLEngine:
             return principal.with_fallbacks(respaldos) if respaldos else principal
 
         _LLM_TIMEOUT_SEG = 45
-        # Pro razona ANTES de responder (emite reasoning_content): una pregunta
-        # comparativa compleja con el prompt completo puede tardar más de 45s.
+        # Pro razona antes de responder (emite reasoning_content): una pregunta
+        # comparativa compleja con el prompt completo puede tardar más de 45 s.
         # Con un timeout propio más alto, el motor Experto completa su
-        # razonamiento en vez de reintentar/fallar por premura.
+        # razonamiento en lugar de reintentar o fallar por premura.
         _LLM_TIMEOUT_PRO_SEG = 150
         _LLM_MAX_REINTENTOS = 1
 
         # "Instant" — conversación cotidiana, consultas simples de una métrica.
         self.llm_flash = _construir_cascada(DEEPSEEK_MODEL, LLM_TEMPERATURE, LLM_MAX_TOKENS, _LLM_TIMEOUT_SEG, _LLM_MAX_REINTENTOS)
-        self.llm_deepseek = self.llm_flash  # alias retrocompatible: código existente referencia este nombre
+        self.llm_deepseek = self.llm_flash  # alias por compatibilidad: otras partes del código usan este nombre
 
-        # Selector manual por proveedor puntual (09/09/2026): mismos parámetros
-        # de "Instant"/Flash. `None` si ese proveedor no tiene llave — se
-        # valida en `_select_llm` antes de usarlo.
+        # Selector manual por proveedor puntual, con los mismos parámetros que
+        # "Instant"/Flash. Es None si ese proveedor no tiene clave; `_select_llm`
+        # lo valida antes de usarlo.
         self.llm_gemini = _motor_individual("gemini", LLM_TEMPERATURE, LLM_MAX_TOKENS, _LLM_TIMEOUT_SEG)
         self.llm_groq = _motor_individual("groq", LLM_TEMPERATURE, LLM_MAX_TOKENS, _LLM_TIMEOUT_SEG)
         # Los 5 modelos de NVIDIA NIM seleccionables por separado (ver
@@ -487,13 +464,12 @@ class NL2SQLEngine:
         for _motor_id in NVIDIA_MODELOS_DISPONIBLES:
             setattr(self, f"llm_{_motor_id}", _motor_individual(_motor_id, LLM_TEMPERATURE, LLM_MAX_TOKENS, _LLM_TIMEOUT_SEG))
 
-        # "Experto" — forecast, comparativas multi-módulo, autocorrección de
-        # SQL, preguntas de finanzas/contabilidad que requieren más razonamiento.
-        # max_tokens propio (LLM_MAX_TOKENS_PRO > LLM_MAX_TOKENS): este modelo
-        # razona ANTES de responder (emite reasoning_content que LangChain
-        # ignora y que consume el mismo tope de tokens). Con el tope de Flash,
-        # el razonamiento se comía todo el presupuesto y el JSON llegaba
-        # vacío/cortado — "Pro no se activa del todo" (bug real 30/08/2026).
+        # "Experto": pronósticos, comparativas entre módulos, autocorrección de
+        # SQL y preguntas de finanzas o contabilidad que requieren más
+        # razonamiento. Tiene max_tokens propio (LLM_MAX_TOKENS_PRO >
+        # LLM_MAX_TOKENS) porque razona antes de responder: el reasoning_content
+        # que LangChain ignora consume el mismo tope, y con el de Flash el JSON
+        # llegaría vacío o cortado.
         self.llm_pro = _construir_cascada(DEEPSEEK_MODEL_PRO, LLM_TEMPERATURE, LLM_MAX_TOKENS_PRO, _LLM_TIMEOUT_PRO_SEG, _LLM_MAX_REINTENTOS)
 
         # "Vision" — preguntas que adjuntan imágenes. Se instancia siempre
@@ -511,12 +487,11 @@ class NL2SQLEngine:
             max_retries=_LLM_MAX_REINTENTOS,
         )
 
-        # "Libre" — SOLO para el modo desarrollador (ver core/modo_desarrollador.py).
-        # Es el mismo proveedor, pero con dos diferencias que importan:
-        # max_tokens muy por encima de LLM_MAX_TOKENS (600 es correcto para una
-        # explicación de negocio de tres líneas y ridículo para explicar una
-        # arquitectura, que es justo lo que se le va a pedir aquí) y temperatura
-        # más alta, porque no está produciendo SQL sino conversación.
+        # "Libre": solo para el modo desarrollador (ver core/modo_desarrollador.py).
+        # Usa el mismo proveedor con dos diferencias: max_tokens muy por encima
+        # de LLM_MAX_TOKENS (600 bastan para una explicación de negocio de tres
+        # líneas, no para explicar una arquitectura) y temperatura más alta,
+        # porque produce conversación y no SQL.
         self.llm_libre = ChatOpenAI(
             model=DEEPSEEK_MODEL_PRO,
             api_key=api_key,
@@ -572,10 +547,10 @@ class NL2SQLEngine:
         r"\bforecast\b", r"\bestima(?:cion)?\b.*\b(ventas|ingresos|demanda)\b",
         r"\btendencia futura\b", r"\bque pasara\b", r"\bcuanto se vendera\b",
         r"\bcompara\b.*\by\b", r"\bcomparaci[oó]n\b", r"\bversus\b", r"\bvs\.?\b",
-        # Bug real (29/08/2026): "año contra año"/"año vs año" exigían las dos
-        # palabras pegadas, pero una frase natural dice "año CONTRA EL año" o
-        # "este año VS el año pasado" — con algo en medio. Se permite hasta 20
-        # caracteres entre "año" y "contra"/"vs", y de ahí hasta el segundo "año".
+        # Una frase natural pone palabras entre "año" y "contra"/"vs" ("año
+        # contra el año", "este año vs el año pasado"), así que se permiten
+        # hasta 20 caracteres entre "año" y "contra"/"vs", y otros 20 hasta el
+        # segundo "año".
         r"\btrimestre a trimestre\b",
         r"\ba[ñn]o\b.{0,20}\bcontra\b.{0,20}\ba[ñn]o\b", r"\ba[ñn]o\b.{0,20}\bvs\.?\b.{0,20}\ba[ñn]o\b",
         r"\bmargen\b.*\bentre\b", r"\bbalance general\b", r"\bflujo de caja\b",
@@ -589,8 +564,10 @@ class NL2SQLEngine:
     _RE_MODELO_EXPERTO = re.compile("|".join(_PATRONES_MODELO_EXPERTO))
 
     def _requiere_modelo_experto(self, question: str) -> bool:
-        """True si la pregunta pide razonamiento más allá de una consulta
-        directa: predicción, comparativas, o finanzas/contabilidad avanzada."""
+        """Indica si la pregunta pide razonamiento más allá de una consulta directa.
+
+        Cubre predicción, comparativas y finanzas o contabilidad avanzadas.
+        """
         texto = re.sub(r"\s+", " ", (question or "").lower()).strip()
         return bool(self._RE_MODELO_EXPERTO.search(texto))
 
@@ -615,11 +592,10 @@ class NL2SQLEngine:
         motor = (modelo_forzado or "").strip().lower()
         if motor == "pro":
             return self.llm_pro
-        # Selector manual por proveedor puntual (09/09/2026): para PROBAR cada
-        # API gratuita por separado. Si ese proveedor no tiene llave
-        # configurada (self.llm_x es None), cae a Flash (cascada completa) en
-        # vez de reventar — un motor de prueba sin llave nunca debe dejar al
-        # usuario sin respuesta.
+        # Selector manual por proveedor puntual, para probar cada API gratuita
+        # por separado. Si ese proveedor no tiene clave (self.llm_x es None),
+        # cae a Flash con la cascada completa: un motor de prueba sin clave
+        # nunca debe dejar al usuario sin respuesta.
         if motor == "gemini" or motor == "groq" or motor in NVIDIA_MODELOS_DISPONIBLES:
             especifico = getattr(self, f"llm_{motor}", None)
             if especifico is not None:
@@ -627,15 +603,16 @@ class NL2SQLEngine:
         return self.llm_flash
 
     def get_table_candidates(self, question: str, limit: int = 15) -> list[str]:
-        """
-        Identifica los nombres de las tablas candidatas usando Sinonimos de Negocio.
-        Esencial para la Poda Semantica y el JIT.
+        """Identifica las tablas candidatas para la pregunta usando sinónimos de negocio.
+
+        Es la base de la poda semántica del esquema que se envía al modelo.
         """
         q_norm = re.sub(r'[^a-z0-9]', ' ', question.lower()).split()
         if not q_norm or not self.schema_tables:
             return list(self.schema_tables.keys())[:limit]
 
-        # Mapa de Sinonimos de Negocio (Universal) con Inyección de Tablas Core Sin Guiones Bajos (por el match estricto)
+        # Mapa universal de sinónimos de negocio; incluye los nombres de las
+        # tablas y vistas principales para que también sumen en la comparación.
         synonyms = {
             "estudiante": ["alumno", "educacion", "aula", "matricula", "inscripcion", "academico", "VIS_ALUMNO"],
             "compras": ["gasto", "inversion", "proveedor", "compra", "orden", "ingreso", "cabecera_compra"],
@@ -645,7 +622,7 @@ class NL2SQLEngine:
             "inventario": ["stock", "kardex", "producto", "bodega", "medida", "item"]
         }
         
-        # Expandir q_norm con sinonimos
+        # Se amplía q_norm con los sinónimos.
         expanded_q = list(q_norm)
         for word in q_norm:
             for master, syn_list in synonyms.items():
@@ -658,19 +635,20 @@ class NL2SQLEngine:
             s = 0
             n = name.lower().replace("_", " ")
             
-            # 1. Match de Palabras (Score Base)
+            # 1. Coincidencia de palabras (puntaje base).
             for w in set(expanded_q):
                 if len(w) > 2 and w in n:
                     s += 10
             
-            # 2. PRIORIDAD MAESTRA: Si es una Vista de Negocio (VIS_ o V_), gran bonus
-            # `db_connector` etiqueta las vistas como "VISTA" (no "VIEW"), asi
-            # que se aceptan ambas: si no, vistas de CHAT sin prefijo
-            # (cabecera_factura, rol_pago, ficha_trabajador) perdian este bonus.
+            # 2. Prioridad principal: las vistas de negocio (VIS_, V_ o de tipo
+            # vista) reciben un bono alto. `db_connector` etiqueta las vistas
+            # como "VISTA" (no "VIEW"), así que se aceptan ambas; si no, las
+            # vistas de CHAT sin prefijo (cabecera_factura, rol_pago,
+            # ficha_trabajador) perderían el bono.
             if name.startswith(("VIS_", "V_")) or str(info.get("type", "")).upper() in ("VIEW", "VISTA"):
                 s += 20
                 
-            # 3. Bonus por tablas conocidas que tienen datos reales (Discovery)
+            # 3. Bono para tablas relevantes con datos reales (según el descubrimiento).
             if s > 0 and info.get("row_count", 0) > 0:
                 s += 5
                 
@@ -680,16 +658,18 @@ class NL2SQLEngine:
         return [t[1] for t in scored[:limit]]
 
     def _prune_schema(self, question: str, limit: int = 20) -> str:
-        """
-        TECNICA AVANZADA: Poda Semantica Universal con Inyeccion de sinonimos.
-        Filtra cientos de tablas para enviar solo las mas relevantes al LLM.
+        """Poda el esquema para enviar al LLM solo las tablas más relevantes para la pregunta.
+
+        Usa get_table_candidates() (con sinónimos de negocio), cae a las
+        primeras 15 tablas si no hay candidatas y muestra como máximo 30
+        columnas por tabla.
         """
         relevant_names = self.get_table_candidates(question, limit=limit)
         
         if not relevant_names:
              relevant_names = list(self.schema_tables.keys())[:15]
 
-        # Reconstruir REPRESENTACION TEXTUAL REDUCIDA
+        # Representación textual reducida del esquema.
         pruned_lines = [f"=== ESQUEMA SEMANTICO SELECCIONADO (Identificadas {len(relevant_names)} entidades relevantes) ===\n"]
         for name in relevant_names:
             info = self.schema_tables.get(name)
@@ -704,7 +684,7 @@ class NL2SQLEngine:
             
             cols = info.get("columns", [])
             if cols:
-                # Mostramos solo las primeras 30 columnas
+                # Solo se muestran las primeras 30 columnas.
                 for col in cols[:30]:
                     name_ptr = col.get('name') if isinstance(col, dict) else col
                     type_ptr = col.get('type', 'varchar') if isinstance(col, dict) else ""
@@ -719,7 +699,7 @@ class NL2SQLEngine:
         return "\n".join(pruned_lines)
 
     def _get_static_response(self) -> str:
-        """Genera saludo DINÁMICO basado ÚNICAMENTE en lo que existe en la BD conectada."""
+        """Genera un saludo según la hora que solo menciona lo que existe en la base conectada."""
         hour = datetime.now().hour
         if hour < 12:
             greeting = "Buenos días"
@@ -728,10 +708,10 @@ class NL2SQLEngine:
         else:
             greeting = "Buenas noches"
         
-        # NO inventar dominios. Solo mencionar la BD conectada.
+        # No se inventan dominios: solo se menciona la base conectada.
         db_label = f"**{self.database_name.upper()}**" if self.database_name else "la base de datos"
         
-        # Si hay schema, mencionar SOLO las tablas reales detectadas (max 3 ejemplos)
+        # Si hay esquema, se mencionan solo tablas reales detectadas (máximo 3 ejemplos).
         if self.schema_text and hasattr(self, 'schema_tables') and self.schema_tables:
             table_samples = list(self.schema_tables.keys())[:3]
             if table_samples:
@@ -748,22 +728,16 @@ class NL2SQLEngine:
         )
 
     def _extract_json(self, raw_text: str) -> dict | None:
-        """
-        Extrae el primer objeto JSON válido de la respuesta cruda del modelo.
+        """Extrae el primer objeto JSON válido de la respuesta cruda del modelo.
 
-        Defecto corregido (30/08/2026): la versión anterior tomaba la primera
-        "{" y la ÚLTIMA "}" del texto entero. Algunos modelos devuelven solo el
-        JSON, pero otros son más "conversacionales": pueden envolverlo con
-        una frase antes/después, o el propio SQL/explanation puede contener
-        llaves (una CTE, un ejemplo). Con la última "}" del texto entero, el
-        recorte agarraba de más y `json.loads` fallaba con el JSON entero
-        bien formado adentro — el usuario veía "Análisis completado" (JSON
-        parseado pero sin las claves esperadas) o "No se pudo estructurar la
-        salida del modelo" (ni eso).
+        Algunos modelos envuelven el JSON con una frase antes o después, y el
+        propio SQL o la explicación pueden contener llaves (una CTE, un
+        ejemplo). Por eso no basta con recortar entre la primera "{" y la
+        última "}": se cuenta la profundidad de llaves desde la primera "{",
+        ignorando las que van dentro de cadenas, hasta que vuelve a cero.
 
-        Ahora se cuenta profundidad de llaves desde el PRIMER "{" hasta que
-        vuelve a cero: el primer objeto JSON completo y válido, sin importar
-        qué haya después en el texto.
+        Returns:
+            El dict decodificado, o None si no se encuentra un JSON válido.
         """
         cleaned = re.sub(r"```(?:json|sql)?\s*", "", raw_text, flags=re.IGNORECASE)
         cleaned = re.sub(r"```", "", cleaned).strip()
@@ -798,10 +772,9 @@ class NL2SQLEngine:
                     except Exception:
                         break
 
-        # Respaldo: el intento anterior (primera "{" / última "}") por si el
-        # texto trae un JSON genuinamente mal balanceado que aun así el
-        # parser tolera (ej. una llave suelta dentro de una cadena mal
-        # escapada). Nunca deja de intentar antes de rendirse.
+        # Respaldo: recorte entre la primera "{" y la última "}", por si el
+        # texto trae un JSON mal balanceado que aun así el parser tolera
+        # (p. ej., una llave suelta dentro de una cadena mal escapada).
         end_idx = cleaned.rfind("}")
         if end_idx == -1:
             return None
@@ -811,36 +784,41 @@ class NL2SQLEngine:
             return None
 
     def set_schema(self, schema_text: str, semantic_relations: str | None = None, tables_dict: dict = None) -> None:
-        """Configura el schema y EXTRAE las tablas reales y virtuales disponibles."""
+        """Configura el esquema y extrae las tablas reales y virtuales disponibles.
+
+        Combina `tables_dict` con lo que se puede leer de `schema_text`
+        (TABLE:/VISTA:, CREATE VIEW y listas de columnas) y, si `schema_text`
+        viene vacío, lo genera a partir de las tablas para el LLM.
+        """
         self.schema_text = schema_text or ""
         if semantic_relations is not None:
             self.semantic_relations = semantic_relations or "Sin relaciones semanticas adicionales."
         
-        # 1. Cargar tablas base
+        # 1. Tablas base.
         self.schema_tables = tables_dict if tables_dict is not None else {}
         
-        # 2. PARSEO DE EMERGENCIA / VIRTUAL: Extraer vistas del schema_text
+        # 2. Análisis de respaldo: extrae tablas y vistas del schema_text.
         if self.schema_text:
             lines = self.schema_text.split("\n")
             current_table = None
             for line in lines:
                 line = line.strip()
-                # Soporte para formato estandar: TABLE: [Nombre] o VISTA: [Nombre]
+                # Formato estándar: TABLE: [Nombre] o VISTA: [Nombre]
                 if line.startswith(("TABLE:", "TABLA:", "VISTA:")):
                     current_table = line.split(":")[1].strip().replace("[", "").replace("]", "")
                     if current_table not in self.schema_tables:
                         self.schema_tables[current_table] = {"columns": []}
-                # Soporte para ADN VIRTUAL: CREATE VIEW [Nombre] (Col1, Col2...)
+                # Definición virtual: CREATE VIEW [Nombre] (Col1, Col2...)
                 elif line.startswith("CREATE VIEW "):
                     match = re.search(r"CREATE VIEW \[?(\w+)\]?\s*\((.*?)\)", line)
                     if match:
                         current_table = match.group(1)
                         cols = [c.strip().replace("[", "").replace("]", "") for c in match.group(2).split(",")]
                         self.schema_tables[current_table] = {"columns": [{"name": c} for c in cols], "type": "VIEW"}
-                # Soporte para listado de columnas bajo TABLE:
+                # Lista de columnas bajo TABLE:
                 elif line.startswith("- ") and current_table:
                     col_info = line[2:].strip()
-                    # Si ya existe la tabla pero sin columnas (o si es nueva)
+                    # Se inicializa la lista de columnas si falta y se agrega la columna sin duplicarla.
                     if current_table in self.schema_tables:
                         if not self.schema_tables[current_table].get("columns"):
                             self.schema_tables[current_table]["columns"] = []
@@ -854,8 +832,8 @@ class NL2SQLEngine:
                             self.schema_tables[current_table]["columns"].append({"name": col_name})
 
 
-        # Si el text schema venía vacío (ej: fase 0 rápida lograda solo con diccionario), 
-        # auto-generamos la representación textual para el LLM.
+        # Si schema_text venía vacío (p. ej., cuando solo se tiene el
+        # diccionario de tablas), se genera la representación textual para el LLM.
         if not self.schema_text and self.schema_tables:
             lines = ["=== ESQUEMA DE DATOS (AUTO-GENERADO) ===\n"]
             for table, info in self.schema_tables.items():
@@ -893,9 +871,27 @@ class NL2SQLEngine:
         vistas_reales: str = "",
         modelo_forzado: str | None = None,
     ) -> tuple[Any, str | None]:
+        """Genera el SQL, la explicación y el tipo de visualización para una pregunta.
+
+        Responde sin llamar al modelo los saludos y las preguntas fuera de
+        alcance. En el resto arma el prompt (esquema podado, lógica de
+        negocio, alcance, memoria de la empresa y vistas reales) y lo envía
+        al modelo elegido por `_select_llm`.
+
+        Args:
+            company_code: código de la empresa; indexa la memoria y la lógica
+                de negocio, porque `context_db` es "CHAT" para todas.
+            vistas_reales: nombres de las vistas detectadas en vivo.
+            modelo_forzado: motor elegido en el selector ("pro", un
+                proveedor puntual) o None para Flash.
+
+        Returns:
+            (respuesta, error): un dict con la respuesta (o una cadena "CHAT:"
+            conversacional) y None, o None y el mensaje de error.
+        """
         prompt_input = (question or "").strip()
         
-        # DETECCION MEJORADA DE SALUDOS: Responder naturalmente sin requerir schema
+        # Los saludos se responden con naturalidad sin requerir esquema.
         from core.deepseek_client import _is_greeting
         if _is_greeting(prompt_input):
             hour = datetime.now().hour
@@ -919,15 +915,13 @@ class NL2SQLEngine:
                 "agent_log": ["Greeting natural"],
             }, None
         
-        # GUARDARRAIL DE ALCANCE (primera linea, deterministica).
-        # Se evalua ANTES de tocar el esquema y ANTES de gastar un token: si la
-        # pregunta es inequivocamente ajena al negocio (noticias, geopolitica,
-        # deportes...), se responde con la guia de modulos reales y se corta.
-        # Antes de esto, la REGLA 8 decia "puedes responder CUALQUIER pregunta"
-        # y el motor inyectaba titulares de Google News: preguntar por la guerra
-        # de Ucrania devolvia un boletin desde una herramienta de BI conectada a
-        # la base de un colegio. El filtro es conservador a proposito (ver
-        # core/alcance.py): ante la duda deja pasar y decide la IA.
+        # Guardarraíl de alcance (primera línea, determinista).
+        # Se evalúa antes de tocar el esquema y antes de gastar un token: si la
+        # pregunta es inequívocamente ajena al negocio (noticias, geopolítica,
+        # deportes...), se responde con la guía de módulos reales y se corta.
+        # Una herramienta de BI conectada a la base de un colegio no debe
+        # responder titulares de actualidad. El filtro es conservador a
+        # propósito (ver core/alcance.py): ante la duda deja pasar y decide la IA.
         from core.alcance import (
             bloque_alcance_para_prompt,
             es_fuera_de_alcance,
@@ -935,12 +929,11 @@ class NL2SQLEngine:
         )
         from core.memoria_empresa import bloque_para_prompt as bloque_memoria_para_prompt
 
-        # La memoria SIEMPRE se indexa por codigo de empresa, nunca por
+        # La memoria siempre se indexa por código de empresa, nunca por
         # `context_db`: en esta arquitectura `context_db` llega como "CHAT"
-        # para TODAS las empresas (las consultas van a las vistas de CHAT), asi
-        # que usarlo mezclaria en un mismo saco lo aprendido de MONT, AGGO y el
-        # resto. Es la misma clave global que ya provoco una fuga de datos
-        # entre empresas en el cache semantico (incidente de fuga de datos entre empresas del 27/07/2026).
+        # para todas las empresas (las consultas van a las vistas de CHAT), así
+        # que usarlo mezclaría lo aprendido de todas las empresas. Una clave
+        # global así sería una fuga de datos entre empresas.
         empresa_memoria = (company_code or "").strip().upper()
         if not empresa_memoria or empresa_memoria == "CHAT":
             empresa_memoria = str(self.database_name or "").strip().upper()
@@ -961,9 +954,9 @@ class NL2SQLEngine:
                 "agent_log": ["Guardarrail de alcance (pregunta fuera del dominio)"],
             }, None
 
-        # Validacion CRITICA: sin esquema no hay nada que consultar.
-        # Ya NO se cae al radar web: eso era justo lo que convertia el asistente
-        # en un lector de noticias cuando la base aun no estaba sincronizada.
+        # Validación crítica: sin esquema no hay nada que consultar. No se
+        # recurre al radar de noticias, para que el asistente no se convierta
+        # en un lector de noticias cuando la base aún no está sincronizada.
         if not self.schema_text:
             return None, "Schema no cargado. Sincroniza la base de datos primero."
 
@@ -974,17 +967,17 @@ class NL2SQLEngine:
             llm = self._select_llm(module, question=prompt_input, modelo_forzado=modelo_forzado)
             from core.business_logic import get_business_logic
 
-            # PODA SEMANTICA: Filtramos el esquema segun la pregunta
+            # Poda semántica: el esquema se filtra según la pregunta.
             effective_context_schema = self._prune_schema(prompt_input)
 
             variables_prompt = {
                     "schema": effective_context_schema,
                     "semantic_relations": self.semantic_relations,
                     # Mismo motivo que la memoria: `context_db` llega como "CHAT"
-                    # para todas las empresas, y "CHAT" no esta en el mapa de
-                    # business_logic.json, asi que la IA recibia SIEMPRE la
-                    # descripcion generica por defecto y nunca sabia si estaba
-                    # ante una unidad educativa o una comercial.
+                    # para todas las empresas y "CHAT" no está en el mapa de
+                    # business_logic.json; con él, la IA recibiría siempre la
+                    # descripción genérica y no sabría si está ante una unidad
+                    # educativa o una comercial.
                     "business_logic": get_business_logic(
                         empresa_memoria or context_db, self.business_name or ""
                     ),
@@ -993,24 +986,24 @@ class NL2SQLEngine:
                     "module": module,
                     "context_db": context_db,
                     "current_date": datetime.now().strftime("%Y-%m-%d"),
-                    # Segunda linea de defensa: el modelo recibe por escrito cual
-                    # es su alcance y que modulos REALES tiene esta base, para que
+                    # Segunda línea de defensa: el modelo recibe por escrito cuál
+                    # es su alcance y qué módulos reales tiene esta base, para que
                     # el rechazo sea concreto ("no tengo compras, sí alumnos") en
-                    # lugar de un "no puedo" generico.
+                    # lugar de un "no puedo" genérico.
                     "alcance": bloque_alcance_para_prompt(
                         self.business_name or self.database_name, self.schema_tables
                     ),
                     "db_insights": self.db_insights if context_db in str(self.db_insights) else "",
                     # Memoria de largo plazo: correcciones y precisiones que el
-                    # usuario dio en conversaciones ANTERIORES de esta misma
-                    # empresa. Es lo que hace que una correccion no haya que
-                    # repetirla en cada chat nuevo. Devuelve "" cuando no hay
-                    # nada aprendido, dejando el prompt igual que antes.
+                    # usuario dio en conversaciones anteriores de esta misma
+                    # empresa, para no tener que repetirlas en cada chat nuevo.
+                    # Devuelve "" cuando no hay nada aprendido y el prompt queda
+                    # como el base.
                     "memoria_aprendida": bloque_memoria_para_prompt(empresa_memoria),
-                    # Vistas reales detectadas en vivo (28/08/2026): evita que la
-                    # IA invente cabecera_factura/cabecera_compra (nombres que ya
-                    # no existen en el servidor) o use tb_cabmov/tb_detmov
-                    # (lentas/vacías para varias empresas).
+                    # Vistas reales detectadas en vivo: evitan que la IA use
+                    # nombres que el servidor no tiene desplegados
+                    # (cabecera_factura/cabecera_compra) o tablas tb_cabmov/tb_detmov
+                    # (lentas o vacías para varias empresas).
                     "vistas_reales": vistas_reales or (
                         "Vistas confirmadas en vivo: usa las que aparecen en el "
                         "ESQUEMA DE DATOS DISPONIBLE."
@@ -1026,12 +1019,12 @@ class NL2SQLEngine:
             prompt = ChatPromptTemplate.from_template(_prompt_sistema)
             chain = prompt | llm | StrOutputParser()
             raw_response = chain.invoke(variables_prompt).strip()
-            # 25/09/2026 (detectado por eval/evaluar_nl2sql.py): los
-            # proveedores gratuitos a veces devuelven una salida vacía o
+            # Los proveedores gratuitos a veces devuelven una salida vacía o
             # degenerada ("!!!!!!!!") sin lanzar error, así que la cascada
-            # `.with_fallbacks()` no salta al siguiente. Se reintenta UNA
-            # vez: para entonces el límite por minuto del proveedor que
-            # falló suele haberse liberado o responde otro de la cascada.
+            # `.with_fallbacks()` no salta al siguiente (lo mide
+            # eval/evaluar_nl2sql.py). Se reintenta una vez: para entonces el
+            # límite por minuto del proveedor suele haberse liberado o
+            # responde otro de la cascada.
             if _salida_degenerada(raw_response):
                 time.sleep(3)
                 raw_response = chain.invoke(variables_prompt).strip()
@@ -1041,7 +1034,7 @@ class NL2SQLEngine:
 
             parsed = self._extract_json(raw_response)
             if parsed is not None:
-                # Inyectamos log de poda para transparencia
+                # Se registra la poda en agent_log por transparencia.
                 if "agent_log" not in parsed or not isinstance(parsed["agent_log"], list):
                     parsed["agent_log"] = []
                 parsed["agent_log"].append("Poda Semántica Universal Activa (Contexto optimizado)")
@@ -1067,6 +1060,13 @@ class NL2SQLEngine:
         company_code: str = "",
         vistas_reales: str = "",
     ) -> tuple[Any, str | None]:
+        """Genera el SQL y lo prueba contra la base; si falla, pide una corrección a la IA.
+
+        El SQL se sanitiza y se ejecuta como vista previa (con el bloque de
+        definición virtual del MirrorManager cuando existe). Si la base
+        devuelve error, se reemplaza por la corrección de generate_correction()
+        y se marca `correction_attempted`.
+        """
         response, error = self.generate_sql(
             question=question,
             module=module,
@@ -1103,7 +1103,7 @@ class NL2SQLEngine:
         if not db_error:
             return response, None
 
-        # Si hay error, intentar corregir con la IA
+        # Si hay error, se intenta corregir con la IA.
         correction = self.generate_correction(response.get("sql", ""), str(db_error))
         response["sql"] = correction.get("sql", response.get("sql"))
         response["pensamiento_analitico"] = correction.get("pensamiento_analitico", "")
@@ -1112,11 +1112,15 @@ class NL2SQLEngine:
         return response, None
 
     def generate_correction(self, failed_sql: str, error_msg: str) -> dict:
+        """Pide al modelo Experto una versión corregida del SQL que falló.
+
+        Si la corrección no se puede interpretar o falla, devuelve el SQL
+        original por seguridad.
+        """
         try:
             # Autocorregir SQL fallido es razonamiento complejo por definición
             # (hay que entender por qué falló y reescribir preservando la
-            # intención de negocio) — antes esto lo hacía Qwen/Together AI si
-            # estaba disponible; ahora lo cubre el modelo "Experto" de DeepSeek.
+            # intención de negocio), así que lo cubre el modelo "Experto".
             llm = self.llm_pro
             prompt = ChatPromptTemplate.from_template(CORRECTION_PROMPT)
             chain = prompt | llm | StrOutputParser()
@@ -1143,22 +1147,20 @@ class NL2SQLEngine:
                 "explanation": f"No se pudo corregir automaticamente: {exc}",
             }
 
-    # Límite defensivo: DeepSeek Vision soporta más, pero más de 4 imágenes
-    # por consulta degrada mucho la latencia sin aportar demasiado — el
-    # usuario mismo lo anticipó al pedir esta función.
+    # Límite defensivo: DeepSeek Vision admite más, pero más de 4 imágenes por
+    # consulta degrada mucho la latencia sin aportar demasiado.
     MAX_IMAGENES_POR_CONSULTA = 4
 
     def analyze_images(self, question: str, images_b64: list[str]) -> dict:
-        """
-        FASE 4 — punto 6: análisis de imágenes adjuntas con el modelo Vision.
+        """Analiza las imágenes adjuntas con el modelo de visión.
 
-        `images_b64` son data URLs completas (ej. "data:image/png;base64,...."),
-        tal como las produce `FileReader.readAsDataURL()` en el navegador — así
-        el frontend no tiene que separar el mime type del contenido.
+        `images_b64` son data URLs completas (p. ej., "data:image/png;base64,...."),
+        tal como las produce `FileReader.readAsDataURL()` en el navegador; así
+        el frontend no tiene que separar el tipo MIME del contenido.
 
-        Usa el formato de mensaje multimodal estándar (compatible OpenAI, que
-        es el que expone DeepSeek para deepseek-v4-flash-vision-exp): una
-        lista de bloques de contenido mezclando texto e `image_url`.
+        Usa el formato de mensaje multimodal estándar compatible con OpenAI,
+        que es el que expone DeepSeek para deepseek-v4-flash-vision-exp: una
+        lista de bloques que mezcla texto e `image_url`.
         """
         from langchain_core.messages import HumanMessage
 
@@ -1201,16 +1203,15 @@ class NL2SQLEngine:
 
     # ── Conversación libre (exclusiva del modo desarrollador) ───────────────
     #
-    # Este canal existe SOLO para la seña de desarrollador (ver
+    # Este canal existe solo para la seña de desarrollador (ver
     # core/modo_desarrollador.py). Para cualquier otro usuario el guardarraíl
-    # de alcance sigue intacto: VicMar Data AI no es un chatbot de propósito general
-    # y responder noticias desde una herramienta de BI conectada a la base de
-    # un colegio fue justamente el bug que originó core/alcance.py.
+    # de alcance sigue intacto: VicMar Data AI no es un chatbot de propósito
+    # general (ver core/alcance.py).
     #
     # No usa ChatPromptTemplate a propósito. Esa plantilla interpreta `{...}`
-    # como variables, y aquí el texto del usuario es libre: pegar un JSON, un
-    # bloque de código o un diccionario de Python reventaría el render con un
-    # KeyError. Se arman los mensajes a mano y el texto llega intacto.
+    # como variables y aquí el texto del usuario es libre: pegar un JSON, un
+    # bloque de código o un diccionario de Python rompería el render con un
+    # KeyError. Los mensajes se arman a mano y el texto llega intacto.
     PROMPT_LIBRE = (
         "Eres el motor de IA de VicMar Data AI hablando en MODO DESARROLLADOR con "
         "{alias}, quien construyó este sistema y se identificó con su seña "
@@ -1295,15 +1296,14 @@ class NL2SQLEngine:
                 "error": str(exc),
             }
 
-    # ── Modo Invitado (Demo) ─────────────────────────────────────────────
+    # ── Modo Invitado (demostración) ─────────────────────────────────────
     #
-    # Un usuario con rol GUEST no tiene base de datos real conectada. En vez
+    # Un usuario con rol GUEST no tiene base de datos real conectada. En lugar
     # de bloquearlo, se le responde con un dataset de ejemplo pequeño
-    # (backend/data/demo_dataset.json) que cabe entero en el prompt — no hace
-    # falta SQL ni esquema: el modelo razona directo sobre el JSON, igual que
-    # si fuera una tabla más. Así el Invitado puede preguntar CUALQUIER cosa
-    # de negocio ("ventas de marzo", "quién es mi mejor cliente", "compara
-    # ventas contra compras") y obtiene una respuesta con el mismo formato
+    # (backend/data/demo_dataset.json) que cabe entero en el prompt: no hace
+    # falta SQL ni esquema, el modelo razona directamente sobre el JSON. Así el
+    # Invitado puede hacer cualquier pregunta de negocio ("ventas de marzo",
+    # "quién es mi mejor cliente") y recibe una respuesta con el mismo formato
     # que tendría con datos reales.
     PROMPT_DEMO = (
         "Eres VicMar Data AI, el Asistente de Inteligencia de Negocios, respondiendo "
@@ -1330,7 +1330,10 @@ class NL2SQLEngine:
     )
 
     def responder_demo(self, question: str, dataset: dict, history: str = "") -> dict:
-        """Responde preguntas de un usuario Invitado usando el dataset de demo."""
+        """Responde preguntas del usuario Invitado usando el dataset de demostración.
+
+        Envía como máximo 6000 caracteres del dataset al modelo Flash.
+        """
         from langchain_core.messages import HumanMessage
 
         pregunta = (question or "").strip()
@@ -1365,9 +1368,9 @@ class NL2SQLEngine:
                 "agent_log": ["Invitado: respuesta generada sobre dataset de demostración"],
             }
         except Exception as exc:
-            # Nunca dejar al Invitado sin respuesta: si el modelo falla, un
-            # resumen determinista sacado del propio dataset sigue siendo
-            # útil y no depende de ninguna llamada externa.
+            # El Invitado nunca se queda sin respuesta: si el modelo falla, un
+            # resumen determinista sacado del propio dataset sigue siendo útil
+            # y no depende de ninguna llamada externa.
             indicadores = (dataset or {}).get("indicadores_clave", {})
             resumen = "\n".join(f"- **{k}**: {v}" for k, v in indicadores.items()) or (
                 "Sin indicadores de ejemplo disponibles."
@@ -1385,13 +1388,13 @@ class NL2SQLEngine:
             }
 
     def generate_error_narrative(self, question: str, error_msg: str) -> str:
-        """
-        Genera narrativa legible para errores de ejecucion SQL.
-        OPTIMIZACION: Version ligera sin llamar a la IA para reducir latencia.
+        """Traduce un error de ejecución SQL a un mensaje legible.
+
+        No llama a la IA, para no sumar latencia.
         """
         error_lower = error_msg.lower()
         
-        # Mapeo directo de errores comunes (sin IA = 0ms de latencia)
+        # Mapeo directo de errores comunes, sin IA.
         if "invalid column name" in error_lower or "column" in error_lower:
             return "La consulta referencia una columna que no existe. Verifica los nombres de columnas disponibles."
         if "invalid object name" in error_lower or "table" in error_lower:
@@ -1401,11 +1404,11 @@ class NL2SQLEngine:
         if "syntax error" in error_lower or "near" in error_lower:
             return "Error de sintaxis SQL. Reformula la pregunta con terminos mas claros."
         if "permission" in error_lower or "denied" in error_lower:
-            # Auditoría 09/09/2026: no es un problema del usuario/rol — ver la
-            # nota igual en core/deepseek_client.py::generate_error_narrative.
+            # No es un problema del usuario ni de su rol; ver la nota de
+            # core/deepseek_client.py::generate_error_narrative.
             return "No se pudo completar esa consulta por una restricción interna de acceso a datos. Intenta reformular la pregunta de forma más específica."
         if "connection" in error_lower or "network" in error_lower:
             return "Error de conexion con la base de datos. Verifica el servidor."
         
-        # Fallback generico
+        # Mensaje genérico de respaldo.
         return f"Error al ejecutar la consulta: {error_msg[:150]}"

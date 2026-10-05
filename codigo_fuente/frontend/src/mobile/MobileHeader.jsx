@@ -1,33 +1,27 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-MOBILE-06]
- * ============================================================================
- * ARCHIVO: MobileHeader.jsx
- * MÓDULO: UI / Mobile Branding
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Es el "Cartel Principal" visual que ve el usuario en su móvil arriba 
- * de todo. Transmite seguridad, marca (VicMar Data AI) y da acceso instantáneo 
- * a la desconexión del sistema y sub-menús.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Es el "Piso 1" del `DashboardMobile` y cabecera en vistas compactas.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Identidad corporativa de alto contraste.
- * - Indicador LED pulsante de conexión ("ON").
- * - Botón tipo "Hamburguesa" para llamar al menú lateral.
- * ============================================================================
+ * @file Cabecera móvil con la marca VicMar Data AI, el botón que abre o
+ * cierra el menú lateral, el indicador de conexión «ON» y el botón de cerrar
+ * sesión. La renderiza MobileHeaderSection dentro de DashboardDesktop en
+ * pantallas pequeñas.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
-
 
 import React from 'react';
 import { Menu, LogOut } from 'lucide-react';
 
+/**
+ * Renderiza la cabecera móvil.
+ * @param {object} props
+ * @param {boolean} props.isSidebarOpen Indica si el menú lateral está abierto.
+ * @param {function(boolean): void} props.setIsSidebarOpen Abre o cierra el menú lateral.
+ * @param {function} props.onLogout Cierra la sesión.
+ * @returns {JSX.Element} Cabecera.
+ */
 export const MobileHeader = ({ isSidebarOpen, setIsSidebarOpen, onLogout }) => {
     return (
         <header className="relative w-full h-[60px] border-b border-white/10 flex items-center justify-between px-4 z-[100] backdrop-blur-3xl bg-[#020617]/98 shadow-[0_10px_30px_rgba(0,0,0,0.5)] shrink-0">
-            {/* Lado Izquierdo: Menú y Brand */}
+            {/* Lado izquierdo: menú y marca */}
             <div className="flex items-center gap-3">
                 <button 
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -51,7 +45,7 @@ export const MobileHeader = ({ isSidebarOpen, setIsSidebarOpen, onLogout }) => {
                 </div>
             </div>
             
-            {/* Lado Derecho: Estado y Desconexión */}
+            {/* Lado derecho: estado y cierre de sesión */}
             <div className="flex items-center gap-3">
                 <div className="hidden xs:flex flex-col items-end mr-1">
                     <div className="flex items-center gap-1 px-2 py-0.5 bg-cyan-500/20 rounded-full border border-cyan-500/30">

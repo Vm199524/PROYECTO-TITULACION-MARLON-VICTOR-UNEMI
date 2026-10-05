@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-seed_oulad.py — carga el Open University Learning Analytics Dataset (OULAD;
-Kuzilek, Hlosta & Zdrahal, 2017, Scientific Data 4:170171, CC BY 4.0) como
-SEGUNDA institución del sistema (OULAD_UK), en la base operativa
+Carga de OULAD como segunda institución del sistema.
+
+Carga el Open University Learning Analytics Dataset (OULAD; Kuzilek, Hlosta
+& Zdrahal, 2017, Scientific Data 4:170171, CC BY 4.0) como SEGUNDA
+institución del sistema (OULAD_UK), en la base operativa
 OULAD_PRUEBAS.dbo.historial_bloques.
 
 Por qué: el documento afirma que la arquitectura se extiende a otra
@@ -44,6 +46,9 @@ prospectiva honesta del modelo (ml/reporte_validacion.py).
 Uso:
     cd backend
     python scripts/seed_oulad.py [--dir "../../datos/externos/oulad"] [--corte 3]
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -74,9 +79,12 @@ DOMINIO = {
 
 
 def inicio_presentacion(codigo: str) -> date:
-    """B = presentación que inicia en febrero, J = en octubre (OULAD.names).
+    """Devuelve la fecha de inicio aproximada de una presentación (p. ej., 2014J).
+
+    B = presentación que inicia en febrero, J = en octubre (OULAD.names).
     El día exacto no se publica: se usa el día 1 del mes (aproximación
-    documentada)."""
+    documentada).
+    """
     return date(int(codigo[:4]), 2 if codigo[4] == 'B' else 10, 1)
 
 
@@ -85,8 +93,11 @@ def _num(serie: pd.Series) -> pd.Series:
 
 
 def dias_activos_por_bloque(directorio: Path) -> pd.DataFrame:
-    """(module, presentation, student, bloque) -> días distintos con clics.
-    studentVle tiene 10,6 M de filas: se lee por partes."""
+    """Cuenta los días distintos con clics por módulo, presentación, estudiante y bloque.
+
+    studentVle tiene 10,6 M de filas: se lee por partes de 2 M filas. Los
+    clics anteriores al día 0 cuentan en el bloque 1.
+    """
     partes = []
     for trozo in pd.read_csv(directorio / 'studentVle.csv',
                              usecols=['code_module', 'code_presentation', 'id_student', 'date'],
@@ -101,7 +112,13 @@ def dias_activos_por_bloque(directorio: Path) -> pd.DataFrame:
 
 
 def promedio_por_bloque(directorio: Path, matriculas: pd.DataFrame, n_bloques: dict) -> pd.DataFrame:
-    ev = pd.read_csv(directorio / 'assessments.csv')
+    """Calcula el promedio (0-10) de cada estudiante al cierre de cada bloque.
+
+    Usa las evaluaciones con fecha que no son examen final (Exam) y cuyo
+    plazo venció antes del cierre; las no entregadas a esa fecha cuentan
+    como 0. Si aún no vence ninguna, el promedio del bloque es 0.
+    """
+    ev =pd.read_csv(directorio / 'assessments.csv')
     ev = ev[ev['assessment_type'] != 'Exam'].copy()
     ev['date'] = _num(ev['date'])
     ev = ev.dropna(subset=['date'])
@@ -130,7 +147,15 @@ def promedio_por_bloque(directorio: Path, matriculas: pd.DataFrame, n_bloques: d
 
 
 def construir_historial(directorio: Path, corte: int) -> tuple[pd.DataFrame, pd.DataFrame]:
-    info = pd.read_csv(directorio / 'studentInfo.csv')
+    """Transforma OULAD en el historial alumno-bloque descrito en el encabezado.
+
+    La presentación en curso se trunca en el bloque `corte`.
+
+    Returns:
+        (filas para dbo.historial_bloques, verdad futura de la presentación
+        en curso con su bloque y estado finales reales).
+    """
+    info =pd.read_csv(directorio / 'studentInfo.csv')
     reg = pd.read_csv(directorio / 'studentRegistration.csv')
     cursos = pd.read_csv(directorio / 'courses.csv')
     reg['date_unregistration'] = _num(reg['date_unregistration'])
@@ -234,6 +259,11 @@ CREATE_SQL = [
 
 
 def main() -> int:
+    """Construye el historial de OULAD y lo carga en OULAD_PRUEBAS.
+
+    Recrea historial_bloques y verdad_futura; con --solo-resumen solo
+    muestra el resumen, sin escribir en la base.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--dir', default=str(DIR_POR_DEFECTO))
     parser.add_argument('--corte', type=int, default=3, help='Bloques de 28 días cargados de la presentación en curso')

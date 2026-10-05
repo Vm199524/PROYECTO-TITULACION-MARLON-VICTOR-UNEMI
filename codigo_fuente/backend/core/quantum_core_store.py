@@ -1,6 +1,15 @@
 """
-core/quantum_core_store.py - Memoria operativa y cockpit ejecutivo de Quantum Core.
-Registra eventos del motor, feedback y metricas del negocio para VICMAR DATA AI.
+Memoria operativa y panel ejecutivo de Quantum Core.
+
+Registra los eventos del motor de consultas (JSONL) y la retroalimentación de
+los usuarios, y arma el panel: métricas de uso, señales de aprendizaje,
+reflexiones sobre errores y un resumen ejecutivo con indicadores del negocio.
+El resumen ejecutivo consulta la base, por lo que se difiere hasta una
+actualización manual y se guarda en caché por usuario y base durante
+OVERVIEW_CACHE_TTL_SECONDS para no competir con el panel principal.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -22,6 +31,7 @@ def _utc_now() -> str:
 
 
 def _read_events(limit: int | None = None) -> list[dict[str, Any]]:
+    """Lee los últimos `limit` eventos del JSONL, ignorando las líneas dañadas."""
     if not EVENTS_FILE.exists():
         return []
     try:
@@ -62,6 +72,7 @@ def _save_feedback(entries: list[dict[str, Any]]) -> None:
 
 
 def record_query_event(event: dict[str, Any]) -> None:
+    """Agrega un evento del motor de consultas al JSONL, con marca de tiempo UTC si no la trae."""
     payload = dict(event)
     payload.setdefault("timestamp", _utc_now())
     with EVENTS_FILE.open("a", encoding="utf-8") as fh:
@@ -75,6 +86,10 @@ def record_feedback(
     user_id: str,
     user_role: str,
 ) -> dict[str, Any]:
+    """Guarda la valoración de un usuario sobre una consulta y devuelve la entrada creada.
+
+    Si la consulta ya tenía una valoración, se reemplaza: solo cuenta la última.
+    """
     feedback = _load_feedback()
     entry = {
         "query_id": query_id,
@@ -91,6 +106,7 @@ def record_feedback(
 
 
 def _domain_status(session) -> list[dict[str, Any]]:
+    """Indica qué dominios de negocio están listos según las tablas o vistas del esquema de la sesión."""
     if not session:
         return []
 
@@ -123,6 +139,7 @@ def _domain_status(session) -> list[dict[str, Any]]:
 
 
 def _current_context(session) -> dict[str, Any]:
+    """Resume el contexto de la sesión: conexión, base activa, rol y dominios disponibles."""
     if not session:
         return {
             "connected": False,
@@ -147,6 +164,7 @@ def _session_cache_key(session) -> str:
 
 
 def _get_cached_overview(session) -> dict[str, Any] | None:
+    """Devuelve el panel en caché de la sesión si no superó OVERVIEW_CACHE_TTL_SECONDS."""
     cache_key = _session_cache_key(session)
     payload = _OVERVIEW_CACHE.get(cache_key)
     if not payload:
@@ -172,6 +190,7 @@ def _has_table(session, *aliases: str) -> bool:
 
 
 def _execute_rows(session, sql: str) -> tuple[list[str], list[list[Any]]]:
+    """Ejecuta el SQL con el conector de la sesión; ante cualquier error devuelve listas vacías."""
     connector = getattr(session, "connector", None)
     if not connector:
         return [], []
@@ -247,6 +266,7 @@ def _month_name(month_number: int) -> str:
 
 
 def _sales_ytd(session) -> float:
+    """Devuelve el total facturado en lo que va del año, o 0.0 si no hay tabla de ventas."""
     if not _has_table(session, "cabecera_factura", "v_ventas_cabecera"):
         return 0.0
     row = _first_row_dict(
@@ -259,6 +279,7 @@ def _sales_ytd(session) -> float:
 
 
 def _purchases_ytd(session) -> float:
+    """Devuelve el total comprado en lo que va del año, o 0.0 si no hay tabla de compras."""
     if not _has_table(session, "cabecera_compra", "v_compras_cabecera"):
         return 0.0
     row = _first_row_dict(
@@ -271,6 +292,12 @@ def _purchases_ytd(session) -> float:
 
 
 def _payroll_last_period(session) -> dict[str, Any]:
+    """Calcula el costo de nómina del último periodo (año y mes) con datos.
+
+    El mes puede venir como número o como nombre (completo o abreviado), así
+    que se normaliza con un CASE antes de buscar el periodo más reciente.
+    Solo suma los valores positivos.
+    """
     if not _has_table(session, "rol_pago", "v_resumen_nomina"):
         return {"total": 0.0, "label": "Sin periodo"}
 
@@ -323,6 +350,7 @@ def _payroll_last_period(session) -> dict[str, Any]:
 
 
 def _workforce_snapshot(session) -> dict[str, Any]:
+    """Cuenta el personal activo e inactivo y las 5 áreas con más personal activo."""
     if not _has_table(session, "ficha_trabajador", "v_ficha_maestra"):
         return {"active": 0, "inactive": 0, "areas": []}
 
@@ -358,6 +386,11 @@ def _workforce_snapshot(session) -> dict[str, Any]:
 
 
 def _monthly_business_overview(session) -> list[dict[str, Any]]:
+    """Devuelve los últimos 6 meses con facturado, comprado, nómina y saldo neto.
+
+    El saldo neto es facturado menos comprado menos nómina; los meses se toman
+    de la unión de las tres fuentes para no perder periodos con datos parciales.
+    """
     if not (
         _has_table(session, "cabecera_factura", "v_ventas_cabecera")
         or _has_table(session, "cabecera_compra", "v_compras_cabecera")
@@ -446,6 +479,11 @@ def _build_business_alerts(
     payroll_info: dict[str, Any],
     workforce: dict[str, Any],
 ) -> list[dict[str, str]]:
+    """Genera hasta 4 alertas del negocio.
+
+    Cubre dominios pendientes, saldo neto del último periodo, disponibilidad
+    de la nómina y una base inactiva mayor al 30 % del personal activo.
+    """
     alerts: list[dict[str, str]] = []
     pending_domains = [item["domain"] for item in current_context.get("domains", []) if item.get("status") != "ready"]
     if pending_domains:
@@ -512,6 +550,7 @@ def _build_focus_items(
     metrics: dict[str, Any],
     monthly_overview: list[dict[str, Any]],
 ) -> list[dict[str, str]]:
+    """Genera hasta 3 puntos de atención para el panel (resultado reciente, consultas sin datos, dominios pendientes)."""
     items: list[dict[str, str]] = []
     if monthly_overview:
         latest = monthly_overview[0]
@@ -550,6 +589,7 @@ def _build_focus_items(
 
 
 def _build_executive_summary(session, current_context: dict[str, Any], metrics: dict[str, Any]) -> dict[str, Any]:
+    """Arma el resumen ejecutivo completo consultando la base (indicadores, meses, personal, alertas)."""
     if not session or not getattr(session, "connector", None):
         return {
             "kpis": {},
@@ -596,6 +636,7 @@ def _build_executive_summary(session, current_context: dict[str, Any], metrics: 
 
 
 def _build_light_executive_summary(current_context: dict[str, Any]) -> dict[str, Any]:
+    """Devuelve un resumen ejecutivo vacío, sin consultar la base, a la espera de una actualización manual."""
     return {
         "kpis": {
             "sales_ytd": 0.0,
@@ -631,6 +672,15 @@ def _build_light_executive_summary(current_context: dict[str, Any]) -> dict[str,
 
 
 def _build_base_overview_payload(session=None, limit: int = 20) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Arma la parte del panel que sale de los eventos y la retroalimentación, sin consultar la base.
+
+    Usa los últimos 400 eventos para las métricas y las señales de
+    aprendizaje, y hasta 8 reflexiones sobre consultas con error, sin datos,
+    bloqueadas por el guardarraíl o autocorregidas.
+
+    Returns:
+        (payload, current_context, metrics, recent_events, reflections).
+    """
     events = _read_events(limit=400)
     feedback = _load_feedback()
 
@@ -718,6 +768,13 @@ def _build_base_overview_payload(session=None, limit: int = 20) -> tuple[dict[st
 
 
 def build_quantum_core_overview(session=None, limit: int = 20, force_refresh: bool = False) -> dict[str, Any]:
+    """Construye el panel de Quantum Core para la sesión.
+
+    Sin `force_refresh`, sirve la versión en caché si existe; si no, devuelve
+    el panel con un resumen ejecutivo liviano (deferred=True) para no lanzar
+    consultas pesadas en cada carga. Con `force_refresh`, consulta la base,
+    arma el resumen ejecutivo completo y lo guarda en caché.
+    """
     if not force_refresh:
         cached = _get_cached_overview(session)
         if cached:

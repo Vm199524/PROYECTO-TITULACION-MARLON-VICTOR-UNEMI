@@ -1,3 +1,13 @@
+/**
+ * @file Pruebas del intérprete de comandos de voz (`interpretarComandoVoz`,
+ * `buscarEmpresa`, `normalizar`). Verifican que se reconozcan las órdenes de
+ * cambio de empresa y de salida, que gane la coincidencia más específica, que
+ * las preguntas de datos legítimas pasen al motor de consultas sin ser
+ * capturadas y que la búsqueda de empresas ignore acentos y mayúsculas.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 import { describe, expect, it } from 'vitest';
 import { interpretarComandoVoz, buscarEmpresa, normalizar } from '../utils/comandosVoz';
 

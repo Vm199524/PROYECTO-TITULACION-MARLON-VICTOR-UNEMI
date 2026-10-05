@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-fijar_passwords_prueba.py — Fija las contraseñas de los usuarios de prueba
-(uno por rol) en security_config.json, leyéndolas de usuarios_prueba.local.json
-(archivo local que no se versiona). Crea el usuario 'logi' (LOGISTICA) si no existe,
-ya que ese rol no tenia ninguna cuenta creada.
+Contraseñas de los usuarios de prueba.
 
-Idempotente: correrlo varias veces deja el mismo resultado.
+Fija las contraseñas de los usuarios de prueba (uno por rol) en
+security_config.json, leyéndolas de usuarios_prueba.local.json (archivo
+local que no se versiona). Crea los usuarios que no existan (p. ej., 'logi'
+para el rol LOGISTICA) y agrega el rol ACADEMICO si el almacén no lo tiene.
+
+Idempotente: ejecutarlo varias veces deja el mismo resultado.
 
 Uso:
     cd backend
     python scripts/fijar_passwords_prueba.py
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -41,6 +46,7 @@ ARCHIVO_CLAVES = BASE_DIR / "usuarios_prueba.local.json"
 
 
 def _leer_claves() -> dict:
+    """Lee las contraseñas; termina el script si falta el archivo o la clave de algún usuario."""
     if not ARCHIVO_CLAVES.exists():
         sys.exit(f"Falta {ARCHIVO_CLAVES.name}: cópialo desde usuarios_prueba.example.json y define las contraseñas.")
     claves = json.loads(ARCHIVO_CLAVES.read_text(encoding="utf-8"))
@@ -51,7 +57,11 @@ def _leer_claves() -> dict:
 
 
 def _cargar_config() -> dict:
-    """Lee el almacén de usuarios; en una instalación nueva parte de los roles por defecto."""
+    """Lee el almacén de usuarios; en una instalación nueva parte de los roles por defecto.
+
+    Si el almacén existe pero no tiene el rol ACADEMICO, lo agrega con sus
+    valores por defecto.
+    """
     if not ARCHIVO.exists():
         from core.user_store import ROLES_POR_DEFECTO
 
@@ -67,6 +77,7 @@ def _cargar_config() -> dict:
 
 
 def main() -> int:
+    """Actualiza o crea cada usuario de prueba con su contraseña y guarda el almacén."""
     config = _cargar_config()
     usuarios = config.setdefault("users", [])
     por_username = {str(u.get("username", "")).strip().lower(): u for u in usuarios}

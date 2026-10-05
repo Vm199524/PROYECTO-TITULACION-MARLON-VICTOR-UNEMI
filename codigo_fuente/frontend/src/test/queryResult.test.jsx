@@ -1,3 +1,13 @@
+/**
+ * @file Pruebas del contrato de respuesta de consultas. Verifican que
+ * `normalizeQueryResult` conserve mensaje, render, SQL y análisis del
+ * contrato del backend, que descarte el texto genérico de conteo de filas
+ * cuando hay datos y que `ChatMessage` muestre la identidad actual del
+ * asistente sin textos de identidades anteriores.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
 import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -24,8 +34,8 @@ describe('query result contract', () => {
     });
 
     it('renders assistant header without legacy identity text', () => {
-        // 'content' es el campo que ChatMessage realmente renderiza como texto
-        // del asistente (ver App.jsx: setChatHistory pushea { type: 'ai', content, ... }).
+        // 'content' es el campo que ChatMessage renderiza como texto del
+        // asistente (ver App.jsx: setChatHistory agrega { type: 'ai', content, ... }).
         // 'result' solo aporta metadatos estructurados (sql, analysis, etc.).
         const msg = {
             type: 'ai',

@@ -1,12 +1,14 @@
 """
-tests/test_excel_exporter.py — Exportación a Excel multi-hoja (Fase 4,
-28/08/2026), portada del proyecto hermano TripleA_VentasIA para reemplazar el CSV plano y ambiguo de Reportes BI.
+Pruebas de la exportación a Excel con varias hojas de Reportes BI.
 
-Cubre:
-  1. Los helpers puros (validación de nombre de base, formateo de fecha/dinero).
-  2. El libro completo, con un FakeConnector que simula las 5 consultas SQL —
-     confirma que las hojas se arman en el orden correcto, con los encabezados
-     correctos, y que "Cartera" solo aparece para empresas educativas.
+Cubren las funciones auxiliares puras (validación del nombre de la base, que
+evita inyección SQL, y formato de fecha y dinero) y el libro completo con un
+conector simulado que responde las 5 consultas SQL: confirman que las hojas
+salen en el orden correcto, con los encabezados correctos, y que "Cartera"
+solo aparece para empresas educativas.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import sys
 from datetime import date
@@ -134,7 +136,7 @@ def test_libro_educativo_incluye_hoja_cartera():
 
 
 def test_hoja_facturas_tiene_los_encabezados_del_proyecto_origen():
-    """Mismos encabezados que TripleA_VentasIA — la referencia visual que dio el usuario."""
+    """La hoja Facturas usa los encabezados del formato de referencia y fechas dd/mm/aaaa."""
     conn = FakeConnectorReportes(es_educativa=False)
     buf, _ = generar_reporte_excel(conn, "SONG")
     wb = openpyxl.load_workbook(buf)

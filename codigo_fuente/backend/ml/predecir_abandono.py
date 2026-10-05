@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-predecir_abandono.py — califica, con el modelo de SU institución
-(ml/models/<EMPRESA>/), el riesgo de que cada alumno ACTIVO abandone en el
-PRÓXIMO periodo, usando sus datos hasta el periodo más reciente (panel
-alumno-periodo, ver ml/features_abandono.py). Guarda el resultado en
+Calificación del riesgo de abandono de los alumnos activos.
+
+Califica, con el modelo de SU institución (ml/models/<EMPRESA>/), el riesgo
+de que cada alumno ACTIVO abandone en el PRÓXIMO periodo, usando sus datos
+hasta el periodo más reciente (panel alumno-periodo, ver
+ml/features_abandono.py). Guarda el resultado en
 CHAT.dbo.fact_prediccion_abandono, que se lee por VIS_PREDICCION_ABANDONO
 desde el panel (GET /api/ml/prediccion-abandono) y desde el chat NL2SQL.
 
@@ -23,6 +25,9 @@ Recarga completa por institución (DELETE + INSERT), mismo patrón que el ETL.
 Uso:
     cd backend
     python -m ml.predecir_abandono --empresa UNEMI_PRUEBAS
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -43,6 +48,7 @@ MODELS_ROOT = Path(__file__).resolve().parent / 'models'
 
 
 def categoria_riesgo(p: float, umbral: float) -> str:
+    """Clasifica una probabilidad en ALTO (>= umbral), MEDIO (>= umbral / 2) o BAJO."""
     if p >= umbral:
         return 'ALTO'
     if p >= umbral / 2:
@@ -51,6 +57,7 @@ def categoria_riesgo(p: float, umbral: float) -> str:
 
 
 def _formatear(nombre: str, valor: float) -> str:
+    """Escribe el valor de una variable en unidades legibles (%, nota sobre 10, sí/no, dólares)."""
     if nombre.startswith(('asistencia',)):
         return f"{valor:+.1f} puntos" if nombre.endswith('delta') else f"{valor:.1f} %"
     if nombre.startswith('promedio'):
@@ -67,8 +74,12 @@ def _formatear(nombre: str, valor: float) -> str:
 
 
 def factores_shap(modelo, X: pd.DataFrame, top: int = 3) -> list[list[str]]:
-    """Las `top` variables con mayor contribución SHAP POSITIVA (hacia el
-    abandono) de cada fila, redactadas en lenguaje natural."""
+    """Devuelve, por fila, las `top` variables que más empujan hacia el abandono.
+
+    Usa TreeExplainer sobre el Random Forest (el paso 'rf' si el modelo es el
+    Pipeline con SMOTE) y toma solo contribuciones SHAP POSITIVAS, redactadas
+    en lenguaje natural. Si una fila tiene menos de `top`, completa con None.
+    """
     import shap
 
     rf = modelo.named_steps['rf'] if hasattr(modelo, 'named_steps') else modelo
@@ -87,12 +98,18 @@ def factores_shap(modelo, X: pd.DataFrame, top: int = 3) -> list[list[str]]:
 
 
 def main() -> int:
+    """Califica a los alumnos activos y recarga sus predicciones en fact_prediccion_abandono.
+
+    Returns:
+        0 si termina (también si no hay alumnos activos); 1 si la
+        institución no tiene un modelo entrenado.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--empresa', default='UNEMI_PRUEBAS')
     args = parser.parse_args()
     empresa = args.empresa.strip().upper()
 
-    ruta = MODELS_ROOT / empresa / 'abandono_model.joblib'
+    ruta =MODELS_ROOT / empresa / 'abandono_model.joblib'
     if not ruta.exists():
         print(f"No existe {ruta}. Corre primero: python -m ml.entrenar_abandono --empresa {empresa}")
         return 1

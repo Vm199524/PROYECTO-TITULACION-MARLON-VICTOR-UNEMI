@@ -1,7 +1,13 @@
 """
-knowledge/chat_mapping.py - Enrutador de contexto semantico.
-Reduce el esquema entregado al LLM a las entidades mas probables segun la pregunta.
-Soporta vistas espejo en CHAT y tablas base cuando las vistas aun no existen.
+Enrutador de contexto semántico del motor NL2SQL.
+
+Reduce el esquema que se entrega al LLM a las tablas o vistas más probables
+según las palabras clave de la pregunta: menos contexto, prompts más cortos
+y menos confusión entre entidades. Acepta tanto las vistas espejo de CHAT
+como las tablas base cuando esas vistas aún no existen.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -9,12 +15,14 @@ import unicodedata
 
 
 def _normalize(value: str) -> str:
-    raw = unicodedata.normalize("NFD", str(value or "").strip().lower())
+    """Pasa a minúsculas, quita tildes y deja solo letras y dígitos, para comparar nombres."""
+    raw =unicodedata.normalize("NFD", str(value or "").strip().lower())
     raw = "".join(ch for ch in raw if unicodedata.category(ch) != "Mn")
     return "".join(ch for ch in raw if ch.isalnum())
 
 
 def _find_existing_name(full_schema_dict: dict, candidates: tuple[str, ...]) -> str | None:
+    """Devuelve el nombre real del esquema que coincide con algún candidato, o None."""
     candidate_set = {_normalize(name) for name in candidates}
     for schema_name in full_schema_dict:
         if _normalize(schema_name) in candidate_set:
@@ -22,6 +30,9 @@ def _find_existing_name(full_schema_dict: dict, candidates: tuple[str, ...]) -> 
     return None
 
 
+# Palabras clave separadas por "|" -> (entidad principal, entidades relacionadas).
+# Cada entidad es una tupla de nombres alternativos (vista de CHAT o tabla
+# base); se usa el que exista en el esquema conectado.
 VIEW_MAP = {
     "trabajador|empleado|personal|staff|funcionario|recurso|cargo|area|departamento|activo|inactivo": (
         ("V_Ficha_Maestra", "ficha_trabajador"),
@@ -73,6 +84,9 @@ VIEW_MAP = {
     ),
 }
 
+# Si ninguna palabra clave coincide se envían estas entidades y, si tampoco
+# existen, las primeras _MAX_FALLBACK del esquema. _MAX_TOTAL acota lo que
+# llega al LLM.
 _FALLBACK_GROUPS = (
     ("Ventas", "V_Ventas_Cabecera", "cabecera_factura", "ventas_cabecera"),
     ("V_Ficha_Maestra", "ficha_trabajador"),
@@ -83,9 +97,16 @@ _MAX_TOTAL = 6
 
 
 def get_relevant_schema(question: str, full_schema_dict: dict) -> str:
-    """
-    Recibe la pregunta y el schema completo.
-    Retorna solo las tablas o vistas mas relevantes como texto compacto.
+    """Devuelve como texto compacto solo las tablas o vistas relevantes para la pregunta.
+
+    Busca en la pregunta (en minúsculas) las palabras clave de VIEW_MAP y
+    agrega la entidad principal y sus relacionadas que existan en el
+    esquema; sin coincidencias, usa las entidades de respaldo. Cada entidad
+    se describe con su tipo y sus columnas con tipo de dato.
+
+    Args:
+        question: pregunta del usuario.
+        full_schema_dict: {nombre: {"type": ..., "columns": [{"name", "type"}]}}.
     """
     q = (question or "").lower()
     matched_views: list[str] = []

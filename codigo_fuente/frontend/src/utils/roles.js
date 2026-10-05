@@ -1,19 +1,16 @@
 /**
- * roles.js — Etiquetas en español para los roles del sistema.
- *
- * El código técnico del rol (el que viaja en el JWT y vive en
- * security_config.json) se queda igual: "GUEST", "ADMINISTRADOR",
- * "CONTABILIDAD", "RRHH", "LOGISTICA". Cambiar esas claves tocaría el token,
- * el almacén de usuarios y las comparaciones del backend — mucho más riesgo
- * del que vale la pena solo para una etiqueta visual.
- *
- * Lo que sí cambia es lo que VE el usuario. El caso real (30/08/2026): un
- * usuario con rol GUEST veía literalmente la palabra "GUEST" en inglés bajo
- * su nombre, en el header — se pidió que se mostrara "Invitado" en su lugar.
- * Este archivo centraliza esa traducción para no repetirla (con el riesgo de
- * que queden inconsistentes) en cada componente que muestre un rol.
+ * @file Etiquetas en español de los roles del sistema. El código técnico del
+ * rol (el que viaja en el JWT y se guarda en security_config.json: GUEST,
+ * ADMINISTRADOR, CONTABILIDAD, RRHH, LOGISTICA, ACADEMICO) no cambia, porque
+ * hacerlo afectaría el token, el almacén de usuarios y las comparaciones del
+ * backend. Este archivo solo traduce lo que ve el usuario (p. ej. GUEST se
+ * muestra como «Invitado») y centraliza esa traducción para que todos los
+ * componentes que muestran un rol sean coherentes.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
+/** Etiqueta visible de cada código de rol. */
 export const ROLE_LABELS = {
     ADMINISTRADOR: 'Administrador',
     CONTABILIDAD: 'Contabilidad',
@@ -23,7 +20,12 @@ export const ROLE_LABELS = {
     GUEST: 'Invitado',
 };
 
-/** Etiqueta en español para un código de rol. Si no se reconoce, se muestra tal cual. */
+/**
+ * Devuelve la etiqueta en español de un código de rol. Si no se reconoce, se
+ * muestra tal cual.
+ * @param {string|null|undefined} role Código del rol (insensible a mayúsculas).
+ * @returns {string} Etiqueta visible, el valor original o cadena vacía.
+ */
 export function roleLabel(role) {
     const key = String(role || '').trim().toUpperCase();
     return ROLE_LABELS[key] || role || '';

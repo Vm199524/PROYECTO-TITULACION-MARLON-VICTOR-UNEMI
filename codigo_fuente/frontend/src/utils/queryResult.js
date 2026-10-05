@@ -1,3 +1,15 @@
+/**
+ * @file Normalización de la respuesta de consulta del backend. Unifica el
+ * contrato nuevo (`data`, `render`, `sql`, `analysis`) con los campos
+ * heredados (`rows`, `sql_query`, `business_analysis`, `agent_log`, etc.)
+ * para que el chat y sus vistas lean siempre la misma forma, y quita los
+ * mensajes genéricos de conteo de filas cuando hay contenido más útil.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
+
+// Quita las líneas genéricas («Se recuperaron N registros…», «Consulta
+// ejecutada correctamente») y devuelve '' si no queda texto pero hay filas.
 function stripGenericRowCountMessage(message, rows) {
     const text = String(message || '').trim();
     if (!text) return '';
@@ -24,6 +36,15 @@ function stripGenericRowCountMessage(message, rows) {
     return text;
 }
 
+/**
+ * Normaliza una respuesta de consulta al contrato que consume el chat.
+ * @param {object|null|undefined} raw Respuesta del backend (contrato nuevo o
+ *   heredado).
+ * @returns {object} Respuesta con `status`, `message`, `explanation`, `rows`,
+ *   `columns`, `render`, `sql`, `analysis` y sus alias heredados
+ *   (`render_type`, `visualization_type`, `sql_query`, `business_analysis`,
+ *   `agent_log`, `payslip_meta`).
+ */
 export function normalizeQueryResult(raw) {
     const source = raw || {};
     const rows = source?.data?.rows || source?.rows || [];
@@ -35,8 +56,8 @@ export function normalizeQueryResult(raw) {
     const analysisSteps = source?.analysis?.steps || source?.agent_log || [];
     const analysisSummary = source?.analysis?.summary || source?.business_analysis || '';
     const rawMessage = source?.message || source?.explanation || '';
-    // Solo eliminar mensajes boilerplate si hay filas Y hay otro contenido (business_analysis o analysisSummary)
-    // Si el mensaje es el ÚNICO contenido disponible, conservarlo siempre.
+    // El mensaje genérico solo se elimina si hay filas y además otro contenido
+    // (business_analysis o analysis.summary); si es el único contenido, se conserva.
     const hasRicherContext = !!(source?.business_analysis || source?.analysis?.summary);
     const message = (hasRicherContext && rows.length > 0)
         ? stripGenericRowCountMessage(rawMessage, rows)
@@ -48,9 +69,8 @@ export function normalizeQueryResult(raw) {
         ...source,
         status,
         message,
-        // Antes: `message || rawMessage.trim()` — cuando message se vacía
-        // intencionalmente (boilerplate limpiado), el `||` revertía al texto
-        // sin limpiar, deshaciendo la limpieza solo en este campo. Corregido.
+        // Se usa `message` sin respaldo en `rawMessage`: cuando el mensaje
+        // genérico se vacía a propósito, un `||` devolvería el texto sin limpiar.
         explanation: message,
         rows,
         columns,

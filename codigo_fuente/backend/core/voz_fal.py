@@ -1,38 +1,15 @@
 """
-voz_fal.py — Lectura en voz alta con ElevenLabs vía FAL AI.
+Lectura en voz alta con ElevenLabs Multilingual v2 servido por FAL AI.
 
-PROBLEMA QUE RESUELVE
-----------------------
-`frontend/src/hooks/useLectura.js` lee las respuestas con `window.speechSynthesis`
-del navegador: voz gratis y 100% local (el texto nunca sale de la máquina),
-pero de calidad ambigua — depende de qué voces tenga instalado Windows/Chrome
-en cada equipo, así que un usuario la oye natural y otro metálica.
+La voz local del navegador (window.speechSynthesis en useLectura.js) es
+gratuita y privada, pero su calidad depende de las voces instaladas en cada
+equipo. Esta vía ofrece una voz consistente en español a cambio de enviar el
+texto (que puede incluir cifras sensibles) a un proveedor externo. El backend
+solo intermedia para no exponer FAL_KEY; no descarga el audio, el navegador
+reproduce la URL temporal que devuelve el CDN de FAL.
 
-El 30/08/2026 el usuario, con crédito disponible en su cuenta de FAL AI,
-aceptó explícitamente la contrapartida de privacidad (el texto leído SÍ puede
-contener sueldos, totales de ventas, nombres de proveedores) a cambio de una
-voz consistente y de mucha mejor calidad. Este módulo es esa vía: ElevenLabs
-Multilingual v2, servido por FAL, que sí soporta español de forma nativa.
-
-CONTRATO REAL DE LA API (verificado en la documentación de FAL antes de
-escribir este código, no adivinado):
-
-    POST https://fal.run/fal-ai/elevenlabs/tts/multilingual-v2
-    Headers: Authorization: Key <FAL_KEY>, Content-Type: application/json
-    Body:    {"text": "...", "voice": "Rachel", "language_code": "es"}
-    Respuesta: {"audio": {"url": "https://v3.fal.media/files/.../audio.mp3"}}
-
-Es una llamada SÍNCRONA (fal.run, no la cola fal.subscribe/queue.fal.run):
-la respuesta llega directo con la URL del audio ya generado, sin necesidad de
-sondear un job. Costo confirmado en la documentación: $0.10 por cada 1000
-caracteres — con $7.27 de crédito, unos 72.700 caracteres, sobra para probar
-la función ampliamente.
-
-QUÉ NO HACE
------------
-No descarga ni reenvía el audio: el navegador reproduce directo la URL que
-devuelve FAL (es un enlace público de su CDN, de vida corta). El backend solo
-hace de intermediario para no exponer FAL_KEY en el frontend.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 from __future__ import annotations
@@ -43,24 +20,30 @@ import requests
 
 logger = logging.getLogger("VozFAL")
 
+# Contrato de la API según la documentación de FAL:
+#   POST https://fal.run/fal-ai/elevenlabs/tts/multilingual-v2
+#   Headers:   Authorization: Key <FAL_KEY>, Content-Type: application/json
+#   Body:      {"text": "...", "voice": "Rachel", "language_code": "es"}
+#   Respuesta: {"audio": {"url": "https://v3.fal.media/files/.../audio.mp3"}}
+# Es una llamada síncrona (fal.run, no la cola queue.fal.run): la respuesta trae
+# directamente la URL del audio generado, sin sondear un trabajo.
 _URL_TTS = "https://fal.run/fal-ai/elevenlabs/tts/multilingual-v2"
 
-# Tope defensivo: una tabla completa leída en voz alta sería interminable Y
-# cara ($0.10 cada 1000 caracteres). `useLectura.js` ya resume las respuestas
-# largas antes de pedir la lectura, pero este tope es la última barrera si
-# algo se cuela sin resumir.
+# Tope defensivo: una tabla completa leída en voz alta sería interminable y
+# costosa (FAL cobra 0,10 USD por cada 1000 caracteres). useLectura.js ya
+# resume las respuestas largas antes de pedir la lectura; este tope es la
+# última barrera si algo llega sin resumir.
 MAX_CARACTERES = 2000
 
 
 def sintetizar_voz(texto: str, api_key: str, voz: str = "Rachel", idioma: str = "es") -> dict:
-    """
-    Pide a FAL (ElevenLabs Multilingual v2) el audio de `texto`.
+    """Pide a FAL (ElevenLabs Multilingual v2) el audio de `texto`.
 
-    Devuelve `{"ok": True, "audio_url": "..."}` en éxito, o
-    `{"ok": False, "error": "..."}` en cualquier fallo — nunca lanza. Quien
-    llama debe caer de vuelta a la voz local del navegador si `ok` es False:
-    esta función es una MEJORA opcional, nunca una dependencia para que la
-    lectura en voz alta funcione.
+    Returns:
+        `{"ok": True, "audio_url": "..."}` si tiene éxito, o
+        `{"ok": False, "error": "..."}` ante cualquier fallo; nunca lanza.
+        Si `ok` es False, quien llama debe usar la voz local del navegador:
+        esta función es una mejora opcional, no una dependencia.
     """
     limpio = str(texto or "").strip()
     if not limpio:

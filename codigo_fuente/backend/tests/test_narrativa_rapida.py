@@ -1,17 +1,15 @@
 """
-Pruebas de core/narrativa_rapida.py — redacción con IA para caminos rápidos
-(métricas certificadas, banco de preguntas).
+Pruebas de la redacción con IA en los caminos rápidos (core/narrativa_rapida.py).
 
-Regla de negocio (30/08/2026): "todo contexto debe ser generado por la IA,
-nunca algo pregrabado — un mensaje pregrabado solo si ya pasaron unos 8
-segundos y la IA se cayó". Estas pruebas verifican que:
-  1. Con datos y clave, se le pide a la IA que redacte (nunca se usa el
-     respaldo fijo de entrada si la IA responde).
-  2. Sin clave o sin filas, se usa el respaldo de inmediato (no tiene sentido
-     ni tiempo que gastar llamando a la IA sin nada que contarle).
-  3. Un fallo o timeout de la IA NUNCA se propaga — siempre cae al respaldo.
-  4. El tope de tiempo es corto (8s), no el mismo de una generación de SQL
-     completa.
+En las métricas certificadas y el banco de preguntas, el contexto lo redacta la
+IA; el texto fijo de respaldo solo se usa si la IA no responde en unos 8 s. Se
+verifica que con datos y clave se pide la redacción a la IA; que sin clave o
+sin filas se usa el respaldo de inmediato (no hay nada que contarle a la IA);
+que un fallo o tiempo agotado de la IA NUNCA se propaga, y que el tope de
+tiempo es corto, no el de una generación de SQL completa.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os

@@ -1,23 +1,11 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-VIZ-03]
- * ============================================================================
- * ARCHIVO: ProfessionalPaySlip.jsx
- * MÓDULO: UI / Executive Documents
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Es el "Renderizador Final" del Rol de Pagos Individual. 
- * Muestra el documento de un colaborador con un diseño corporativo y claro,
- * separando Haberes de Descuentos y calculando indicadores clave (Neto).
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Elemento hijo de `PayslipView.jsx`. Se instancia una vez por cada empleado.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Normalización de glosarios SQL (entiende que 'sueldobase' y 'salario' son lo mismo).
- * - Clasificación automática de sumas vs restas basado en expresiones regulares.
- * - Cálculo al vuelo de proyecciones como "Costo Total Empresa" e "IESS Patronal".
- * ============================================================================
+ * @file Ficha individual del rol de pagos. Presenta el documento de un colaborador con
+ * diseño corporativo: separa haberes y descuentos, calcula el neto a recibir y estima
+ * aportes al IESS, décimos, fondo de reserva y costo total para la empresa. Reconoce
+ * las columnas por alias normalizados (p. ej. «sueldobase» y «salariobase») y permite
+ * descargar la ficha en PDF. PayslipView la instancia una vez por empleado y periodo.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useRef, useState } from 'react';
@@ -25,7 +13,7 @@ import { Download, Loader2 } from 'lucide-react';
 import { formatValue, parseNum } from '../utils/formatters';
 import { dbToBusinessName } from '../constants/appConfig';
 
-/** Quita acentos/símbolos para que el nombre de archivo sea seguro en cualquier SO. */
+/** Quita tildes y símbolos para que el nombre de archivo sea seguro en cualquier sistema operativo. */
 const nombreArchivoSeguro = (texto) =>
     String(texto || '')
         .normalize('NFD')
@@ -34,6 +22,7 @@ const nombreArchivoSeguro = (texto) =>
         .replace(/^_+|_+$/g, '')
         .slice(0, 80);
 
+// Normaliza un texto para compararlo: sin tildes, sin signos y en minúsculas.
 const normalizeKey = (value) =>
     String(value ?? '')
         .normalize('NFD')
@@ -41,11 +30,13 @@ const normalizeKey = (value) =>
         .replace(/[^a-z0-9]/gi, '')
         .toLowerCase();
 
+// Indica si el texto normalizado contiene alguna de las palabras clave.
 const containsAny = (value, keywords) => {
     const source = normalizeKey(value);
     return keywords.some((k) => source.includes(normalizeKey(k)));
 };
 
+// Texto útil como descripción: no vacío, no numérico y de al menos tres caracteres.
 const isMeaningfulText = (value) => {
     const text = String(value ?? '').trim();
     if (!text) return false;
@@ -53,6 +44,8 @@ const isMeaningfulText = (value) => {
     return text.length >= 3;
 };
 
+// Devuelve una función que busca el índice de columna del primer alias que
+// coincide, primero por igualdad exacta y luego por inclusión; -1 si no hay.
 const createColumnResolver = (columns) => {
     const normalized = (columns || []).map((col) => normalizeKey(col));
     return (...aliases) => {
@@ -69,6 +62,7 @@ const createColumnResolver = (columns) => {
 
 const readAt = (row, idx) => (idx >= 0 && Array.isArray(row) ? row[idx] : null);
 
+// Suma el valor de los rubros que cumplen el predicado.
 const sumValues = (rows, predicate) =>
     rows.reduce((acc, row) => (predicate(row) ? acc + row.value : acc), 0);
 
@@ -80,6 +74,8 @@ const hasValue = (value) => {
 
 const isZeroLike = (value) => /^0(?:[.,]0+)?$/.test(String(value ?? '').trim());
 
+// Convierte fechas ISO (aaaa-mm-dd) y compactas de 8 dígitos (aaaammdd o
+// ddmmaaaa) al formato dd/mm/aaaa; otros formatos se devuelven tal cual.
 const formatDateValue = (value) => {
     if (!hasValue(value)) return '-';
     const raw = String(value).trim();
@@ -101,6 +97,19 @@ const formatDateValue = (value) => {
     return raw;
 };
 
+/**
+ * Muestra la ficha del rol de pagos de un empleado en un periodo, con su botón de
+ * descarga en PDF.
+ *
+ * @param {object} props
+ * @param {Array} props.employee - Fila principal del empleado.
+ * @param {Array<Array>} props.allRows - Todas las filas (rubros) del empleado en el periodo.
+ * @param {string[]} props.columns - Nombres de las columnas del resultado.
+ * @param {string} [props.dbName] - Base de origen; da el nombre de la empresa si no viene en los datos.
+ * @param {object|null} [props.meta=null] - Datos del empleado (nombres, cédula, cargo, área,
+ *   empresa, periodo) que tienen prioridad sobre los leídos de las filas.
+ * @returns {JSX.Element} Ficha del rol de pagos.
+ */
 export function ProfessionalPaySlip({ employee, allRows, columns, dbName, meta = null }) {
     const cardRef = useRef(null);
     const [descargando, setDescargando] = useState(false);
@@ -141,6 +150,8 @@ export function ProfessionalPaySlip({ employee, allRows, columns, dbName, meta =
     const breakdownRows = Array.isArray(allRows) && allRows.length ? allRows : [employee];
     const sourceRows = [employee, ...breakdownRows];
 
+    // Primer valor no vacío de la columna buscada entre las filas del empleado;
+    // puede descartar ceros (allowZero) o exigir texto con letras (preferText).
     const getMainValue = (aliases, options = {}) => {
         const { allowZero = false, preferText = false } = options;
         const idx = findCol(...aliases);
@@ -191,6 +202,8 @@ export function ProfessionalPaySlip({ employee, allRows, columns, dbName, meta =
             const categoryNorm = normalizeKey(rawCategory);
             const descriptionNorm = normalizeKey(description);
 
+            // Un rubro es descuento si su valor es negativo o si la categoría o la
+            // descripción indican egreso, descuento o retención; si no, es haber.
             let side = 'HABER';
             if (
                 value < 0 ||
@@ -241,6 +254,8 @@ export function ProfessionalPaySlip({ employee, allRows, columns, dbName, meta =
             containsAny(row.normDesc, ['iess']) &&
             containsAny(row.normDesc, ['patronal', '1215'])
     );
+    // Si los datos no traen el aporte patronal, se estima con la tasa del 12,15 %
+    // sobre el sueldo base.
     const aportePatronalIess =
         aportePatronalIessDirecto > 0 ? aportePatronalIessDirecto : sueldoBase * 0.1215;
 
@@ -256,12 +271,10 @@ export function ProfessionalPaySlip({ employee, allRows, columns, dbName, meta =
 
     const costoEmpresa = haberesTotal + aportePatronalIess;
 
-    // Descarga en PDF — captura la tarjeta EXACTAMENTE como se ve en pantalla
-    // (mismo diseño, "formato original") con html2canvas-pro (ya usado en el
-    // proyecto: maneja bien los colores modernos de Tailwind que este
-    // componente usa, a diferencia del html2canvas original). El botón vive
-    // FUERA del elemento capturado (cardRef), así que nunca sale dentro del
-    // PDF que genera.
+    // Descarga en PDF: captura la tarjeta EXACTAMENTE como se ve en pantalla con
+    // html2canvas-pro, que maneja bien los colores modernos de Tailwind que usa
+    // este componente, a diferencia del html2canvas original. El botón está
+    // FUERA del elemento capturado (cardRef), así que nunca sale en el PDF.
     const descargarPdf = async () => {
         if (descargando || !cardRef.current) return;
         setDescargando(true);
@@ -279,19 +292,13 @@ export function ProfessionalPaySlip({ employee, allRows, columns, dbName, meta =
             });
             const imgData = canvas.toDataURL('image/png');
 
-            // Página A4 estándar — mismo patrón que ya usa el exportador de
-            // gráficos (DataVisualizer.jsx: exportarGraficoPdf). Bug real
-            // detectado en pruebas (30/08/2026): la primera versión
-            // usaba el tamaño de página = tamaño del canvas en píxeles
-            // crudos (con scale:2 eso da una página de ~20+ pulgadas de
-            // ancho). Un PDF así de gigante obliga a cualquier visor a
-            // achicarlo mucho para que quepa en la ventana, y ese porcentaje
-            // de "ajustar a página" varía según el tamaño de la ventana del
-            // navegador (por eso el mismo archivo se veía a 40% en una
-            // ventana y a 25% en otra) — nunca es un valor fijo que el PDF
-            // pueda imponer. Con una página A4 normal, el "ajustar a página"
-            // de cualquier visor cae en un porcentaje razonable y estable,
-            // como con cualquier documento común.
+            // Página A4 estándar, igual que el exportador de gráficos
+            // (DataVisualizer.jsx: exportarGraficoPdf). Usar como página el
+            // tamaño del canvas en píxeles (con scale: 2, más de 20 pulgadas
+            // de ancho) obliga al visor a reducirlo mucho, y el porcentaje de
+            // «ajustar a página» cambia con el tamaño de la ventana. Con una
+            // página A4, ese ajuste cae en un porcentaje razonable y estable,
+            // como en cualquier documento común.
             const pdf = new JsPDF({
                 orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
                 unit: 'pt',

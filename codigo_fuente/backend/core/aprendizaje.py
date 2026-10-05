@@ -1,41 +1,14 @@
 """
-aprendizaje.py — Extraccion automatica de reglas de negocio desde el chat.
+Aprendizaje automático de reglas de negocio desde el chat.
 
-QUE HACE
---------
-Despues de responder, mira la conversacion y decide por su cuenta si en ella
-quedo una regla que merezca recordarse para futuras consultas de esa empresa.
-Si la hay, la escribe en `core/memoria_empresa.py`. El usuario no tiene que
-pedir nada: no existe un comando "graba en memoria".
+Después de responder, decide en segundo plano si la conversación dejó una
+regla de negocio duradera y, si la hay, la guarda con core/memoria_empresa.py
+para las futuras consultas de esa empresa. El usuario no tiene que pedirlo:
+solo se analizan los mensajes que corrigen, aclaran o instruyen, y solo se
+aprende de lo que dijo el usuario, nunca de conclusiones de la IA.
 
-POR QUE NO SE ANALIZA CADA CONSULTA
------------------------------------
-La extraccion cuesta una llamada al modelo. Hacerla en las miles de consultas
-rutinarias ("total de ventas por meses") seria pagar por nada: de una consulta
-respondida y aceptada no sale ninguna regla. Lo que si produce reglas es el
-momento en que el usuario CORRIGE, ACLARA o pide mas precision — ahi es donde
-esta el conocimiento que el sistema no tenia.
-
-`hay_senal_de_aprendizaje()` reconoce ese momento por como escribe el usuario.
-Sigue siendo automatico: la senal es la forma del mensaje, no una orden.
-
-POR QUE CORRE EN SEGUNDO PLANO
-------------------------------
-El usuario ya tiene su respuesta en pantalla. Hacerle esperar una llamada
-extra al modelo para guardar una nota seria cambiar latencia visible por
-trabajo invisible. Si la extraccion falla, la consulta ya fue respondida y no
-se entera nadie: la memoria es una mejora, nunca un punto de fallo.
-
-RIESGO CONOCIDO
----------------
-Al aprender solo, el sistema puede grabar como verdad una deduccion
-equivocada de la IA y aplicarla despues a todas las consultas de esa empresa.
-Por eso:
-  · Solo se aprende de lo que dijo el USUARIO, nunca de una conclusion que la
-    IA saco por si misma. Una IA que aprende de sus propias afirmaciones
-    termina reforzando sus errores.
-  · Cada regla queda con `origen` y `evidencia` para poder auditarla, y se
-    puede borrar desde /api/memoria.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 from __future__ import annotations
@@ -52,25 +25,30 @@ from core.memoria_empresa import recordar
 logger = logging.getLogger(__name__)
 
 
-# ─── 1. Deteccion del momento en que hay algo que aprender ──────────────────
+# ─── 1. Detección del momento en que hay algo que aprender ──────────────────
 
+# La extracción cuesta una llamada al modelo. Hacerla en las miles de consultas
+# rutinarias ("total de ventas por meses") sería pagar por nada: de una
+# consulta respondida y aceptada no sale ninguna regla. El conocimiento que el
+# sistema no tenía aparece cuando el usuario CORRIGE, ACLARA o pide más precisión.
+#
 # Formas en que una persona corrige, precisa o instruye a la herramienta.
-# Reconocerlas NO es "esperar una orden": es identificar donde aparece
+# Reconocerlas NO es "esperar una orden": es identificar dónde aparece
 # conocimiento nuevo. Una consulta normal no lleva ninguna de estas marcas.
 _SENALES = (
-    # Correccion directa
+    # Corrección directa
     r"\bno es (?:correcto|asi|exacto)\b", r"\bestas? mal\b", r"\bte equivocas\b",
     r"\ben realidad\b", r"\bincorrecto\b", r"\berror\b",
-    # Falta de precision en la respuesta
+    # Falta de precisión en la respuesta
     r"\bfaltan?\b", r"\bfalto\b", r"\bno me diste\b", r"\bno diste\b",
     r"\bmas detall", r"\bmas precis", r"\bbien detallad", r"\bnuevamente\b",
     r"\bno cuadra\b", r"\bno coincide\b", r"\bpor que (?:da|sale|aparece)\b",
-    # Instruccion sobre como responder en adelante
+    # Instrucción sobre cómo responder en adelante
     r"\bdeber[ií]as?\b", r"\bdebes\b", r"\btienes que\b", r"\ba la proxima\b",
     r"\bde ahora en adelante\b", r"\bsiempre que\b", r"\bcada vez que\b",
     r"\bgraba\b", r"\bguarda\b", r"\brecuerda\b", r"\bmemoriza\b", r"\banota\b",
     r"\bten en cuenta\b", r"\bconsidera\b",
-    # Explicacion que aporta el usuario sobre sus propios datos
+    # Explicación que aporta el usuario sobre sus propios datos
     r"\bporque (?:tienen|estan|se encuentran|son|no)\b",
     r"\bse debe a\b", r"\bla razon es\b",
 )
@@ -79,6 +57,7 @@ _RE_SENALES = re.compile("|".join(_SENALES))
 
 
 def _normalizar(texto: str) -> str:
+    """Pasa a minúsculas y quita tildes y signos para comparar con las señales."""
     txt = str(texto or "").lower()
     txt = unicodedata.normalize("NFD", txt)
     txt = "".join(c for c in txt if unicodedata.category(c) != "Mn")
@@ -87,15 +66,25 @@ def _normalizar(texto: str) -> str:
 
 
 def hay_senal_de_aprendizaje(mensaje_usuario: str) -> bool:
-    """True cuando el mensaje corrige, precisa o instruye — no una consulta normal."""
+    """
+    Indica si el mensaje corrige, precisa o instruye, a diferencia de una consulta normal.
+
+    Sigue siendo automático: la señal es la forma del mensaje, no una orden.
+    """
     texto = _normalizar(mensaje_usuario)
     if len(texto) < 12:
         return False
     return bool(_RE_SENALES.search(texto))
 
 
-# ─── 2. Extraccion de la regla ──────────────────────────────────────────────
+# ─── 2. Extracción de la regla ──────────────────────────────────────────────
 
+# Riesgo conocido: al aprender solo, el sistema podría grabar como verdad una
+# deducción equivocada de la IA y aplicarla a todas las consultas de esa
+# empresa. Por eso el prompt exige que la regla la aporte el USUARIO (una IA
+# que aprende de sus propias afirmaciones termina reforzando sus errores) y
+# cada regla se guarda con `origen` y `evidencia` para poder auditarla y
+# borrarla desde /api/memoria.
 _PROMPT_EXTRACCION = """Eres el modulo de memoria de VicMar Data AI, una herramienta de Inteligencia de Negocios.
 
 Analiza este fragmento de conversacion entre un usuario y el asistente, sobre la empresa {empresa}.
@@ -129,6 +118,7 @@ Responde SOLO JSON valido:
 
 
 def _extraer_json(texto: str) -> dict | None:
+    """Extrae el objeto JSON de la respuesta del modelo, tolerando cercos de código markdown."""
     if not texto:
         return None
     limpio = str(texto).strip()
@@ -144,7 +134,7 @@ def _extraer_json(texto: str) -> dict | None:
 
 
 def _formatear_conversacion(historial: list, limite: int = 6) -> str:
-    """Convierte el historial que envia el frontend en texto plano."""
+    """Convierte los últimos mensajes del historial que envía el frontend en texto plano."""
     lineas = []
     for item in list(historial or [])[-limite:]:
         if isinstance(item, dict):
@@ -161,15 +151,18 @@ def _formatear_conversacion(historial: list, limite: int = 6) -> str:
 
 def _construir_llm():
     """
-    Modelo para la extraccion: el barato (flash), no el experto.
+    Construye el modelo extractor: el económico (flash), no el experto.
 
-    Se construye aqui en lugar de reutilizar el del motor porque
+    Se construye aquí en lugar de reutilizar el del motor porque
     `finalize_response` es el embudo de TODAS las respuestas, incluidas las que
-    salen por caminos donde el cliente de IA todavia no existe (metrica
-    certificada, cache). Depender de el habria dejado sin aprendizaje justo las
-    correcciones que llegan despues de una metrica certificada. Instanciar
-    ChatOpenAI no abre conexion, y esto corre dentro del hilo de aprendizaje,
+    salen por caminos donde el cliente de IA todavía no existe (métrica
+    certificada, caché). Depender de él dejaría sin aprendizaje justo las
+    correcciones que llegan después de una métrica certificada. Instanciar
+    ChatOpenAI no abre conexión, y esto corre dentro del hilo de aprendizaje,
     fuera del camino de la respuesta.
+
+    Returns:
+        El cliente de DeepSeek, o None si falta DEEPSEEK_API_KEY o falla la creación.
     """
     try:
         from langchain_openai import ChatOpenAI
@@ -199,10 +192,10 @@ def extraer_y_recordar(
     llm=None,
 ) -> dict | None:
     """
-    Analiza la conversacion y guarda la regla si la hay. Devuelve la regla o None.
+    Analiza la conversación y guarda la regla si la hay; devuelve la regla o None.
 
-    `llm` se puede inyectar (los tests lo hacen con un doble); si no se pasa,
-    se construye el modelo barato.
+    `llm` se puede inyectar (las pruebas lo hacen con un doble); si no se pasa,
+    se construye el modelo económico.
     """
     if not empresa:
         return None
@@ -248,7 +241,13 @@ def aprender_en_segundo_plano(
     empresa: str, mensaje_usuario: str, historial: list, llm=None
 ) -> None:
     """
-    Lanza la extraccion en un hilo aparte y vuelve de inmediato.
+    Lanza la extracción en un hilo aparte y vuelve de inmediato.
+
+    Solo se lanza si el mensaje trae señal de aprendizaje. Corre en segundo
+    plano porque el usuario ya tiene su respuesta: hacerle esperar otra llamada
+    al modelo cambiaría latencia visible por trabajo invisible. Si la
+    extracción falla, la consulta ya fue respondida; la memoria es una mejora,
+    nunca un punto de fallo.
 
     El hilo es daemon: si el backend se apaga, no queda nada colgando
     impidiendo el cierre.

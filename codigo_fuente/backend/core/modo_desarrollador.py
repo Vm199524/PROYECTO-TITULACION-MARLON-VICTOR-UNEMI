@@ -1,49 +1,16 @@
 """
-modo_desarrollador.py — La seña de desarrollador de VicMar Data AI ("soy VM").
+Modo desarrollador activado con una seña en el chat («soy VM»).
 
-PROBLEMA QUE RESUELVE
----------------------
-El 30/08/2026 el desarrollador escribió "Soy VM" en el chat y la IA respondió
-"Reconocido: 'soy VM' (...) tienes privilegio de acceso profundo al sistema".
-Nada de eso era cierto: no se activó ningún privilegio, no se guardó ningún
-alias y no cambió una sola línea del pipeline. Era texto generado por el
-modelo, no una acción del sistema. Cuando el propio usuario preguntó "¿si
-borro este chat se borra mi identidad?", la IA contestó que sí, y acto seguido
-pidió "indícame una tabla concreta donde escribir la configuración".
+Permite que el desarrollador converse con el modelo sobre cualquier tema, sin
+el guardarraíl de alcance, y existe para que esa activación sea una acción
+real del sistema y no solo texto generado por el modelo. Cambia lo
+conversacional, nunca lo transaccional: el sanitizador de SQL sigue rechazando
+todo lo que no sea SELECT. La seña y el estado se guardan en un archivo local
+del backend (jamás en las bases de las empresas) y sobreviven a borrar el chat,
+cerrar sesión o reiniciar.
 
-Ese es exactamente el camino que NO se puede tomar: las bases de datos del
-servidor SQL son las bases reales de las empresas y el sistema jamás escribe
-en ellas (solo SELECT). Por eso la seña se registra aquí, en un archivo local
-del backend, igual que `memoria_empresa.py` y el caché semántico.
-
-QUÉ HACE ESTE MÓDULO
---------------------
-1. Reconoce la seña en el texto del chat (por defecto "soy VM", configurable
-   con la variable de entorno TRIPLEA_SENA_DEV).
-2. La vincula a UNA cuenta concreta y la deja registrada en disco, así que
-   sobrevive a borrar el chat, cerrar sesión y reiniciar el backend.
-3. Mantiene el estado "modo desarrollador activo" por usuario, también en
-   disco, para que el pipeline de consultas sepa que a ESE usuario se le
-   levantan los guardarraíles conversacionales.
-
-QUIÉN PUEDE ACTIVARLA (TOFU — trust on first use)
--------------------------------------------------
-La seña no está atada a un nombre de usuario escrito a mano en el código: el
-PRIMER usuario con rol ADMINISTRADOR que la pronuncia queda registrado como su
-dueño, y desde ese momento la seña solo funciona para él. Si otro usuario la
-escribe (o la adivina leyendo este archivo), el sistema responde como ante
-cualquier otro mensaje: no hay activación ni pista de que la seña exista.
-
-Se puede fijar el dueño por adelantado con TRIPLEA_USUARIO_DEV=<username>, y
-en ese caso ni siquiera el primer administrador que llegue puede reclamarla.
-
-QUÉ NO HACE
------------
-No concede permisos de escritura sobre ninguna base de datos. El modo
-desarrollador cambia lo CONVERSACIONAL (la IA puede hablar de cualquier tema
-directamente con el modelo, sin el guardarraíl de alcance), no lo
-TRANSACCIONAL: el sanitizador de SQL sigue rechazando todo lo que no sea
-SELECT, para cualquier usuario y en cualquier modo.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 from __future__ import annotations
@@ -84,7 +51,7 @@ _PREFIJOS_LIBRES = ("vm:", "vm :", "libre:", "deepseek:")
 
 
 def _normalizar(texto: str) -> str:
-    """Minúsculas, sin tildes y sin signos — misma base que core/alcance.py."""
+    """Pasa el texto a minúsculas sin tildes ni signos, igual que core/alcance.py."""
     txt = str(texto or "").lower()
     txt = unicodedata.normalize("NFD", txt)
     txt = "".join(c for c in txt if unicodedata.category(c) != "Mn")
@@ -93,10 +60,15 @@ def _normalizar(texto: str) -> str:
 
 
 def sena_configurada() -> str:
+    """Devuelve la seña normalizada: la de TRIPLEA_SENA_DEV o, si no existe, «soy vm»."""
     return _normalizar(os.getenv("TRIPLEA_SENA_DEV", "") or SENA_POR_DEFECTO)
 
 
 def usuario_fijado_por_entorno() -> str:
+    """Devuelve el dueño fijado con TRIPLEA_USUARIO_DEV, o "" si no se fijó.
+
+    Si está definido, ni siquiera el primer administrador puede reclamar la seña.
+    """
     return str(os.getenv("TRIPLEA_USUARIO_DEV", "") or "").strip().lower()
 
 
@@ -124,6 +96,10 @@ def _leer() -> dict:
 
 
 def _escribir(datos: dict) -> None:
+    """Escribe el estado de forma atómica: primero a un temporal y luego lo reemplaza.
+
+    Así una interrupción a mitad de la escritura no deja un JSON corrupto.
+    """
     CACHE_DIR.mkdir(exist_ok=True)
     tmp = ARCHIVO.with_suffix(".json.tmp")
     with open(tmp, "w", encoding="utf-8") as f:
@@ -139,13 +115,12 @@ def _ahora() -> str:
 
 
 def detectar_sena(texto: str) -> tuple[bool, str]:
-    """
-    ¿El mensaje empieza con la seña?
+    """Indica si el mensaje empieza con la seña.
 
-    Devuelve `(True, resto)`, donde `resto` es lo que el usuario escribió
-    DESPUÉS de la seña. Así "soy VM, explícame el pipeline" activa el modo y
-    responde la pregunta en el mismo turno, en vez de obligar a escribirla dos
-    veces.
+    Returns:
+        `(True, resto)`, donde `resto` es lo que el usuario escribió después de
+        la seña, o `(False, "")`. Así «soy VM, explícame el pipeline» activa el
+        modo y responde la pregunta en el mismo turno.
     """
     norm = _normalizar(texto)
     sena = sena_configurada()
@@ -163,12 +138,13 @@ def detectar_sena(texto: str) -> tuple[bool, str]:
 
 
 def es_frase_de_salida(texto: str) -> bool:
+    """Indica si el mensaje es o empieza con una frase que apaga el modo desarrollador."""
     norm = _normalizar(texto)
     return any(norm == f or norm.startswith(f + " ") for f in _FRASES_SALIDA)
 
 
 def quitar_prefijo_libre(texto: str) -> tuple[bool, str]:
-    """Detecta el prefijo explícito "vm:" y devuelve la pregunta sin él."""
+    """Detecta un prefijo de respuesta libre («vm:», «libre:», etc.) y devuelve la pregunta sin él."""
     crudo = str(texto or "").strip()
     bajo = crudo.lower()
     for pref in _PREFIJOS_LIBRES:
@@ -190,11 +166,13 @@ def dueno_registrado() -> str:
 
 
 def puede_usar_sena(usuario: str, rol: str) -> bool:
-    """
-    ¿Este usuario tiene derecho a la seña?
+    """Indica si el usuario tiene derecho a usar la seña.
 
-    · Si ya hay dueño registrado → solo él.
-    · Si no hay dueño → puede reclamarla cualquier ADMINISTRADOR (TOFU).
+    Aplica TOFU (confianza en el primer uso): la seña no está atada a un
+    usuario escrito en el código. Si ya hay dueño registrado, solo él puede
+    usarla; si no lo hay, la reclama el primer usuario con rol de
+    administrador. Para cualquier otro usuario la seña se trata como un
+    mensaje normal, sin pista de que exista.
     """
     user = _clave(usuario)
     if not user:
@@ -206,6 +184,7 @@ def puede_usar_sena(usuario: str, rol: str) -> bool:
 
 
 def esta_activo(usuario: str) -> bool:
+    """Indica si el modo desarrollador está encendido para el usuario y si este es el dueño."""
     user = _clave(usuario)
     if not user:
         return False
@@ -217,12 +196,12 @@ def esta_activo(usuario: str) -> bool:
 
 
 def activar(usuario: str, rol: str, alias: str = "VM") -> tuple[bool, str]:
-    """
-    Registra (si hace falta) y enciende el modo desarrollador para ese usuario.
+    """Registra al dueño si hace falta y enciende el modo desarrollador para el usuario.
 
-    Devuelve `(ok, mensaje)`. El mensaje ya viene redactado para mostrárselo
-    al usuario tal cual, con el detalle que importa: dónde quedó guardado y
-    qué cambia a partir de ahora.
+    Returns:
+        `(ok, mensaje)`. El mensaje viene redactado para mostrarlo tal cual:
+        dónde quedó guardada la seña y qué cambia a partir de ahora. Si el
+        usuario no tiene derecho a la seña, devuelve `(False, "")`.
     """
     user = _clave(usuario)
     if not puede_usar_sena(user, rol):
@@ -270,6 +249,7 @@ def activar(usuario: str, rol: str, alias: str = "VM") -> tuple[bool, str]:
 
 
 def desactivar(usuario: str) -> bool:
+    """Apaga el modo desarrollador del usuario; devuelve False si no estaba activo."""
     user = _clave(usuario)
     if not user:
         return False
@@ -283,6 +263,7 @@ def desactivar(usuario: str) -> bool:
 
 
 def alias_de(usuario: str) -> str:
+    """Devuelve el alias con el que se saluda al usuario en modo desarrollador («VM» por defecto)."""
     datos = _leer()
     activo = datos.get("activos", {}).get(_clave(usuario)) or {}
     return activo.get("alias") or datos.get("alias") or "VM"

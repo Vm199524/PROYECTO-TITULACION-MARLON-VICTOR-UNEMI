@@ -1,19 +1,13 @@
 /**
- * Archivo: DashboardMobile.jsx
- * Rol: layout principal para teléfono (<768px).
- *
- * Rediseño (29/08/2026): la versión anterior solo
- * exponía el Chat — Indicadores, Bases de Datos y todo el módulo de
- * Administración (Usuarios/Auditoría) no tenían forma de abrirse desde el
- * teléfono en absoluto, aunque ya existían en escritorio. Se agrega una
- * barra de navegación inferior (el patrón estándar de la industria para
- * móvil — Material Design, iOS HIG — porque queda al alcance del pulgar,
- * a diferencia de una barra lateral pensada para mouse) que da paso a las
- * MISMAS vistas que ya usa DashboardDesktop (BentoDashboard, DataChannels,
- * AdminUsuarios, AdminAuditoria) — no una reconstrucción aparte, para no
- * duplicar lógica ni arriesgar que las dos versiones se desincronicen.
- * ("Ecosistema VicMar Data AI" se retiró de todo el sistema el mismo día por
- * no estar a la altura del resto del diseño.)
+ * @file Diseño principal para teléfonos (<768 px). Usa una barra de
+ * navegación inferior, al alcance del pulgar (patrón de Material Design e iOS
+ * HIG), con las pestañas Chat, Indicadores, Datos y Más. Cada pestaña abre las
+ * mismas vistas que DashboardDesktop (BentoDashboard, DataChannels,
+ * AdminUsuarios, AdminAuditoria) para no duplicar lógica. La hoja «Más» reúne
+ * la administración (solo rol ADMINISTRADOR), la empresa activa y el
+ * historial de sesiones. Lo renderiza App.jsx en teléfonos.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useState } from 'react';
@@ -31,7 +25,7 @@ import {
 } from 'lucide-react';
 import { ChatAreaMobile } from './ChatAreaMobile';
 
-// --- COMPONENTES COMPARTIDOS (mismas vistas que escritorio) ---
+// Componentes compartidos: las mismas vistas que escritorio.
 import { SessionHistory } from '../components/SessionHistory';
 import { NewQueryButton } from '../components/NewQueryButton';
 import { ContextNodes } from '../components/ContextNodes';
@@ -40,6 +34,7 @@ import { BentoDashboard } from '../components/views/BentoDashboard';
 import { AdminUsuarios } from '../components/views/AdminUsuarios';
 import { AdminAuditoria } from '../components/views/AdminAuditoria';
 
+// Altura de la barra de navegación inferior (px).
 const TAB_BAR_HEIGHT = 64;
 
 const TABS = [
@@ -49,6 +44,17 @@ const TABS = [
     { id: 'mas', icon: LayoutGrid, label: 'Más' },
 ];
 
+/**
+ * Renderiza el tablero móvil y alterna entre sus vistas.
+ * @param {object} props Estado y manejadores que App.jsx comparte con
+ *   DashboardDesktop: sesión y rol (`userAuth`), conexión (`connInfo`,
+ *   `availableDBs`, `handleConnect`), chat (`chatHistory`, `prompt`,
+ *   `handleQuery`, `cancelQuery`, `loading`), historial de sesiones
+ *   (`sortedSessions`, `loadSession`, `renameSession`, `deleteSession`, etc.),
+ *   la hoja «Más» (`isSidebarOpen`, `setIsSidebarOpen`), `handleLogout` y el
+ *   pulso del tablero BI (`biPulse`).
+ * @returns {JSX.Element} Diseño móvil completo.
+ */
 export function DashboardMobile({
     isSidebarOpen, setIsSidebarOpen,
     chatHistory, setChatHistory,
@@ -71,6 +77,7 @@ export function DashboardMobile({
     const [mobileView, setMobileView] = useState('chat');
     const esAdmin = String(userAuth?.role || '').trim().toUpperCase() === 'ADMINISTRADOR';
 
+    // Cambia de vista y cierra la hoja «Más».
     const irA = (vista) => {
         setMobileView(vista);
         setIsSidebarOpen(false);
@@ -82,6 +89,7 @@ export function DashboardMobile({
         loadSession(session);
     };
 
+    // Una tarjeta de Indicadores envía su pregunta de detalle al chat.
     const handleDrillDown = (pregunta) => {
         if (!pregunta) return;
         setMobileView('chat');
@@ -90,11 +98,11 @@ export function DashboardMobile({
 
     const tabActiva = mobileView === 'chat' || mobileView === 'reportes' || mobileView === 'canales'
         ? mobileView
-        : 'mas'; // todo admin-* vive dentro de "Más"
+        : 'mas'; // las vistas admin-* se abren desde "Más"
 
     return (
         <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#020308] text-slate-200 select-none">
-            {/* Cabecera fija, simplificada: la navegación real ya vive abajo */}
+            {/* Cabecera fija y simplificada: la navegación está en la barra inferior. */}
             <header className="z-[900] flex h-[58px] shrink-0 items-center justify-between border-b border-white/10 bg-[#020617]/98 px-4 backdrop-blur-3xl">
                 <div className="flex items-center gap-2.5">
                     <img src="/logo.png" className="h-8 w-8 rounded-lg border border-white/10 bg-white/5 p-1" alt="" />
@@ -113,11 +121,12 @@ export function DashboardMobile({
                 </div>
             </header>
 
-            {/* Contenido principal: una vista a la vez, cada una ya trae su
-                propio scroll/padding (mismas vistas que escritorio). Al ser
-                flex-1 entre el header y el <nav> (ambos shrink-0), el propio
-                flexbox ya la deja exactamente entre los dos — no necesita
-                padding extra para "no taparse" con la barra inferior. */}
+            {/* Contenido principal: una vista a la vez, cada una con su propio
+                desplazamiento. Al ser flex-1 entre la cabecera y el <nav>
+                (ambos shrink-0), flexbox la deja exactamente entre los dos y
+                no necesita relleno extra para no quedar tapada. El chat se
+                oculta con display:none en lugar de desmontarse, para
+                conservar su estado al cambiar de pestaña. */}
             <main className="relative min-h-0 flex-1 overflow-hidden">
                 <div className="absolute inset-0" style={{ display: mobileView === 'chat' ? 'block' : 'none' }}>
                     <ChatAreaMobile
@@ -152,8 +161,8 @@ export function DashboardMobile({
                 )}
             </main>
 
-            {/* Barra de navegación inferior — al alcance del pulgar, el
-                patrón estándar para navegación primaria en móvil. */}
+            {/* Barra de navegación inferior, al alcance del pulgar: el patrón
+                habitual de navegación primaria en móvil. */}
             <nav
                 className="z-[950] flex shrink-0 items-stretch border-t border-white/10 bg-[#020617]/98 backdrop-blur-3xl"
                 style={{ height: TAB_BAR_HEIGHT, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -176,8 +185,8 @@ export function DashboardMobile({
                 })}
             </nav>
 
-            {/* Hoja "Más": Administración, sesión/historial y
-                selector de empresa — todo lo que no cabe en 4 pestañas. */}
+            {/* Hoja «Más»: administración, selector de empresa e historial
+                de sesiones; todo lo que no cabe en las 4 pestañas. */}
             <AnimatePresence>
                 {isSidebarOpen && (
                     <>
@@ -241,6 +250,7 @@ export function DashboardMobile({
     );
 }
 
+// Botón de una opción de la hoja «Más»; se resalta si su vista está activa.
 function MasItem({ icon: Icon, label, activo, onClick }) {
     return (
         <button

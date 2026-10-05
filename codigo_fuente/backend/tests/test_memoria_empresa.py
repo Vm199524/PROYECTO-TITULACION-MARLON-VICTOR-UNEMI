@@ -1,17 +1,16 @@
 """
-tests/test_memoria_empresa.py — Memoria de largo plazo y aprendizaje automatico.
+Pruebas de la memoria de largo plazo por empresa y del aprendizaje automático.
 
-Cubre las tres cosas que tienen que ser ciertas para que esto sea util y seguro:
+Cubren tres condiciones para que la memoria sea útil y segura: lo aprendido en
+una empresa NUNCA aparece en otra (una memoria mal aislada sería una fuga de
+datos entre empresas, como la de una clave de caché global); la corrección del
+usuario se guarda y se inyecta en el prompt de una consulta posterior, en vez
+de responder "he registrado" sin escribir nada; y el aprendizaje se dispara con
+correcciones y NO con consultas rutinarias, para no pagar una llamada al
+modelo por cada pregunta.
 
- 1. Lo aprendido en una empresa NUNCA aparece en otra. Este producto ya sufrio
-    una fuga de datos entre empresas por una clave de cache global
-    (incidente de fuga de datos entre empresas del 27/07/2026); una memoria mal aislada seria la misma
-    falla con otro nombre.
- 2. La correccion sobrevive al chat: se guarda y se inyecta en el prompt de una
-    consulta posterior, que es justamente lo que antes no pasaba (el usuario
-    corregia, el sistema decia "he registrado" y no escribia nada).
- 3. El aprendizaje automatico se dispara con correcciones y NO con consultas
-    rutinarias, para no pagar una llamada al modelo por cada pregunta.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import json
@@ -32,7 +31,7 @@ from core.aprendizaje import (  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def memoria_aislada(tmp_path, monkeypatch):
-    """Cada test escribe en su propio archivo: nunca en la memoria real."""
+    """Cada prueba escribe en su propio archivo: nunca en la memoria real."""
     monkeypatch.setattr(memoria_empresa, "MEMORIA_FILE", tmp_path / "memoria.json")
     yield
 
@@ -59,7 +58,7 @@ def test_empresa_vacia_no_guarda_nada():
     assert memoria_empresa.recordar(None, "otra regla cualquiera bien larga") is None
 
 
-# ─── 2. La correccion sobrevive al chat ──────────────────────────────────────
+# ─── 2. La corrección sobrevive al chat ──────────────────────────────────────
 
 
 def test_la_regla_persiste_y_llega_al_prompt():
@@ -76,8 +75,8 @@ def test_la_regla_persiste_y_llega_al_prompt():
 
 
 def test_sin_memoria_el_prompt_queda_exactamente_igual_que_antes():
-    # Importa que devuelva cadena vacia y no un encabezado suelto: si no,
-    # cada empresa nueva arrastraria ruido inutil en todas sus consultas.
+    # Importa que devuelva cadena vacía y no un encabezado suelto: si no,
+    # cada empresa nueva arrastraría ruido inútil en todas sus consultas.
     assert memoria_empresa.bloque_para_prompt("EMPRESA_NUEVA") == ""
 
 
@@ -136,7 +135,7 @@ def test_un_archivo_corrupto_no_tumba_la_consulta():
     assert memoria_empresa.bloque_para_prompt("MONT") == ""
 
 
-# ─── 3. Cuando se dispara el aprendizaje automatico ──────────────────────────
+# ─── 3. Cuándo se dispara el aprendizaje automático ──────────────────────────
 
 
 @pytest.mark.parametrize(
@@ -167,12 +166,12 @@ def test_detecta_correcciones_y_precisiones(mensaje):
     ],
 )
 def test_las_consultas_rutinarias_no_disparan_el_aprendizaje(mensaje):
-    # Cada disparo cuesta una llamada al modelo: activarlo en el trafico normal
-    # seria pagar por cada pregunta sin obtener ninguna regla a cambio.
+    # Cada disparo cuesta una llamada al modelo: activarlo en el tráfico normal
+    # sería pagar por cada pregunta sin obtener ninguna regla a cambio.
     assert hay_senal_de_aprendizaje(mensaje) is False
 
 
-# ─── 4. Extraccion con el modelo (doble, sin red) ────────────────────────────
+# ─── 4. Extracción con el modelo (doble, sin red) ────────────────────────────
 
 
 class LLMFalso:

@@ -1,12 +1,14 @@
 """
-Pruebas de la memoria persistente por motor (30/08/2026).
+Pruebas de la memoria persistente del caché semántico por motor de IA.
 
-El caché semántico (core/semantic_processor.py) ya guardaba en disco sin
-TTL — perfecto para "responder en 2 segundos al día siguiente". Lo único
-que faltaba: separar la clave por motor de IA, para que Flash, Pro y Gemini
-nunca se sirvan la respuesta cacheada de otro. Sigue siendo la IA la que
-respondió esa memoria (nunca un texto enlatado): solo se evita regenerar
-lo que ya se generó antes, para el MISMO motor.
+El caché semántico (core/semantic_processor.py) guarda en disco sin TTL para
+responder en segundos una pregunta repetida, y separa la clave por motor para
+que Flash, Pro y Gemini nunca se sirvan la respuesta cacheada de otro. La
+respuesta guardada sigue siendo la que generó la IA (nunca un texto enlatado):
+solo se evita regenerarla para el MISMO motor y la MISMA empresa.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os

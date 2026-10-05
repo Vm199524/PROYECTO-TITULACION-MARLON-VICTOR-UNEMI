@@ -1,29 +1,16 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-VIZ-02]
- * ============================================================================
- * ARCHIVO: PayslipView.jsx
- * MÓDULO: UI / Specialized Rendering
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Organizador de Nómina. Cuando la IA detecta que la tabla devuelta 
- * contiene datos de roles de pago, este componente toma la tabla plana
- * y agrupa todos los rubros (sueldo, horas extras, iess) por Empleado.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Renderizado condicionalmente por `DataVisualizer.jsx` cuando el tipo 
- * de datos se identifica como 'payslips'.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Algoritmo de "fuzzy matching" para encontrar columnas clave (Cédula, Nombres).
- * - Agrupación de filas de la base de datos en objetos ordenados por trabajador.
- * - Restricción de renderizado (muestra máx 3 fichas para no saturar memoria).
- * ============================================================================
+ * @file Vista de roles de pago. Cuando el resultado de una consulta corresponde a
+ * nómina, agrupa las filas planas por empleado y periodo (cédula o nombres, mes y
+ * año) y dibuja una ficha ProfessionalPaySlip por grupo, con un máximo de tres
+ * para no saturar la vista. Lo usan ChatMessage y DataVisualizer.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React from 'react';
 import { ProfessionalPaySlip } from './ProfessionalPaySlip';
 
+// Normaliza un nombre de columna: sin tildes, sin signos y en minúsculas.
 const normalizeKey = (value) =>
     String(value ?? '')
         .normalize('NFD')
@@ -31,6 +18,8 @@ const normalizeKey = (value) =>
         .replace(/[^a-z0-9]/gi, '')
         .toLowerCase();
 
+// Devuelve el índice de la primera columna que coincide con algún alias, primero
+// por igualdad exacta y luego por inclusión; -1 si ninguna coincide.
 const findColumn = (columns, aliases) => {
     const normalizedCols = (columns || []).map((col) => normalizeKey(col));
     for (const alias of aliases) {
@@ -43,6 +32,17 @@ const findColumn = (columns, aliases) => {
     return -1;
 };
 
+/**
+ * Agrupa las filas de nómina por empleado y periodo y muestra hasta tres fichas.
+ *
+ * @param {object} props
+ * @param {Array<Array>} props.data - Filas del resultado, como arreglos de valores.
+ * @param {string[]} props.columns - Nombres de las columnas, en el mismo orden.
+ * @param {string} [props.dbName] - Nombre de la base, que se muestra en cada ficha.
+ * @param {object[]} [props.payslipMeta=[]] - Metadatos por cédula, mes y año que
+ *   acompañan a cada ficha.
+ * @returns {JSX.Element|null} Las fichas, o null si no hay filas.
+ */
 export const PayslipView = ({ data, columns, dbName, payslipMeta = [] }) => {
     if (!Array.isArray(data) || data.length === 0) return null;
 

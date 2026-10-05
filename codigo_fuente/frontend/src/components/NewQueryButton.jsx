@@ -1,29 +1,22 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-CORE-01]
- * ============================================================================
- * ARCHIVO: NewQueryButton.jsx
- * MÓDULO: UI / Action Buttons
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Es el botón de "Pizarrón Limpio". Permite al usuario abandonar 
- * rápidamente una conversación en curso y empezar una nueva consulta 
- * desde cero sin perder el historial anterior.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Área de acciones destacadas en el menú lateral principal.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Purga del historial activo en memoria caché (`chatHistory`).
- * - Genera una nueva ID de sesión aleatoria de forma implícita.
- * - Componente visualmente prominente para guiar la interacción fluida.
- * ============================================================================
+ * @file Botón «Nueva Consulta». Permite cerrar la conversación en curso y empezar
+ * una consulta desde cero sin perder el historial de sesiones guardadas. Se ubica
+ * en el menú lateral de escritorio y en el panel lateral móvil.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 
 import React from 'react';
 import { Plus } from 'lucide-react';
 
+/**
+ * Muestra el botón que inicia una consulta nueva.
+ *
+ * @param {object} props
+ * @param {Function} props.startNewChat - Limpia la conversación activa e inicia una nueva.
+ * @returns {JSX.Element} Botón «Nueva Consulta».
+ */
 export function NewQueryButton({ startNewChat }) {
     return (
         <div className="px-2">

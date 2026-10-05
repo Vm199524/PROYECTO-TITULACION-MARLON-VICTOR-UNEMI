@@ -1,17 +1,15 @@
 """
-tests/test_vista_resolver.py — Detección en vivo del nombre real de la vista
-de ventas/compras en CHAT.
+Pruebas de la detección en vivo de las vistas de ventas y compras en CHAT.
 
-CONTEXTO (bug real, 28/08/2026)
---------------------------------
-"total de ventas por meses" y el resto de métricas certificadas de
-ventas/compras fallaban con "objeto no válido" en cualquier empresa que no
-fuera MONT (y a veces ni en esa). Causa: el SQL de esas métricas tiene
-escrito literalmente "cabecera_factura"/"cabecera_compra", pero el usuario
-confirmó con el árbol de vistas real del servidor que esas vistas NO EXISTEN
-hoy en CHAT — lo desplegado es "Ventas" y "Compras". `core/vista_resolver.py`
-centraliza la detección en vivo que ya se usaba (por separado, duplicada) en
-core/mirror_manager.py y main.py, y ahora también en api/routes_query.py.
+El SQL de las métricas certificadas de ventas/compras usa "cabecera_factura" y
+"cabecera_compra", pero en CHAT las vistas desplegadas pueden llamarse
+"Ventas" y "Compras"; con el nombre fijo, la consulta fallaría con "objeto no
+válido". `core/vista_resolver.py` centraliza la detección en vivo que usan
+core/mirror_manager.py, main.py y api/routes_query.py: prueba primero el
+nombre nuevo y, si no existe, el genérico.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import sys
 from pathlib import Path
@@ -52,7 +50,7 @@ class FakeConnectorOk:
 
 
 def test_detectar_vista_connector_encuentra_ventas_cuando_cabecera_factura_no_existe():
-    """Reproduce el bug exacto: solo 'Ventas' existe en CHAT, 'cabecera_factura' no."""
+    """Solo 'Ventas' existe en CHAT y 'cabecera_factura' no: se usa 'Ventas'."""
     conn = FakeConnectorOk({"Ventas"})
     assert detectar_vista_connector(conn, CANDIDATOS_VENTAS, target_db="CHAT") == "Ventas"
 
@@ -84,7 +82,7 @@ def test_detectar_vista_compras():
 
 
 class FakeSqlAlchemyConnection:
-    """Doble minimo de sqlalchemy.engine.Connection: .execute(text(sql)).fetchone()."""
+    """Doble mínimo de sqlalchemy.engine.Connection: .execute(text(sql)).fetchone()."""
 
     def __init__(self, nombres_que_existen: set[str]):
         self.nombres_que_existen = nombres_que_existen

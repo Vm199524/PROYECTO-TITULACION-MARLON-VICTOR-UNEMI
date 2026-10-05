@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-generar_diccionario_datos.py — diccionario de datos del almacén CHAT generado
-desde el ESQUEMA REAL (INFORMATION_SCHEMA + claves primarias y foráneas del
+Generación del diccionario de datos del almacén CHAT.
+
+Genera el diccionario de datos del almacén CHAT desde el ESQUEMA REAL (INFORMATION_SCHEMA + claves primarias y foráneas del
 catálogo de SQL Server), no escrito a mano: así el documento de titulación
 no puede describir una columna que la base no tiene.
 
@@ -15,6 +16,9 @@ Salida:
 Uso:
     cd backend
     python scripts/generar_diccionario_datos.py
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -29,6 +33,7 @@ RAIZ = Path(__file__).resolve().parents[3]   # raíz del repositorio
 SALIDA_JSON = RAIZ / 'documentacion' / 'tecnica' / 'diccionario_datos.json'
 SALIDA_MD = RAIZ / 'documentacion' / 'tecnica' / 'DICCIONARIO_DE_DATOS.md'
 
+# Tablas que entran al diccionario (en este orden), con su descripción.
 TABLAS = {
     'fact_matriculas': 'Hecho central. Grano: una fila por alumno y periodo académico (semestre en UNEMI, bloque de 28 días en OULAD).',
     'dim_alumno': 'Alumno, identificado por (institución, cédula).',
@@ -46,6 +51,7 @@ TABLAS = {
     'fact_benchmark_externo': 'Indicador publicado de un referente externo, con su fuente.',
 }
 
+# Descripción de negocio por nombre de columna, compartida entre tablas.
 DESCRIPCIONES = {
     'fact_id': 'Identificador sustituto de la fila',
     'empresa_codigo': 'Institución dueña del dato (aislamiento por SESSION_CONTEXT)',
@@ -113,7 +119,15 @@ DESCRIPCIONES = {
 
 
 def leer_esquema() -> dict:
-    conn = conectar_admin('CHAT')
+    """Lee del catálogo de SQL Server las columnas, claves y vistas del almacén CHAT.
+
+    Solo incluye las tablas de TABLAS; marca cada columna como PK o FK (con
+    la tabla referenciada) y le asigna su descripción de DESCRIPCIONES.
+
+    Returns:
+        {"tablas": {tabla: {"descripcion", "columnas"}}, "vistas": [nombres VIS_*]}.
+    """
+    conn =conectar_admin('CHAT')
     cur = conn.cursor()
     cur.execute("""
         SELECT c.TABLE_NAME, c.COLUMN_NAME, c.DATA_TYPE, c.CHARACTER_MAXIMUM_LENGTH,
@@ -158,6 +172,7 @@ def leer_esquema() -> dict:
 
 
 def main() -> int:
+    """Escribe el diccionario en JSON y en Markdown e informa las columnas sin descripción."""
     datos = leer_esquema()
     SALIDA_JSON.write_text(json.dumps(datos, indent=2, ensure_ascii=False), encoding='utf-8')
     lineas = ['# Diccionario de datos del almacén CHAT', '',

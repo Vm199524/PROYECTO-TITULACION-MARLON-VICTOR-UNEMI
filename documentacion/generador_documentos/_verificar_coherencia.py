@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-_verificar_coherencia.py — control automático de Avance_2_VicMar_Data_AI.docx/.pdf.
+Control automático de coherencia del Avance 2.
 
-Falla (código de salida 1) si:
+Revisa Avance_2_VicMar_Data_AI.docx y su PDF, y termina con código 1 si:
   1. Una cita del texto no está en Referencias, o una referencia no se cita.
   2. Una cifra clave del documento no coincide con los artefactos del sistema
-     (metrics.json, metricas_clustering.json, resultados_nl2sql_*.json).
+     (metrics.json, metricas_clustering.json, resultados_nl2sql_*.json), o el
+     Resumen supera 150 palabras.
   3. Un apartado no alcanza el mínimo de páginas de la plantilla UNEMI.
   4. «Referencias» o «Anexos» llevan número, que el formato oficial no admite.
 
 Uso (después de _build_avance2.py y _docx_a_pdf.ps1):
     python _verificar_coherencia.py
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -32,10 +36,12 @@ errores: list[str] = []
 
 
 def _sin_tildes(s: str) -> str:
+    """Devuelve `s` en minúsculas y sin marcas diacríticas, para comparar apellidos."""
     return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn').lower()
 
 
 def _n(x, d=3):
+    """Formatea un número como lo escribe el documento: coma decimal y punto de miles."""
     return f'{x:,.{d}f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 
 
@@ -120,7 +126,7 @@ for inicio, (fin, minimo) in minimos.items():
     else:
         errores.append(f'No se encontró el apartado {inicio} o {fin} en el PDF')
 
-# ── 4. Numeración de Referencias y Anexos (observación de la tutora al Avance 1) ──
+# ── 4. Numeración de Referencias y Anexos (el formato oficial no las numera) ──
 for p in doc.paragraphs:
     if p.style.name.startswith('Heading 1'):
         titulo = p.text.strip()

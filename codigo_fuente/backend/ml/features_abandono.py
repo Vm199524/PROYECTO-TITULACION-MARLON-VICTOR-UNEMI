@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-features_abandono.py — ingeniería de características compartida entre
-entrenar_abandono.py (entrenamiento) y predecir_abandono.py (calificación).
+Ingeniería de características del modelo de abandono.
 
-Se comparte a propósito: si entrenamiento y predicción calcularan las
-características de forma distinta, el modelo quedaría mal calibrado sin que
-nada lo avise (training/serving skew). Una sola función, dos consumidores.
+Compartida entre entrenar_abandono.py (entrenamiento) y predecir_abandono.py
+(calificación). Se comparte a propósito: si entrenamiento y predicción
+calcularan las características de forma distinta, el modelo quedaría mal
+calibrado sin que nada lo avise (training/serving skew). Una sola función,
+dos consumidores.
 
-PANEL ALUMNO-PERIODO (Avance 2)
--------------------------------
+PANEL ALUMNO-PERIODO
+--------------------
 La unidad de análisis declarada en la sección 1.3 es "el alumno en un
 periodo académico determinado", y el propósito es anticipar el abandono
 ANTES de que ocurra. Por eso cada fila del panel es (alumno, carrera,
@@ -19,9 +20,9 @@ periodo t) y se construye SOLO con información disponible hasta t:
     y_t  = 1 si en el periodo t+1 el alumno queda RETIRADO, 0 si sigue
            (o termina) — "¿abandonará el próximo periodo?"
 
-La versión anterior (1 fila por alumno, etiqueta = estado final) usaba la
-asistencia del MISMO periodo en que el alumno ya se había retirado: detectaba
-el abandono, no lo anticipaba.
+No se usa una fila por alumno con el estado final como etiqueta: tomaría la
+asistencia del MISMO periodo en que el alumno ya se retiró y detectaría el
+abandono en lugar de anticiparlo.
 
   - Entrenamiento: filas con un periodo siguiente conocido.
   - Calificación: el periodo más reciente de cada trayectoria que sigue
@@ -37,6 +38,9 @@ varios módulos, o repetir uno en otra presentación).
 
 Lee CHAT con la conexión administrativa: es un proceso por lotes, no una
 consulta de un usuario del chat, así que no pasa por chat_reader.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -84,10 +88,16 @@ DESCRIPCION_FEATURE = {
     'beca_porcentaje': 'porcentaje de beca',
 }
 
+# Periodos que promedian las medias móviles (incluido el periodo t).
 VENTANA_MOVIL = 3
 
 
 def _query_historial(conn: pyodbc.Connection, empresa_codigo: str) -> pd.DataFrame:
+    """Lee de CHAT el historial de matrículas de la institución.
+
+    Ordena por alumno, carrera, fecha y fila, y convierte promedio,
+    asistencia y saldo a float y es_ultimo_periodo a entero.
+    """
     sql = """
         SELECT fm.fact_id, fm.alumno_id, fm.carrera_id, da.cedula, da.apellidos, da.nombres,
                dt.fecha, dt.anio, fm.semestre, fm.promedio, fm.asistencia_pct,
@@ -110,9 +120,20 @@ def _query_historial(conn: pyodbc.Connection, empresa_codigo: str) -> pd.DataFra
 
 
 def construir_panel_desde_historial(hist: pd.DataFrame) -> pd.DataFrame:
-    """Transformación pura (sin base de datos), para poder probarla aislada.
-    Devuelve una fila por periodo con las características hasta t, la
-    etiqueta `y` (NaN si no hay periodo siguiente) y `para_calificar`."""
+    """Construye el panel alumno-periodo a partir del historial de matrículas.
+
+    Es una transformación pura (sin base de datos), para poder probarla
+    aislada. Las características se calculan dentro de cada trayectoria y
+    solo con los periodos hasta t (diferencias, medias móviles, mínimos y
+    proporciones acumuladas).
+
+    Returns:
+        Una fila por periodo con las columnas del historial más la
+        trayectoria, las características, la etiqueta `y` (1 si el periodo
+        siguiente de la trayectoria es RETIRADO, 0 si no, NaN si no hay
+        periodo siguiente) y `para_calificar` (1 en el último periodo de una
+        trayectoria que sigue ACTIVA).
+    """
     if hist.empty:
         return pd.DataFrame(columns=['fact_id', 'alumno_id', 'y'] + FEATURE_COLUMNS_NUMERICAS)
 
@@ -137,6 +158,7 @@ def construir_panel_desde_historial(hist: pd.DataFrame) -> pd.DataFrame:
     h['pct_periodos_con_mora'] = g['en_mora_t'].transform(lambda s: s.expanding().mean())
     h['beca_porcentaje'] = h['beca_porcentaje'].astype(int)
 
+    # Etiqueta: estado del periodo siguiente dentro de la misma trayectoria.
     siguiente = g['estado_codigo'].shift(-1)
     h['y'] = np.where(siguiente.isna(), np.nan, (siguiente == 'RETIRADO').astype(float))
     h['para_calificar'] = ((h['es_ultimo_periodo'] == 1) & (h['estado_codigo'] == 'ACTIVO')).astype(int)
@@ -144,14 +166,22 @@ def construir_panel_desde_historial(hist: pd.DataFrame) -> pd.DataFrame:
 
 
 def construir_panel(conn: pyodbc.Connection, empresa_codigo: str) -> pd.DataFrame:
+    """Lee el historial de la institución y construye su panel alumno-periodo."""
     return construir_panel_desde_historial(_query_historial(conn, empresa_codigo))
 
 
 def informe_atipicos(panel: pd.DataFrame) -> dict:
-    """Detección de valores atípicos por rango intercuartílico (IQR) en la
-    fase de preparación de datos (Alzabidi et al., 2026). Solo INFORMA: no
-    elimina filas, porque en abandono un valor extremo (asistencia muy baja)
-    suele ser justamente la señal que se quiere aprender."""
+    """Cuenta los valores atípicos por rango intercuartílico (IQR).
+
+    Forma parte de la preparación de datos (Alzabidi et al., 2026) y revisa
+    promedio, asistencia y saldo pendiente. Solo INFORMA: no elimina filas,
+    porque en abandono un valor extremo (asistencia muy baja) suele ser
+    justamente la señal que se quiere aprender.
+
+    Returns:
+        Por columna: q1, q3, número y porcentaje de valores fuera de
+        [q1 - 1,5·IQR, q3 + 1,5·IQR].
+    """
     informe = {}
     for col in ('promedio_t', 'asistencia_t', 'saldo_pendiente_t'):
         s = panel[col].astype(float)
@@ -166,12 +196,15 @@ def informe_atipicos(panel: pd.DataFrame) -> dict:
 
 
 def codificar_categoricas(df: pd.DataFrame, columnas_dummy_esperadas: list[str] | None = None) -> tuple[pd.DataFrame, list[str]]:
-    """One-hot encoding de FEATURE_COLUMNS_CATEGORICAS.
+    """Codifica en one-hot las columnas de FEATURE_COLUMNS_CATEGORICAS.
 
     Si `columnas_dummy_esperadas` viene dado (el caso de calificación: las
-    columnas que el modelo vio al entrenar), reindexa a ESA lista exacta — si
-    aparece una sede/canal nueva que no existía al entrenar, se descarta; si
-    falta una que sí existía, se rellena con 0.
+    columnas que el modelo vio al entrenar), reindexa a ESA lista exacta: si
+    aparece una sede o canal nuevo que no existía al entrenar, se descarta;
+    si falta uno que sí existía, se rellena con 0.
+
+    Returns:
+        (columnas dummy, lista de sus nombres).
     """
     dummies = pd.get_dummies(df[FEATURE_COLUMNS_CATEGORICAS], prefix=FEATURE_COLUMNS_CATEGORICAS).astype(int)
     if columnas_dummy_esperadas is not None:
@@ -180,6 +213,15 @@ def codificar_categoricas(df: pd.DataFrame, columnas_dummy_esperadas: list[str] 
 
 
 def matriz_X(df: pd.DataFrame, columnas_dummy: list[str] | None = None) -> tuple[pd.DataFrame, list[str]]:
+    """Arma la matriz de entrada del modelo.
+
+    Pone las columnas numéricas (como float) seguidas de las categóricas en
+    one-hot. Al calificar se pasan las columnas dummy del entrenamiento para
+    que la matriz tenga exactamente las mismas columnas.
+
+    Returns:
+        (X, nombres de las columnas dummy).
+    """
     dummies, cols_dummy = codificar_categoricas(df, columnas_dummy)
     X = pd.concat([df[FEATURE_COLUMNS_NUMERICAS].reset_index(drop=True).astype(float),
                    dummies.reset_index(drop=True)], axis=1)
@@ -187,6 +229,11 @@ def matriz_X(df: pd.DataFrame, columnas_dummy: list[str] | None = None) -> tuple
 
 
 def describir_feature(nombre: str) -> str:
+    """Traduce el nombre de una variable a una frase para una autoridad no técnica.
+
+    Las columnas dummy se describen como "sede <valor>" o "modalidad <valor>";
+    un nombre desconocido se devuelve tal cual.
+    """
     if nombre in DESCRIPCION_FEATURE:
         return DESCRIPCION_FEATURE[nombre]
     for pref in FEATURE_COLUMNS_CATEGORICAS:

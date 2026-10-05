@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-_docx_helpers.py — funciones para insertar contenido en un .docx EXISTENTE
-respetando el formato del documento oficial de titulación (Arial 12,
-justificado, interlineado 1,5, 10 pt después de cada párrafo; títulos con
-Heading 1 / Heading 2).
+Utilidades para insertar contenido en un .docx existente.
 
-Extraídas de _build_docx.py (Avance 1) y generalizadas: reciben el documento
-como parámetro en vez de depender de variables globales, para que las use
-_build_avance2.py sin tocar el generador del Avance 1.
+Insertan títulos, párrafos, viñetas, figuras y tablas en formato APA 7 y
+fragmentos de código después de un ancla, respetando el formato del documento
+oficial de titulación (Arial 12, justificado, interlineado 1,5, 10 pt después
+de cada párrafo; títulos con Heading 1 / Heading 2). Reciben el documento como
+parámetro, sin variables globales; las usa _build_avance2.py. Markdown mínimo
+soportado en el texto: **negrita** y *cursiva*.
 
-Markdown mínimo soportado en el texto: **negrita** y *cursiva*.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -29,7 +30,12 @@ DESPUES = Emu(127000)  # 10 pt, igual que el cuerpo del documento oficial
 
 
 class Insertor:
-    """Encadena inserciones después de un ancla (párrafo o tabla)."""
+    """Encadena inserciones después de un ancla (párrafo o tabla).
+
+    Cada método público inserta tras `anchor` y devuelve el último elemento
+    insertado, que sirve de ancla para la inserción siguiente. Lleva la
+    cuenta de figuras y tablas para numerarlas en orden.
+    """
 
     def __init__(self, doc: docx.Document):
         self.doc = doc
@@ -70,7 +76,7 @@ class Insertor:
         return r
 
     def _markdown(self, p, texto, tam=TAM, negrita_base=False):
-        # **negrita** y *cursiva* (sin anidar)
+        """Agrega `texto` a `p` como runs, interpretando **negrita** y *cursiva* (sin anidar)."""
         for trozo in re.split(r'(\*\*[^*]+\*\*|\*[^*]+\*)', texto):
             if not trozo:
                 continue
@@ -87,6 +93,10 @@ class Insertor:
 
     # ── API pública ─────────────────────────────────────────────────────
     def titulo(self, anchor, texto, nivel=1, salto_pagina=False):
+        """Inserta un título con el estilo Heading `nivel` (14 pt en nivel 1, 12 pt en los demás).
+
+        Con `salto_pagina`, inserta antes un salto de página.
+        """
         if salto_pagina:
             anchor = self.salto_pagina(anchor)
         p = self._nuevo_parrafo(f'Heading {nivel}')
@@ -98,7 +108,7 @@ class Insertor:
         return self._insertar(anchor, p)
 
     def subtitulo(self, anchor, texto):
-        """Subtítulo en negrita dentro de una sección (mismo estilo que
+        """Inserta un subtítulo en negrita dentro de una sección (mismo estilo que
         'Objetivo general' / 'Comparación crítica...' del documento oficial)."""
         p = self._nuevo_parrafo('Normal')
         self._formato_cuerpo(p)
@@ -107,18 +117,23 @@ class Insertor:
         return self._insertar(anchor, p)
 
     def parrafo(self, anchor, texto, alineacion=WD_ALIGN_PARAGRAPH.JUSTIFY):
+        """Inserta un párrafo de cuerpo (justificado por defecto) con Markdown mínimo."""
         p = self._nuevo_parrafo('Normal')
         self._formato_cuerpo(p, alineacion)
         self._markdown(p, texto)
         return self._insertar(anchor, p)
 
     def bloque(self, anchor, texto):
-        """Un párrafo por cada bloque separado por línea en blanco."""
+        """Inserta un párrafo por cada bloque separado por línea en blanco.
+
+        Los saltos de línea simples dentro de un bloque se unen con un espacio.
+        """
         for t in [b.strip() for b in texto.strip().split('\n\n') if b.strip()]:
             anchor = self.parrafo(anchor, ' '.join(t.split('\n')))
         return anchor
 
     def viñetas(self, anchor, items):
+        """Inserta una lista con viñeta (•) y sangría francesa, un párrafo por elemento."""
         for it in items:
             p = self._nuevo_parrafo('Normal')
             self._formato_cuerpo(p, despues=Emu(50800))
@@ -130,19 +145,21 @@ class Insertor:
         return anchor
 
     def salto_pagina(self, anchor):
+        """Inserta un párrafo que contiene solo un salto de página."""
         p = self._nuevo_parrafo('Normal')
         p.add_run().add_break(WD_BREAK.PAGE)
         return self._insertar(anchor, p)
 
     def leyenda(self, anchor, texto):
+        """Inserta una leyenda centrada en cursiva de 10 pt."""
         p = self._nuevo_parrafo('Normal')
         self._formato_cuerpo(p, WD_ALIGN_PARAGRAPH.CENTER)
         self._run(p, texto, cursiva=True, tam=Pt(10))
         return self._insertar(anchor, p)
 
     def figura(self, anchor, ruta_imagen, titulo, fuente='Elaboración propia.', ancho_pulgadas=6.2):
-        """Figura en formato APA 7: 'Figura N' en negrita + título en cursiva
-        ARRIBA de la imagen, y la nota de fuente debajo."""
+        """Inserta una figura en formato APA 7: 'Figura N' en negrita + título en
+        cursiva ARRIBA de la imagen, y la nota de fuente debajo."""
         self.n_figura += 1
         p = self._nuevo_parrafo('Normal')
         self._formato_cuerpo(p, WD_ALIGN_PARAGRAPH.LEFT, despues=Emu(0))
@@ -166,8 +183,11 @@ class Insertor:
         return self._insertar(anchor, p)
 
     def tabla(self, anchor, filas, titulo=None, nota='Elaboración propia.', anchos=None, tam=9):
-        """Tabla APA 7 ('Tabla N' + título en cursiva arriba, nota abajo).
-        La primera fila es el encabezado."""
+        """Inserta una tabla APA 7 ('Tabla N' + título en cursiva arriba, nota abajo).
+
+        La primera fila es el encabezado (sombreado y repetido si la tabla
+        cruza de página). Sin `titulo`, la tabla no se numera.
+        """
         if titulo:
             self.n_tabla += 1
             p = self._nuevo_parrafo('Normal')
@@ -218,7 +238,10 @@ class Insertor:
         return anchor
 
     def codigo(self, anchor, texto, titulo=None):
-        """Fragmento de código en Consolas 8,5 pt, fondo gris, sin interlineado."""
+        """Inserta un fragmento de código en Consolas 8,5 pt, fondo gris, sin interlineado.
+
+        Cada línea es un párrafo; al final agrega un párrafo vacío de separación.
+        """
         if titulo:
             anchor = self.parrafo(anchor, titulo)
         for linea in texto.rstrip('\n').split('\n'):
@@ -250,6 +273,7 @@ def reemplazar_texto(parrafo, nuevo: str):
 
 
 def quitar_numeracion(parrafo):
+    """Quita la numeración automática (numPr) de un párrafo, si la tiene."""
     pPr = parrafo._p.pPr
     if pPr is not None and pPr.numPr is not None:
         pPr.remove(pPr.numPr)

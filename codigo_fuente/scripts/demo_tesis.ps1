@@ -1,22 +1,36 @@
 <#
-demo_tesis.ps1 — reconstruye y valida de punta a punta el prototipo del Avance 2
-("Desarrollo de un modelo predictivo de abandono estudiantil mediante
-inteligencia de negocios y procesamiento de lenguaje natural").
+.SYNOPSIS
+Reconstruye y valida de punta a punta el prototipo VicMar Data AI ("Desarrollo de un
+modelo predictivo de abandono estudiantil mediante inteligencia de negocios y
+procesamiento de lenguaje natural").
 
-Orden (cada paso se detiene si el anterior falló):
+.DESCRIPTION
+Ejecuta el pipeline reproducible en orden; si un paso falla, el script se detiene:
   1. SQL Server (Docker)            6. ETL de las dos instituciones (mismo código, dos perfiles)
   2. Anonimización (idempotente)    7. Entrenar, calificar, segmentar y reportar (x2)
   3. Datos UNEMI_PRUEBAS            8. Referentes externos (benchmarking)
   4. Datos OULAD (OULAD_PRUEBAS)    9. Diccionario de datos
   5. Esquema del almacén CHAT      10. Pruebas automatizadas (pytest)
-  Opcional: -ConEvaluacionNL2SQL   (40 preguntas + 8 maliciosas; consume cuota de los proveedores de IA)
-  Opcional: -Levantar              (abre backend y frontend para la demostración en vivo)
+Usa el entorno virtual codigo_fuente\backend\venv y ejecuta cada paso desde la carpeta backend.
+Al terminar informa la duración total en minutos.
 
-Uso (desde la raíz del repositorio):
-  powershell -ExecutionPolicy Bypass -File codigo_fuente\scripts\demo_tesis.ps1 [-ConEvaluacionNL2SQL] [-Levantar]
+.PARAMETER ConEvaluacionNL2SQL
+Agrega el paso 11: evaluación del motor NL2SQL (eval.evaluar_nl2sql) con el conjunto de
+referencia de 40 preguntas y 8 maliciosas. Consume cuota de los proveedores de IA.
 
-Credenciales: todas se leen de codigo_fuente\backend\.env (DB_PASSWORD, CHAT_READER_PASSWORD). Este
-script no contiene ni pide contraseñas.
+.PARAMETER Levantar
+Tras el pipeline, abre dos ventanas de PowerShell con el backend (puerto 8090) y el frontend
+(Vite, puerto 3000) para la demostración en vivo, e imprime el guion de la demostración.
+
+.EXAMPLE
+powershell -ExecutionPolicy Bypass -File codigo_fuente\scripts\demo_tesis.ps1 [-ConEvaluacionNL2SQL] [-Levantar]
+Se ejecuta desde la raíz del repositorio.
+
+.NOTES
+Credenciales: todas se leen de codigo_fuente\backend\.env (DB_PASSWORD, CHAT_READER_PASSWORD);
+este script no contiene ni pide contraseñas.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 #>
 param(
     [switch]$ConEvaluacionNL2SQL,
@@ -29,6 +43,8 @@ $py = Join-Path $backend 'venv\Scripts\python.exe'
 $env:PYTHONIOENCODING = 'utf-8'
 $inicio = Get-Date
 
+# Ejecuta un paso del pipeline mostrando su título y lanza una excepción si el
+# comando nativo termina con un código de salida distinto de 0.
 function Paso([string]$titulo, [scriptblock]$accion) {
     Write-Host ''
     Write-Host "== $titulo" -ForegroundColor Cyan
@@ -41,6 +57,7 @@ if (-not (Test-Path $py)) { throw "No existe $py. Crea el entorno: py -3.14 -m v
 Push-Location $backend
 try {
     Paso '1. SQL Server en Docker' { docker start vicmar-sqlserver | Out-Null }
+    # Reintenta la conexión como administrador hasta 40 veces, cada 3 s.
     Paso '   Esperando a que SQL Server acepte conexiones' {
         & $py -c "import time,sys; from conexion_admin import conectar_admin
 for i in range(40):
@@ -57,6 +74,7 @@ sys.exit(1)"
     Paso '5. Almacén CHAT, vistas y chat_reader'  { & $py scripts\run_sql_file.py ..\base_de_datos\crear_chat_academico.sql }
     Paso '6a. ETL perfil UNEMI_PRUEBAS'           { & $py scripts\etl_academico.py --perfil UNEMI_PRUEBAS }
     Paso '6b. ETL perfil OULAD_UK'                { & $py scripts\etl_academico.py --perfil OULAD_UK }
+    # Un modelo por institución: nunca se mezclan los datos de ambas.
     foreach ($empresa in 'UNEMI_PRUEBAS', 'OULAD_UK') {
         Paso "7. Entrenar ($empresa)"   { & $py -W ignore -m ml.entrenar_abandono --empresa $empresa }
         Paso "7. Calificar ($empresa)"  { & $py -W ignore -m ml.predecir_abandono --empresa $empresa }

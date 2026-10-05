@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Genera el dataset de prueba a partir del padron extraido del PDF de UNEMI.
-Columnas conservadas: No., Apellidos, Nombres (de NOMINA), Cedula, Facultad.
-Columnas eliminadas: SEDE, LUGAR DE VOTACION, N DE MESA, FIRMA.
-Columnas nuevas (para pruebas de BI / toma de decisiones): carrera,
-semestre, estado_matricula, promedio, fecha_matricula, monto_matricula,
-beca_porcentaje, saldo_pendiente, genero, ciudad_residencia.
+Generación del dataset de prueba alumnos_prueba.csv.
 
-Todos los valores nuevos son SINTETICOS (generados con una semilla fija
-para reproducibilidad), no son datos academicos reales de UNEMI.
+Parte del padrón extraído del PDF de UNEMI (raw_records.json): conserva número,
+apellidos y nombres (de NOMINA), cédula y facultad; descarta SEDE, LUGAR DE
+VOTACION, N DE MESA y FIRMA, y agrega columnas SINTÉTICAS con semilla fija para
+pruebas de BI (carrera, semestre, estado, promedio, fechas, montos, beca, saldo,
+género, ciudad), que no son datos académicos reales de UNEMI. No escribe el
+padrón crudo y al terminar ejecuta anonimizar_padron.py (LOPDP). raw_records.json
+contiene datos personales y se conserva FUERA del repositorio, por lo que este
+script no se puede volver a correr sin él: el artefacto del proyecto es el CSV
+anonimizado. Se ejecuta desde la raíz del repositorio.
 
-Avance 2 (protección de datos, LOPDP): al terminar se ejecuta
-anonimizar_padron.py, que reemplaza cédula/apellidos/nombres por valores
-ficticios. Ya no se escribe staging_padron_raw.csv (el padrón crudo). La
-fuente raw_records.json contiene datos personales y se conserva FUERA del
-repositorio; sin ella este script no se puede volver a correr, lo cual es
-intencional: el CSV anonimizado es el artefacto que usa el proyecto.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import json
 import random
@@ -51,9 +49,10 @@ CIUDADES = (['MILAGRO'] * 40 + ['GUAYAQUIL'] * 25 + ['NARANJITO'] * 8 + ['YAGUAC
             ['SIMON BOLIVAR'] * 6 + ['EL TRIUNFO'] * 5 + ['DURAN'] * 4 + ['BUCAY'] * 2 + ['BABAHOYO'] * 2)
 BECAS = [0] * 60 + [25] * 15 + [50] * 15 + [75] * 5 + [100] * 5
 
-# Diccionario de excepciones construido sobre los ~150 primeros nombres mas
-# frecuentes del propio dataset que NO terminan en "A" (donde la heuristica
-# simple por terminacion fallaria, ej. GENESIS, KAREN, LUIS, JOSE).
+# Diccionario de excepciones construido sobre los ~150 nombres más
+# frecuentes del propio dataset que NO terminan en "A", donde la heurística
+# simple por terminación puede fallar (p. ej., GENESIS o EVELYN son
+# femeninos); los masculinos frecuentes se fijan también de forma explícita.
 GENERO_EXCEPCIONES = {
     'F': {
         'GENESIS', 'ANGIE', 'KAREN', 'EVELYN', 'JOSELYN', 'LADY', 'KATHERINE', 'MELANIE',
@@ -81,6 +80,11 @@ GENERO_EXCEPCIONES = {
 }
 
 def split_nombre(nomina: str):
+    """Separa la NOMINA del padrón en (apellidos, nombres).
+
+    Con tres o más palabras, las dos primeras son los apellidos; con dos, una
+    y una; con una sola, se toma como apellido y el nombre queda vacío.
+    """
     partes = nomina.split()
     if len(partes) >= 3:
         apellidos = ' '.join(partes[:2])
@@ -92,6 +96,11 @@ def split_nombre(nomina: str):
     return apellidos, nombres
 
 def inferir_genero(primer_nombre: str) -> str:
+    """Infiere el género ('F' o 'M') a partir del primer nombre.
+
+    Consulta primero GENERO_EXCEPCIONES; si el nombre no está, aplica la
+    heurística de terminación: 'F' si termina en "A", 'M' en otro caso.
+    """
     nombre = primer_nombre.upper()
     if nombre in GENERO_EXCEPCIONES['F']:
         return 'F'
@@ -100,6 +109,7 @@ def inferir_genero(primer_nombre: str) -> str:
     return 'F' if nombre.endswith('A') else 'M'
 
 def fecha_matricula_random() -> date:
+    """Devuelve una fecha de matrícula aleatoria entre el 1/4/2022 y el 1/4/2026."""
     inicio = date(2022, 4, 1)
     fin = date(2026, 4, 1)
     dias = (fin - inicio).days

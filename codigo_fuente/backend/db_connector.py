@@ -1,28 +1,15 @@
 """
- * ============================================================================
- * FICHA TÉCNICA DEL SISTEMA [BACKEND-CORE-02]
- * ============================================================================
- * ARCHIVO: db_connector.py
- * MÓDULO: SERVER / Data Gateway (Direct Link)
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Es la "Tubería Maestra" de datos. Permite que el sistema se conecte, lea y 
- * entienda la estructura de cualquier base de datos (SQL Server, SQLite o 
- * Postgres) sin poner en riesgo la integridad de la información.
- * 
- * 📍 PUNTO DE OPERACIÓN:
- * Capa de Persistencia. Se sitúa entre el servidor de aplicaciones y los 
- * servidores físicos de base de datos de tu empresa.
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Multiconector Universal: Traduce instrucciones para diferentes marcas de DB.
- * - Escaneo de ADN (Introspección): Lee automáticamente qué tablas y columnas
- *   existen para que la IA sepa de qué puede hablar.
- * - Ejecución Segura (Read-Only): Bloquea cualquier intento de borrar o 
- *   alterar datos, garantizando que el asistente solo sea de "Consulta".
- * - Diagnóstico Silencioso: Si falla la conexión, registra el error exacto
- *   para el equipo técnico sin detener el login del usuario.
- * ============================================================================
+Conector de bases de datos e introspección de esquema.
+
+Construye cadenas de conexión para SQL Server (pyodbc), SQLite y PostgreSQL,
+abre el engine de SQLAlchemy con pool, lee el esquema (solo tablas y vistas con
+datos, para que la IA reciba un esquema acotado) y ejecuta SQL ya validado por
+otras capas, con tiempo máximo de ejecución y aislamiento por empresa mediante
+SESSION_CONTEXT. Un fallo de conexión se registra en debug/ sin detener el login.
+Lo usan main.py y los scripts auxiliares.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -36,13 +23,6 @@ from typing import Optional
 import sqlalchemy as sa
 from dotenv import load_dotenv
 from sqlalchemy import inspect, text
-
-# Archivo: db_connector.py
-# Rol: adaptador de conexion e introspeccion de bases SQL/SQLite/Postgres.
-# Recibe desde: backend/main.py y scripts auxiliares.
-# Se conecta con: SQLAlchemy, pyodbc y el motor de sesion activo.
-# Responsabilidades: construir connection strings, abrir engine,
-# leer schema y ejecutar SQL ya validado por otras capas.
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -62,8 +42,14 @@ def _canonicalize_local_sql_host_prefix(candidate: str) -> str:
 
 
 def _validate_db_name(name: str, label: str) -> str:
-    # Validacion defensiva para evitar inyeccion en nombres de base.
-    # Se restringe a alfanumericos, guion bajo y guion medio por seguridad.
+    """Valida un nombre de base de datos antes de interpolarlo en SQL.
+
+    Solo admite letras, dígitos, guion bajo y guion medio, para evitar
+    inyección a través del nombre de la base.
+
+    Raises:
+        ValueError: si el nombre está vacío o tiene otros caracteres.
+    """
     candidate = (name or "").strip()
     if not candidate or not re.fullmatch(r"[A-Za-z0-9_-]+", candidate):
         raise ValueError(f"Nombre invalido para {label}.")
@@ -71,11 +57,15 @@ def _validate_db_name(name: str, label: str) -> str:
 
 
 def _quote_db_name(name: str) -> str:
+    """Encierra el nombre de la base entre corchetes para usarlo como identificador T-SQL."""
     return f"[{name}]"
 
 
 def _override_database_in_connection_string(connection_string: str, database: str) -> str | None:
-    """Reescribe DATABASE en el DSN ODBC para abrir una conexion temporal a otra BD."""
+    """Reescribe DATABASE en el DSN ODBC para abrir una conexión temporal a otra base.
+
+    Devuelve None si la cadena no es de SQL Server con odbc_connect.
+    """
     prefix = "mssql+pyodbc:///?odbc_connect="
     if not str(connection_string or "").startswith(prefix):
         return None
@@ -106,18 +96,22 @@ def _override_database_in_connection_string(connection_string: str, database: st
 
 
 def normalize_sql_server_host(host: str) -> str:
-    """
-    Normaliza aliases de SQL Server. 
-    Asegura que 'localhost' funcione tanto en local como en contenedores (host.docker.internal).
+    """Normaliza el host de SQL Server.
+
+    Fuera de Windows (dentro de un contenedor) traduce localhost y sus
+    equivalentes a host.docker.internal, que apunta al equipo anfitrión; en
+    Windows los deja como 'localhost'. También quita los espacios alrededor de
+    los separadores de instancia y puerto.
     """
     candidate = str(host or "").strip().strip('"').strip("'")
     if not candidate:
         return ""
 
     low_host = candidate.lower()
-    # Si estamos en Docker/Container y el host es localhost, intentamos apuntar al host físico
+    # Dentro de un contenedor, localhost es el propio contenedor y no el equipo
+    # donde corre SQL Server.
     if low_host in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
-        # En muchos entornos de contenedor, host.docker.internal es la ruta al host local.
+        # En la mayoría de contenedores, host.docker.internal es la ruta al anfitrión.
         if os.name != 'nt': 
             return "host.docker.internal"
         return "localhost"
@@ -131,9 +125,10 @@ def normalize_sql_server_host(host: str) -> str:
 
 
 def get_sql_server_host_candidates(host: str) -> list[str]:
-    """
-    Retorna candidatos de host para SQL Server.
-    Si el host es local sin instancia, agrega fallbacks comunes.
+    """Devuelve los hosts de SQL Server a probar, en orden.
+
+    Si el host es 'localhost' sin instancia, agrega como alternativas
+    SQLEXPRESS y LocalDB.
     """
     normalized = normalize_sql_server_host(host)
     if not normalized:
@@ -159,7 +154,13 @@ def build_connection_string(
     windows_auth: bool = True,
     local_path: Optional[str] = None,
 ) -> str:
-    """Construye connection string para SQL Server, SQLite o PostgreSQL."""
+    """Construye la cadena de conexión para SQL Server, SQLite o PostgreSQL.
+
+    Un host con prefijo postgres:// se trata como URI de PostgreSQL (con
+    sslmode=require); un `local_path` .db, .sqlite o .csv, como SQLite; el
+    resto, como SQL Server vía pyodbc, con timeouts de 15 s y sin reintentos
+    automáticos. `driver="AUTO"` se resuelve con config.get_best_driver().
+    """
     host = normalize_sql_server_host(host)
     database = database or ""
 
@@ -204,7 +205,7 @@ def build_connection_string(
 
 
 class SQLServerConnector:
-    """Gestiona conexion, esquema y ejecucion SQL para el motor analitico."""
+    """Gestiona la conexión, la lectura del esquema y la ejecución de SQL del motor analítico."""
 
     def __init__(self, connection_string: str):
         self.connection_string = connection_string
@@ -213,12 +214,18 @@ class SQLServerConnector:
         self.is_postgres = connection_string.startswith("postgresql")
 
     def connect(self) -> tuple[bool, str]:
+        """Crea el engine con pool y prueba la conexión con SELECT 1.
+
+        Returns:
+            Tupla (ok, mensaje). Si falla, deja engine en None y guarda el
+            error en debug/connection_error.log.
+        """
         try:
-            # OPTIMIZACION: Pool de conexiones configurado para reducir latencia
-            # - pool_size: 10 conexiones permanentes (evita crear nuevas cada vez)
-            # - max_overflow: 20 conexiones extra bajo carga pico
-            # - pool_pre_ping: True verifica conexion antes de usar (evita errores stale)
-            # - pool_recycle: 3600s recicla conexiones viejas (previene leaks)
+            # Pool de conexiones para reducir la latencia:
+            # - pool_size=10: conexiones permanentes, evita abrir una en cada consulta.
+            # - max_overflow=20: conexiones extra en picos de carga.
+            # - pool_pre_ping: verifica la conexión antes de usarla (evita conexiones caducadas).
+            # - pool_recycle=3600: renueva las conexiones de más de una hora.
             self.engine = sa.create_engine(
                 self.connection_string,
                 pool_size=10,
@@ -230,7 +237,7 @@ class SQLServerConnector:
                 conn.execute(text("SELECT 1"))
             return True, "Conexion exitosa."
         except Exception as exc:
-            # Guardamos diagnostico sin volcar credenciales.
+            # Se guarda el diagnóstico sin volcar la cadena de conexión, que lleva la contraseña.
             try:
                 debug_dir = pathlib.Path(__file__).parent / "debug"
                 debug_dir.mkdir(exist_ok=True)
@@ -248,14 +255,15 @@ class SQLServerConnector:
             return False, f"Error de conexion: {exc}"
 
     def get_tables_with_data_fast(self, conn, db_q: str = "") -> dict:
-        """
-        FASE 1 - VELOCIDAD O(1): Identifica qué tablas tienen datos usando
-        sys.partitions (estadísticas pre-calculadas por SQL Server).
-        
-        NO hace SELECT COUNT(*). Lee un valor que el motor ya tiene calculado.
-        Es instantáneo incluso con millones de registros o cientos de tablas.
-        
-        Returns: {table_name: row_count} solo para tablas con datos, ordenado DESC.
+        """Identifica qué tablas tienen datos leyendo sys.partitions.
+
+        No ejecuta SELECT COUNT(*): lee el conteo de filas que SQL Server ya
+        mantiene, así que es casi instantáneo aunque haya millones de registros
+        o cientos de tablas.
+
+        Returns:
+            {tabla: filas} solo de las tablas con datos, en orden descendente;
+            vacío si sys.partitions no está disponible.
         """
         prefix = f"{db_q}." if db_q else ""
         sql = text(
@@ -272,37 +280,30 @@ class SQLServerConnector:
             return {str(row[0]).strip(): int(row[1]) for row in rows if str(row[0]).strip()}
         except Exception as exc:
             logger.warning("[FAST_SCHEMA] sys.partitions no disponible: %s", exc)
-            return {}  # Fallback: el caller usará el método clásico
+            return {}  # El llamador recurre entonces a la introspección clásica
 
     def _vistas_con_datos(self, conn, db_prefix: str, views: list[str]) -> set[str]:
-        """
-        ¿Cuáles de estas vistas tienen al menos una fila ahora mismo?
+        """Devuelve cuáles de estas vistas tienen al menos una fila ahora mismo.
 
-        Defecto detectado en pruebas (28/08/2026): "siempre salen 14
-        vistas" en CHAT sin importar la empresa activa, cuando en realidad
-        hay menos con datos reales. Causa: `get_tables_with_data_fast()` usa
-        sys.partitions, que solo cubre TABLAS físicas — las VISTAS no tienen
-        almacenamiento propio, así que el filtro de "tiene datos" nunca las
-        alcanzaba y quedaban señaladas en el código como "las VISTAS siempre
-        se incluyen". Efecto colateral real: el esquema que ve la IA
-        anunciaba SIEMPRE las ~14 vistas estructurales de CHAT (incluidas
-        ficha_trabajador/rol_pago) sin importar si tenían algo para la
-        empresa activa, lo que la empujaba a intentar usarlas para preguntas
-        que no tenían nada que ver con nómina.
+        `get_tables_with_data_fast()` usa sys.partitions, que solo cubre
+        tablas físicas: las vistas no tienen almacenamiento propio. Sin esta
+        verificación, el esquema que ve la IA incluiría siempre todas las
+        vistas de CHAT (también ficha_trabajador y rol_pago), tengan o no datos
+        para la empresa activa, y la empujaría a usarlas en preguntas que no
+        tienen nada que ver con nómina.
 
-        Un solo round-trip: un EXISTS por vista (corta en la primera fila,
-        no cuenta todo el resultado). Si algo falla (permisos, vista rota,
-        timeout), se asume que TODAS tienen datos — degradar a la conducta
-        anterior es preferible a esconder por error una vista que sí sirve.
+        Hace un solo viaje a la base: un EXISTS por vista, que se detiene en la
+        primera fila. Si algo falla (permisos, vista rota, timeout) asume que
+        todas tienen datos: es preferible incluir una vista de más que
+        esconder por error una que sí sirve.
         """
         if not views:
             return set()
         try:
-            # `db_prefix` es "[BASE]." — falta el esquema para armar un
-            # nombre de 3 partes válido cross-db ([BASE].dbo.[vista]).
-            # Bug real detectado en pruebas (28/08/2026): sin el "dbo.",
-            # SQL Server interpreta "[CHAT].[Vista]" como esquema.objeto DENTRO
-            # de la base actual, no como base.objeto, y falla con "objeto no
+            # `db_prefix` es "[BASE]."; se agrega "dbo." para formar un nombre
+            # de tres partes válido entre bases ([BASE].dbo.[vista]). Sin el
+            # esquema, SQL Server interpreta "[CHAT].[Vista]" como
+            # esquema.objeto dentro de la base actual y falla con "objeto no
             # válido" para cualquier vista real.
             selects = " UNION ALL ".join(
                 f"SELECT {i} AS idx, CASE WHEN EXISTS(SELECT 1 FROM {db_prefix}dbo.[{v}]) THEN 1 ELSE 0 END AS tiene"
@@ -315,10 +316,11 @@ class SQLServerConnector:
             return set(views)
 
     def _get_schema_from_information_schema(self, conn, db_prefix: str = "", tables_filter: set | None = None) -> dict:
-        """Introspeccion por INFORMATION_SCHEMA (soporta prefijo cross-db).
-        
-        tables_filter: si se proporciona, solo carga columnas de esas tablas
-        (enorme mejora de velocidad para BD grandes con tablas vacías).
+        """Lee el esquema por INFORMATION_SCHEMA (admite prefijo de otra base).
+
+        Args:
+            tables_filter: si se indica, solo carga columnas de esas tablas,
+                mucho más rápido en bases grandes con tablas vacías.
         """
         schema_info: dict = {}
 
@@ -331,15 +333,15 @@ class SQLServerConnector:
         tables = [str(r[0]).strip() for r in conn.execute(sql_tables).fetchall() if str(r[0]).strip()]
         views = [str(r[0]).strip() for r in conn.execute(sql_views).fetchall() if str(r[0]).strip()]
 
-        # Aplicar filtro si fue proporcionado (solo tablas con datos)
+        # Filtro opcional: solo tablas con datos.
         if tables_filter is not None:
             active_tables = [t for t in tables if t in tables_filter]
             logger.info("[FAST_SCHEMA] Filtrando: %d/%d tablas tienen datos", len(active_tables), len(tables))
         else:
             active_tables = tables
 
-        # Mismo filtro para vistas (ver _vistas_con_datos): antes se incluían
-        # TODAS sin comprobar si tenían datos para la base activa.
+        # Las vistas pasan por su propio filtro de datos (ver _vistas_con_datos),
+        # porque sys.partitions no las cubre.
         active_views = views
         if views:
             con_datos = self._vistas_con_datos(conn, db_prefix, views)
@@ -351,7 +353,7 @@ class SQLServerConnector:
         for view_name in active_views:
             schema_info[view_name] = {"type": "VISTA", "columns": [], "row_count": 0}
 
-        # Cargar columnas SOLO para las tablas/vistas activas (no para todas)
+        # Solo se cargan columnas de las tablas y vistas activas.
         if active_tables or active_views:
             all_active = set(active_tables) | set(active_views)
             sql_all_cols = text(
@@ -377,10 +379,12 @@ class SQLServerConnector:
         return schema_info
 
     def _get_schema_from_sys_catalog(self, conn, db_q: str, tables_filter: dict | None = None) -> dict:
-        """
-        Fallback SQL Server por catalogo sys.*
-        Funciona mejor en entornos donde INFORMATION_SCHEMA esta restringido.
-        tables_filter: {table_name: row_count} - solo carga columnas de estas tablas.
+        """Lee el esquema de SQL Server por el catálogo sys.* (alternativa a INFORMATION_SCHEMA).
+
+        Sirve donde INFORMATION_SCHEMA está restringido.
+
+        Args:
+            tables_filter: {tabla: filas}; si se indica, solo incluye esas tablas.
         """
         schema_info: dict = {}
         sql_objects = text(
@@ -394,9 +398,9 @@ class SQLServerConnector:
             str(row[0]).strip() for row in object_rows
             if str(row[0]).strip() and str(row[1]).strip().upper() == 'V'
         ]
-        # Mismo filtro que _get_schema_from_information_schema (ver
-        # _vistas_con_datos): sys.partitions no cubre vistas, así que sin
-        # esto "las VISTAS siempre se incluyen" sin importar la empresa activa.
+        # Mismo filtro de vistas que _get_schema_from_information_schema:
+        # sys.partitions no cubre vistas, así que se comprueba con
+        # _vistas_con_datos si tienen filas para la empresa activa.
         vistas_con_datos = self._vistas_con_datos(conn, f"{db_q}.", candidatas_vista) if candidatas_vista else set()
 
         for row in object_rows:
@@ -404,7 +408,7 @@ class SQLServerConnector:
             object_type = str(row[1]).strip().upper()
             if not object_name:
                 continue
-            # Aplicar filtro: solo incluir tablas/vistas con datos reales.
+            # Solo se incluyen tablas y vistas con datos reales.
             if tables_filter is not None and object_type == 'U' and object_name not in tables_filter:
                 continue
             if object_type == 'V' and object_name not in vistas_con_datos:
@@ -439,6 +443,7 @@ class SQLServerConnector:
         return schema_info
 
     def _get_schema_from_inspector(self, engine_obj) -> dict:
+        """Lee el esquema con el inspector genérico de SQLAlchemy (SQLite, PostgreSQL o la base por defecto)."""
         schema_info: dict = {}
         inspector = inspect(engine_obj)
         tables = inspector.get_table_names()
@@ -458,9 +463,10 @@ class SQLServerConnector:
         return schema_info
 
     def _get_schema_from_temp_database(self, database_name: str) -> dict:
-        """
-        Fallback final: abre un engine temporal apuntando directamente a la BD destino.
-        Evita limitaciones de introspeccion cross-db cuando la conexion base esta en CHAT.
+        """Último recurso: abre un engine temporal apuntando directamente a la base destino.
+
+        Evita las limitaciones de la introspección entre bases cuando la
+        conexión principal está en CHAT.
         """
         override_conn_str = _override_database_in_connection_string(self.connection_string, database_name)
         if not override_conn_str:
@@ -488,6 +494,14 @@ class SQLServerConnector:
                 temp_engine.dispose()
 
     def get_schema(self, database_override: Optional[str] = None, empresa: str = "") -> dict:
+        """Devuelve el esquema {objeto: {type, columns, row_count}} de la base activa o de `database_override`.
+
+        En SQL Server con `database_override` solo incluye tablas y vistas con
+        datos y prueba en cascada: sys.partitions + INFORMATION_SCHEMA, el
+        catálogo sys.* y una conexión temporal directa. Si la base es CHAT,
+        `empresa` fija SESSION_CONTEXT antes de leer. Devuelve {} si no hay
+        engine o si todo falla.
+        """
         if not self.engine:
             return {}
 
@@ -497,18 +511,16 @@ class SQLServerConnector:
                 safe_db = _validate_db_name(database_override, "database_override")
                 db_q = _quote_db_name(safe_db)
                 with self.engine.connect() as conn:
-                    # Auditoría 09/09/2026 (#2, seguimiento — bug reportado
-                    # por el usuario: "cualquier pregunta" fallaba con
-                    # "permission denied"): VIS_ALUMNO ahora filtra por
-                    # SESSION_CONTEXT (ver crear_chat_academico.sql). Sin
-                    # fijarlo aquí, la verificación "¿tiene datos?" de más
-                    # abajo (_vistas_con_datos) veía VIS_ALUMNO con 0 filas y
-                    # la EXCLUÍA del esquema — la IA se quedaba sin ver
-                    # ninguna tabla real y alucinaba nombres típicos de star
-                    # schema (fact_matriculas, dim_tiempo...) que SÍ existen
-                    # pero chat_reader no puede leer. Se fija ANTES de
-                    # cualquier chequeo, en la misma conexión (todo este
-                    # método usa un único `with engine.connect()`).
+                    # Las vistas VIS_* de CHAT filtran por
+                    # SESSION_CONTEXT('empresa_activa') (ver
+                    # crear_chat_academico.sql). Si no se fija antes de
+                    # cualquier chequeo, la verificación "¿tiene datos?"
+                    # (_vistas_con_datos) ve VIS_ALUMNO con 0 filas y la excluye:
+                    # la IA se queda sin tablas reales e inventa nombres de
+                    # esquema estrella (fact_matriculas, dim_tiempo...) que
+                    # chat_reader no puede leer, y toda pregunta falla con
+                    # "permission denied". Se fija en la misma conexión que usa
+                    # el resto del método (un único `with engine.connect()`).
                     if safe_db.upper() == "CHAT" and empresa:
                         try:
                             conn.execute(
@@ -517,15 +529,15 @@ class SQLServerConnector:
                             )
                         except Exception as _ctx_exc:
                             logger.warning("[FAST_SCHEMA] No se pudo fijar SESSION_CONTEXT: %s", _ctx_exc)
-                    # ─── FASE 1: Descubrimiento Rápido O(1) con sys.partitions ───
-                    # Identifica qué tablas tienen datos SIN hacer SELECT COUNT(*)
+                    # ─── Paso 1: tablas con datos vía sys.partitions ───
+                    # Identifica qué tablas tienen datos sin hacer SELECT COUNT(*).
                     tables_with_data = self.get_tables_with_data_fast(conn, db_q=db_q)
                     logger.info(
                         "[FAST_SCHEMA] %s: %d tablas con datos detectadas via sys.partitions",
                         safe_db, len(tables_with_data)
                     )
 
-                    # ─── FASE 2: Carga de columnas SOLO para tablas con datos ───
+                    # ─── Paso 2: columnas solo de las tablas con datos ───
                     if tables_with_data:
                         try:
                             schema_info = self._get_schema_from_information_schema(
@@ -543,8 +555,8 @@ class SQLServerConnector:
                                 logger.warning("Fallback sys catalog fallo para %s: %s", safe_db, sys_exc)
                                 schema_info = {}
                     else:
-                        # sys.partitions no devolvio nada (permisos limitados)
-                        # Usar el método clásico sin filtro como fallback
+                        # sys.partitions no devolvió nada (permisos limitados):
+                        # se usa la introspección clásica sin filtro.
                         logger.info("[FAST_SCHEMA] sys.partitions vacio, usando INFORMATION_SCHEMA completo")
                         try:
                             schema_info = self._get_schema_from_information_schema(conn, db_prefix=f"{db_q}.")
@@ -557,7 +569,7 @@ class SQLServerConnector:
                                 schema_info = {}
 
                 if not schema_info:
-                    # Fallback extra: abrir conexion temporal directa a la BD objetivo.
+                    # Último recurso: conexión temporal directa a la base objetivo.
                     schema_info = self._get_schema_from_temp_database(safe_db)
                 if not schema_info:
                     logger.warning("No se pudo introspectar esquema para la base activa %s.", safe_db)
@@ -569,7 +581,11 @@ class SQLServerConnector:
         return schema_info
 
     def get_schema_as_text(self, database_override: Optional[str] = None, schema_dict: Optional[dict] = None) -> str:
-        schema = schema_dict if schema_dict is not None else self.get_schema(database_override=database_override)
+        """Devuelve el esquema como texto plano (objetos y columnas) para el prompt de la IA.
+
+        Usa `schema_dict` si se indica; si no, lo lee con get_schema().
+        """
+        schema =schema_dict if schema_dict is not None else self.get_schema(database_override=database_override)
         if not schema:
             return "No se pudo obtener el schema."
 
@@ -584,16 +600,20 @@ class SQLServerConnector:
         return "\n".join(lines)
 
     def execute_query(self, sql: str, execution_timeout: int = 40, target_db: Optional[str] = None) -> tuple[list, list, str]:
-        """
-        Ejecuta consulta SQL con timeout real y soporte para cambio de base dinámico.
+        """Ejecuta una consulta con tiempo máximo real y cambio de base opcional.
 
-        IMPORTANTE — dos límites distintos que antes se confundían:
-          · LOCK_TIMEOUT: cuánto espera la consulta a que OTRA sesión libere un
-            bloqueo. NO limita cuánto tarda la consulta en ejecutarse.
-          · Query timeout (pyodbc `Connection.timeout`): cuánto puede tardar la
-            consulta en total. Este faltaba, y por eso una consulta pesada
-            generada por la IA podía correr indefinidamente dejando al usuario
-            con la pantalla girando sin explicación.
+        `target_db` cambia de base con USE (solo SQL Server). Se aplican dos
+        límites distintos:
+          · LOCK_TIMEOUT: cuánto espera la consulta a que otra sesión libere un
+            bloqueo; no limita cuánto tarda en ejecutarse.
+          · Timeout de consulta (pyodbc `Connection.timeout`): cuánto puede
+            tardar en total. Sin él, una consulta pesada generada por la IA
+            podría correr indefinidamente con el usuario esperando sin
+            explicación.
+
+        Returns:
+            Tupla (columnas, filas, error); los timeouts se traducen a un
+            mensaje para el usuario final.
         """
         if not self.engine:
             return [], [], "No hay conexion activa."
@@ -613,12 +633,12 @@ class SQLServerConnector:
                     try:
                         conn.connection.timeout = execution_timeout
                     except Exception:
-                        # Si el driver no soporta el atributo, seguimos igual:
-                        # perdemos el corte por tiempo pero no rompemos la consulta.
+                        # Si el driver no admite el atributo, la consulta sigue
+                        # sin corte por tiempo en lugar de fallar.
                         pass
 
                 result = conn.execute(text(sql), execution_options={
-                    "stream_results": True,  # OPTIMIZACION: Streaming para resultados grandes
+                    "stream_results": True,  # Streaming para resultados grandes
                 })
                 columns = list(result.keys())
                 rows = [list(row) for row in result.fetchall()]
@@ -640,29 +660,25 @@ class SQLServerConnector:
     def execute_query_with_context(
         self, sql: str, empresa: str, execution_timeout: int = 40
     ) -> tuple[list, list, str]:
-        """
-        Igual que `execute_query`, pero fija el aislamiento por empresa con
-        `SESSION_CONTEXT()` en vez de una vista global reconfigurable.
+        """Igual que `execute_query`, pero aísla por empresa con SESSION_CONTEXT.
 
-        Auditoría 09/09/2026 (auditoría interna del 09/09/2026, hallazgo #2):
-        `SP_MODIFICA_VISTA_IA` hacía `ALTER VIEW` sobre un namespace
-        COMPARTIDO entre empresas — dos usuarios conectados a empresas
-        distintas al mismo tiempo podían pisarse (condición de carrera ya
-        documentada como fuga de datos real el 27/07/2026, nunca resuelta
-        de fondo). `SESSION_CONTEXT` es aislado POR CONEXIÓN física, no
-        global, así que dos conexiones nunca se pisan — pero eso exige que
-        el `SET` y el `SELECT` corran en la MISMA conexión física, no en
-        conexiones distintas del pool. Por eso está todo en un único
-        `with self.engine.connect()`, a diferencia de antes (donde activar
-        el contexto y ejecutar el SELECT eran pasos separados que podían
-        caer en conexiones distintas).
+        Fija `SESSION_CONTEXT('empresa_activa')` en lugar de reconfigurar una
+        vista global: `SP_MODIFICA_VISTA_IA` hace `ALTER VIEW` sobre un
+        namespace compartido entre empresas, y dos usuarios conectados a la vez
+        a empresas distintas podrían pisarse y ver datos ajenos.
+        SESSION_CONTEXT es aislado por conexión física, pero eso exige que el
+        `SET` y el `SELECT` corran en la misma conexión del pool; por eso todo
+        ocurre dentro de un único `with self.engine.connect()`.
+
+        Returns:
+            Tupla (columnas, filas, error).
         """
         if not self.engine:
             return [], [], "No hay conexion activa."
         try:
             with self.engine.connect() as conn:
                 if not self.is_sqlite and not self.is_postgres:
-                    # OJO: sin @read_only=1 a propósito. Estas conexiones vienen de
+                    # Sin @read_only=1 a propósito. Estas conexiones vienen de
                     # un POOL (pool_size=10 en connect()) y se reutilizan entre
                     # peticiones distintas — si se marcara read_only, la segunda
                     # petición que reutilice esta misma conexión física para OTRA
@@ -701,7 +717,15 @@ def get_available_databases(
     password: Optional[str] = None,
     windows_auth: bool = True,
 ) -> list[dict]:
-    """Obtiene lista de bases con sus nombres comerciales desde sys300 si existen."""
+    """Lista las bases en línea del servidor con su nombre comercial.
+
+    Prueba los hosts candidatos en orden. El nombre comercial sale de dbo.sys300
+    (ERP de contabilidad y ventas) o, si no existe, de dbo.tb_empres (RRHH y
+    nómina); si ninguna está, se usa el nombre de la base.
+
+    Returns:
+        Lista de {database, business_name}; vacía si ningún host responde.
+    """
     host_candidates = get_sql_server_host_candidates(host)
     if not host_candidates:
         return []
@@ -713,7 +737,7 @@ def get_available_databases(
         try:
             engine = sa.create_engine(conn_str, connect_args={"timeout": 12})
             with engine.connect() as conn:
-                # 1. Obtener lista de bases ONLINE
+                # 1. Bases en línea (sin las de sistema)
                 sql_dbs = text(
                     "SELECT name FROM sys.databases "
                     "WHERE state_desc = 'ONLINE' "
@@ -728,11 +752,11 @@ def get_available_databases(
                         continue
                     return []
 
-                # 2. Intentar obtener nombres comerciales de forma segura para cada base
+                # 2. Nombre comercial de cada base; un fallo en una no detiene las demás
                 biz_map = {}
                 for db in db_names:
                     try:
-                        # Verificamos si existe sys300 antes de intentar leerla
+                        # Se comprueba que exista sys300 antes de leerla.
                         safe_db = _quote_db_name(db)
                         
                         # ESTRATEGIA A: sys300 (Estándar Contabilidad/Ventas)

@@ -1,24 +1,11 @@
 /**
- * ============================================================================
- * FICHA TÉCNICA DEL COMPONENTE [FRONTEND-UI-MOBILE-02]
- * ============================================================================
- * ARCHIVO: ChatAreaMobile.jsx
- * MÓDULO: UI / Mobile Chat Space
- * 
- * 🎯 PROPÓSITO GERENCIAL:
- * Lienzo principal de conversación exclusivo para smartphones. Garantiza 
- * que la lectura de la IA sea impecable y sin distracciones, maximizando
- * el espacio útil en pantallas reducidas.
- * 
- * 📍 PUNTO DE INTERFAZ:
- * Ocupa todo el centro de la pantalla móvil, encajonado entre el cabezal
- * fijo (`DashboardMobile`) y la caja de texto (`ChatInputMobile`).
- * 
- * ⚙️ CAPACIDADES PRINCIPALES:
- * - Renderizado en bucle de `ChatMessage` optimizado para móvil.
- * - Barra de estatus flotante (Red Activa, Sincronización de Sesión).
- * - Auto-desplazamiento suave al fondo cuando la IA responde.
- * ============================================================================
+ * @file Área de conversación del chat en teléfonos. Ocupa el centro de la
+ * pantalla entre la cabecera y la barra de navegación de DashboardMobile:
+ * muestra una barra de estado con el rol del usuario y el número de mensajes,
+ * la lista de mensajes (ChatMessage), el indicador de carga y la caja de
+ * entrada ChatInputMobile anclada al fondo.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React from 'react';
@@ -27,6 +14,25 @@ import { Database, Loader2 } from 'lucide-react';
 import { ChatMessage } from '../components/ChatMessage';
 import { ChatInputMobile } from './ChatInputMobile';
 
+/**
+ * Renderiza la conversación en la vista móvil.
+ * @param {object} props
+ * @param {Array<object>} props.chatHistory Mensajes de la sesión activa.
+ * @param {function} props.setChatHistory Actualiza el historial.
+ * @param {object|null} props.userAuth Usuario autenticado (nombre y rol).
+ * @param {boolean} props.loading Indica si hay una consulta en curso.
+ * @param {string} props.prompt Texto de la caja de entrada.
+ * @param {function} props.setPrompt Actualiza el texto de entrada.
+ * @param {function} props.handleQuery Envía la pregunta.
+ * @param {function} props.cancelQuery Cancela la consulta en curso.
+ * @param {string|null} props.correctionHint Aviso de autocorrección visible.
+ * @param {function} props.correct Función de autocorrección (useAutoCorrect).
+ * @param {function} props.setCorrectionHint Muestra u oculta el aviso de autocorrección.
+ * @param {string|null} props.activeModule Módulo de análisis activo.
+ * @param {object} props.textareaRef Referencia a la caja de texto.
+ * @param {object} props.chatEndRef Referencia al final de la lista, para el desplazamiento.
+ * @returns {JSX.Element} Área de chat móvil.
+ */
 export function ChatAreaMobile({
     chatHistory,
     setChatHistory,
@@ -43,13 +49,13 @@ export function ChatAreaMobile({
     textareaRef,
     chatEndRef,
 }) {
-    // Definimos el estilo del degradado corporativo
+    // Degradado corporativo del fondo del chat.
     const chatBgGradient = "linear-gradient(160deg,rgba(32,58,86,0.88) 0%,rgba(26,50,78,0.92) 45%,rgba(18,36,58,0.96) 100%)";
 
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden relative" style={{ background: chatBgGradient }}>
             
-            {/* 1. Status Bar del Chat (Indica que el software está sincronizado) */}
+            {/* 1. Barra de estado del chat: rol del usuario y número de mensajes. */}
             <div className="shrink-0 px-6 py-2 bg-[#1a3654]/95 border-b border-white/[0.05] flex items-center justify-between text-[7.5px] font-black uppercase tracking-[0.4em] text-white/50 backdrop-blur-3xl z-20">
                 <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
@@ -60,7 +66,7 @@ export function ChatAreaMobile({
                 </div>
             </div>
 
-            {/* 2. Zona Dinámica de Mensajes (Scrolleable y limpia para lectura) */}
+            {/* 2. Lista de mensajes con desplazamiento vertical. */}
             <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-2 relative z-10 pt-4">
                 <div className="max-w-full mx-auto space-y-12 pb-24 text-left">
                     {chatHistory.length === 0 && (
@@ -87,12 +93,11 @@ export function ChatAreaMobile({
                 </div>
             </div>
 
-            {/* 3. Footer de Entrada de Datos — `absolute` (no `fixed`) para
-                quedar anclado al fondo de ESTE componente, que ya está
-                encajonado por flexbox entre el header y la barra de
-                navegación inferior (ver DashboardMobile). Con `fixed` se
-                pegaba al borde real de la pantalla y tapaba la barra de
-                navegación nueva. */}
+            {/* 3. Caja de entrada: `absolute` (no `fixed`) para quedar anclada
+                al fondo de este componente, que flexbox ya encaja entre la
+                cabecera y la barra de navegación inferior (ver
+                DashboardMobile). Con `fixed` se pegaría al borde de la
+                pantalla y taparía la barra de navegación. */}
             <div className="absolute bottom-0 left-0 z-[1000] w-full">
                 <ChatInputMobile
                     prompt={prompt}

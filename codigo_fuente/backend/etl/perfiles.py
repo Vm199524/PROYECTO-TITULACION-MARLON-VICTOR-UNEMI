@@ -1,42 +1,44 @@
 # -*- coding: utf-8 -*-
 """
-perfiles.py — hace que scripts/etl_academico.py sea agnostico de
-institucion.
+Perfiles de institución para el ETL académico.
 
-Antes, etl_academico.py tenia hard-codeado el nombre de la tabla y las
-columnas de UNEMI_PRUEBAS (`dbo.historial_matriculas`, `dbo.alumnos_prueba`).
-Conectar una IES nueva (ej. Universidad Politecnica Salesiana) significaba
-reescribir el script de ETL. Ahora el ETL es generico: solo sabe leer un
-conjunto de COLUMNAS_REQUERIDAS (el contrato del modelo dimensional) desde
-UN SELECT que cada institucion define en su propio "perfil".
+Hacen que scripts/etl_academico.py sea agnóstico de institución. El ETL no
+tiene fijo el nombre de ninguna tabla ni columna de origen: solo sabe leer
+un conjunto de COLUMNAS_REQUERIDAS (el contrato del modelo dimensional)
+desde UN SELECT que cada institución define en su propio "perfil". Conectar
+una IES nueva (p. ej., la Universidad Politécnica Salesiana) es agregar un
+perfil, no reescribir el script de ETL.
 
 ──────────────────────────────────────────────────────────────────────────
-CÓMO CONECTAR UNA INSTITUCIÓN NUEVA (ej. UPS Cuenca)
+CÓMO CONECTAR UNA INSTITUCIÓN NUEVA (p. ej., UPS Cuenca)
 ──────────────────────────────────────────────────────────────────────────
-1. Pide a la institucion el esquema real de su base de matricula (nombres
-   de tablas/columnas). Esto es un requisito de acceso institucional, no
-   tecnico — ver documentacion/tecnica/PREDICCION_ABANDONO.md, seccion "Módulo 1".
+1. Pide a la institución el esquema real de su base de matrícula (nombres
+   de tablas y columnas). Es un requisito de acceso institucional, no
+   técnico; ver documentacion/tecnica/PREDICCION_ABANDONO.md, sección "Módulo 1".
 2. Agrega un PerfilInstitucion nuevo a PERFILES (abajo), con UN SELECT que
-   mapee sus columnas reales a los nombres logicos de COLUMNAS_REQUERIDAS
-   (usando alias SQL: `SELECT su_columna AS cedula, ...`).
-3. Si la institucion no rastrea alguna variable (ej. no tiene "canal" de
-   ingreso), usa un LITERAL en el SELECT en vez de una columna real:
-   `SELECT 'PRESENCIAL' AS canal_codigo, ...` — el ETL no distingue entre
-   un valor real y uno fijo, así que instituciones de un solo campus/
+   mapee sus columnas reales a los nombres lógicos de COLUMNAS_REQUERIDAS
+   (con alias SQL: `SELECT su_columna AS cedula, ...`).
+3. Si la institución no registra alguna variable (p. ej., no tiene "canal"
+   de ingreso), usa un LITERAL en el SELECT en vez de una columna real:
+   `SELECT 'PRESENCIAL' AS canal_codigo, ...`. El ETL no distingue entre
+   un valor real y uno fijo, así que las instituciones de un solo campus o
    modalidad no necesitan ese dato para funcionar.
-4. Corre: `python scripts/etl_academico.py --perfil <nombre_del_perfil>`
+4. Ejecuta: `python scripts/etl_academico.py --perfil <nombre_del_perfil>`
 
-Ningun otro archivo de backend/scripts ni backend/ml/ necesita cambiar: el
-resto del pipeline (warehouse CHAT, features del modelo, endpoints, panel)
-ya trabaja solo con los nombres logicos de abajo, nunca con el esquema de
-origen de una institucion en particular.
+Ningún otro archivo de backend/scripts ni de backend/ml/ necesita cambiar: el
+resto del pipeline (warehouse CHAT, características del modelo, endpoints,
+panel) trabaja solo con los nombres lógicos de abajo, nunca con el esquema
+de origen de una institución en particular.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 # Contrato del modelo dimensional (ver codigo_fuente/base_de_datos/crear_chat_academico.sql):
-# toda columna que el ETL necesita, sin importar de que institucion venga.
+# toda columna que el ETL necesita, sin importar de qué institución venga.
 COLUMNAS_REQUERIDAS = [
     'cedula', 'apellidos', 'nombres', 'genero', 'ciudad_residencia',
     'facultad_codigo', 'facultad_nombre', 'carrera',
@@ -49,9 +51,11 @@ COLUMNAS_REQUERIDAS = [
 
 @dataclass(frozen=True)
 class PerfilInstitucion:
+    """Describe cómo extraer los datos académicos de una institución al contrato de CHAT."""
+
     nombre: str  # empresa_codigo en CHAT (aislamiento por SESSION_CONTEXT)
-    business_name: str
-    base_datos_origen: str  # BD operativa donde correr el SELECT (contexto inicial de conexion)
+    business_name: str  # nombre comercial que se registra en dim_empresa
+    base_datos_origen: str  # BD operativa donde correr el SELECT (contexto inicial de conexión)
     sql_origen: str  # SELECT que produce EXACTAMENTE las columnas de COLUMNAS_REQUERIDAS (alias incluidos)
 
 
@@ -74,8 +78,8 @@ _UNEMI_PRUEBAS = PerfilInstitucion(
 )
 
 # ── Plantilla para una IES real (ej. UPS) — DESACTIVADA hasta tener acceso ──
-# Ejemplo de como luciria (columnas inventadas a modo ilustrativo; hay que
-# reemplazarlas por el esquema real de UPS una vez autorizado el acceso):
+# Ejemplo de cómo luciría (columnas inventadas a modo ilustrativo; se
+# reemplazan por el esquema real de UPS una vez autorizado el acceso):
 #
 # _UPS_CUENCA = PerfilInstitucion(
 #     nombre='UPS_CUENCA',
@@ -96,7 +100,7 @@ _UNEMI_PRUEBAS = PerfilInstitucion(
 #     """,
 # )
 
-# ── OULAD_UK: segunda institución REAL (Avance 2) ──────────────────────────
+# ── OULAD_UK: segunda institución REAL ─────────────────────────────────────
 # Open University Learning Analytics Dataset (Kuzilek, Hlosta & Zdrahal,
 # 2017), cargado en OULAD_PRUEBAS por scripts/seed_oulad.py. Demuestra lo
 # que afirma el documento: conectar otra institución es agregar ESTE perfil
@@ -130,7 +134,12 @@ PERFILES: dict[str, PerfilInstitucion] = {
 
 
 def obtener_perfil(nombre: str) -> PerfilInstitucion:
-    perfil = PERFILES.get(nombre.strip().upper())
+    """Devuelve el perfil con ese nombre, sin distinguir mayúsculas.
+
+    Raises:
+        KeyError: si no existe, con la lista de perfiles disponibles.
+    """
+    perfil =PERFILES.get(nombre.strip().upper())
     if perfil is None:
         disponibles = ', '.join(PERFILES.keys())
         raise KeyError(
@@ -158,7 +167,12 @@ def institucion_de_base(nombre_base: str) -> str:
 
 
 def validar_columnas(columnas_obtenidas: list[str], perfil: PerfilInstitucion) -> None:
-    faltantes = set(COLUMNAS_REQUERIDAS) - set(columnas_obtenidas)
+    """Comprueba que el SELECT del perfil produzca todas las COLUMNAS_REQUERIDAS.
+
+    Raises:
+        ValueError: con las columnas que faltan.
+    """
+    faltantes =set(COLUMNAS_REQUERIDAS) - set(columnas_obtenidas)
     if faltantes:
         raise ValueError(
             f"El SELECT del perfil '{perfil.nombre}' no produce las columnas "

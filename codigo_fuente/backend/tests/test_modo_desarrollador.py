@@ -1,19 +1,15 @@
 """
-Pruebas de la seña de desarrollador (core/modo_desarrollador.py) y del
-detector de "probe de capacidades" que la acompaña en el pipeline.
+Pruebas de la seña de desarrollador y del detector de sondeo de capacidades.
 
-Los dos bloques cubren bugs reales reportados por el usuario el 30/08/2026:
+La seña (core/modo_desarrollador.py) debe ser una acción del sistema y no texto
+del modelo: se registra DE VERDAD en disco y sobrevive a un chat nuevo o a un
+reinicio. Lo más importante es lo que NO puede hacer: activarse desde una
+cuenta que no es su dueña. El detector de sondeo de capacidades no debe
+confundir un mensaje largo con "qué puedo consultar" y responder con el
+catálogo de áreas de negocio en vez de atender lo que se pidió.
 
-  1. Escribir "Soy VM" hacía que la IA prometiera privilegios que no existían.
-     Era texto del modelo, no una acción del sistema: nada quedaba guardado y
-     al abrir otro chat el reconocimiento se perdía. Aquí se verifica que la
-     seña se registre DE VERDAD y que el registro sobreviva.
-
-  2. Un mensaje largo recibía "la respuesta por defecto" (el catálogo de áreas
-     de negocio) en vez de una respuesta a lo que el usuario realmente pidió.
-
-Lo más importante que se prueba, sin embargo, es lo que la seña NO puede
-hacer: activarla desde una cuenta que no es su dueña.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import importlib
@@ -119,7 +115,7 @@ def test_el_dueno_puede_fijarse_por_entorno(dev, monkeypatch):
     assert dev.activar("victor", "ADMINISTRADOR")[0] is True
 
 
-# ─── Persistencia (el bug original) ─────────────────────────────────────────
+# ─── Persistencia en disco ──────────────────────────────────────────────────
 
 
 def test_el_reconocimiento_sobrevive_al_reinicio_del_backend(dev, monkeypatch):
@@ -178,7 +174,7 @@ def test_sin_prefijo_el_texto_queda_intacto(dev):
     assert texto == "total de ventas de julio"
 
 
-# ─── Probe de capacidades: mensajes largos ──────────────────────────────────
+# ─── Sondeo de capacidades: mensajes largos ─────────────────────────────────
 
 
 def _probe():
@@ -225,10 +221,9 @@ def test_la_bandera_protected_llega_al_frontend():
 
 def test_mensaje_largo_ya_no_cae_en_la_respuesta_por_defecto():
     """
-    Bug real (30/08/2026): "le envié un mensaje largo y me respondió por
-    defecto". Este texto contiene 'alcance', 'detecta' y 'puedo consultar' de
-    paso, que era justo lo que disparaba el catálogo de áreas de negocio en
-    vez de atender lo que el usuario pedía.
+    Este texto contiene de paso 'alcance', 'detecta' y 'puedo consultar', pero
+    no es un sondeo de capacidades: debe atenderse lo que el usuario pide, no
+    responder con el catálogo de áreas de negocio.
     """
     mensaje = (
         "Quiero que revises el alcance del módulo de ventas porque el sistema "

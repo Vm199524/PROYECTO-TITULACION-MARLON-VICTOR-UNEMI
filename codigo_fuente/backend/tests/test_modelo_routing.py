@@ -1,16 +1,15 @@
 """
-Pruebas del enrutamiento entre los 3 modelos DeepSeek (FASE 4 — punto 6).
+Pruebas de la clasificación de preguntas entre los modelos DeepSeek.
 
-No instancian NL2SQLEngine completo (requeriría credenciales reales y
-levantar ChatOpenAI) — prueban directamente el patrón de clasificación
-`_PATRONES_MODELO_EXPERTO` / `_requiere_modelo_experto`, que es la pieza que
-decide si una pregunta va al modelo "Instant" (deepseek-v4-flash, la mayoría
-del tráfico) o al "Experto" (deepseek-v4-pro: forecast, comparativas
-multi-período, finanzas/contabilidad avanzada).
+Prueban el patrón `_RE_MODELO_EXPERTO` (armado con `_PATRONES_MODELO_EXPERTO`),
+que indica si una pregunta corresponde al modelo "Instant" (deepseek-v4-flash,
+la mayoría del tráfico) o al "Experto" (deepseek-v4-pro: pronósticos,
+comparativas entre períodos, finanzas). Hay más casos de "debe ser Instant",
+porque es fácil clasificar de más hacia el modelo caro, que cuesta y tarda más.
+También verifican que ningún cliente LLM quede sin un tiempo de espera acotado.
 
-Igual que en test_alcance.py: hay más casos de "debe ser Instant" que de
-"debe ser Experto", porque enrutar de más al modelo caro no rompe nada visible
-(solo cuesta más y tarda más), pero es la categoría donde es fácil pasarse.
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 
 import os
@@ -21,7 +20,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Se importa solo la clase, sin instanciarla (evita requerir credenciales
-# DeepSeek reales o dependencias pesadas como sqlalchemy en el entorno de test).
+# DeepSeek reales o dependencias pesadas como sqlalchemy en el entorno de pruebas).
 from core.nl2sql_engine import NL2SQLEngine  # noqa: E402
 
 
@@ -71,28 +70,24 @@ def test_preguntas_simples_van_a_modelo_instant(pregunta):
 
 class TestTimeoutDeLosTresModelos:
     """
-    Blindaje (29/08/2026): defecto detectado en pruebas — una pregunta
-    ("total de ventas por meses 2026", sin "del") se quedó pensando sin
-    responder NUNCA. Causa raíz: los tres clientes ChatOpenAI (flash/pro/
-    vision) no tenían `timeout` propio, así que heredaban el default del SDK
-    de OpenAI (600 segundos, más reintentos automáticos). Sin credenciales
-    reales: construir un ChatOpenAI no hace ninguna llamada de red, así que
-    esto se puede instanciar en un test normal y comprobar el valor real que
-    quedó configurado en el cliente HTTP subyacente, no solo confiar en que
+    Los tres clientes ChatOpenAI (flash/pro/vision) deben tener `timeout`
+    propio: sin él heredan el valor por defecto del SDK de OpenAI (600
+    segundos, más reintentos automáticos) y una pregunta puede quedarse
+    pensando sin responder nunca. Construir un ChatOpenAI no hace ninguna
+    llamada de red, así que se instancia sin credenciales reales y se
+    comprueba el valor configurado en el cliente HTTP subyacente, no solo que
     el argumento se pasó.
     """
 
-    # Tope por modelo (31/08/2026). Antes el test exigía <= 120s para los tres.
-    # El motor Experto (Pro) pasó luego a 150s a propósito —razona antes de
-    # responder, y una comparativa compleja con el prompt completo no cabe en
-    # 45s (ver `_LLM_TIMEOUT_PRO_SEG` en core/nl2sql_engine.py)—, así que el
-    # test quedó fallando y, como el flujo de despliegue lo corre antes de
-    # publicar, bloqueó TODOS los despliegues, frontend incluido.
+    # Tope por modelo. El motor Experto (Pro) razona antes de responder y una
+    # comparativa compleja con el prompt completo no cabe en 45 s (ver
+    # `_LLM_TIMEOUT_PRO_SEG` en core/nl2sql_engine.py), por eso su tope es mayor.
     #
-    # Lo que este test protege no es un número concreto: es que ningún cliente
-    # herede los 600s del SDK y deje al usuario esperando en silencio. Eso se
-    # mantiene con un tope explícito por modelo — los rápidos siguen atados en
-    # corto y el experto tiene su margen, pero ninguno queda sin límite.
+    # Lo que esta prueba protege no es un número concreto: es que ningún
+    # cliente herede los 600 s del SDK y deje al usuario esperando en silencio.
+    # Los modelos rápidos quedan atados en corto y el experto tiene su margen,
+    # pero ninguno queda sin límite. El flujo de despliegue ejecuta esta prueba
+    # antes de publicar, así que un tope desalineado bloquearía los despliegues.
     TOPES_SEG = {"flash": 120, "pro": 180, "vision": 120}
 
     def test_los_tres_modelos_tienen_timeout_acotado(self):

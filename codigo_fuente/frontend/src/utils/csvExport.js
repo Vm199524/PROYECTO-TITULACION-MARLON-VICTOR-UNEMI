@@ -1,31 +1,43 @@
-// csvExport.js
-// Utilidad compartida para exportar datos reales a CSV (no una captura de
-// pantalla) desde cualquier vista: tabla de resultados del chat, dashboard
-// BI, etc. Sin dependencias externas — un CSV es texto plano, no hace falta
-// una librería para generarlo.
+/**
+ * @file Exportación de datos a CSV. Genera el archivo con los datos reales (no
+ * una captura de pantalla) desde cualquier vista: tabla de resultados del chat,
+ * tablero BI, etc. No usa dependencias externas porque un CSV es texto plano.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
+ */
 
+// Quita el marcador invisible de duplicados (\u200B) y entrecomilla la celda
+// si contiene ';', comillas o saltos de línea.
 const escapeCsvCell = (value) => {
     const clean = String(value ?? '').replace(/[\u200B]/g, '').trim();
     if (/[";\n]/.test(clean)) return '"' + clean.replace(/"/g, '""') + '"';
     return clean;
 };
 
-// `rows` es un array de arrays (cada fila ya en el orden final de columnas).
+/**
+ * Construye el contenido CSV, con BOM UTF-8 y filas separadas por CRLF.
+ * @param {Array<Array<*>>} rows Filas, cada una ya en el orden final de columnas.
+ * @returns {string} Texto CSV listo para descargar.
+ */
 export const buildCsv = (rows) => {
-    // Delimitador ';' (no ',') porque Excel en configuracion regional en
-    // espanol (es-EC) usa ',' como separador DECIMAL, y por lo tanto asume
-    // ';' como separador de columnas al abrir un CSV -- exactamente el bug
-    // reportado ("todo aparece junto en la columna A"). Antes probamos la
-    // directiva "sep=," para forzar coma igual, pero combinada con el BOM
-    // UTF-8 hacia que Excel perdiera la deteccion de codificacion y mostrara
-    // tildes/enie como simbolos ("Ã³" en vez de "o con tilde"). Usar ';'
-    // (el separador nativo de ese idioma/region) evita el conflicto por completo:
-    // no hace falta directiva ni trucos, y el BOM solo sigue funcionando normal.
+    // Delimitador ';' (no ',') porque Excel con configuración regional en
+    // español (es-EC) usa ',' como separador decimal y asume ';' como
+    // separador de columnas; con ',' todo aparece junto en la columna A. La
+    // directiva "sep=," combinada con el BOM UTF-8 hace que Excel pierda la
+    // detección de codificación y muestre mal las tildes y la ñ. Con ';', el
+    // separador nativo de esa región, no hace falta directiva y el BOM
+    // funciona con normalidad.
     const lines = rows.map((row) => row.map(escapeCsvCell).join(';'));
     // BOM al inicio para que Excel detecte UTF-8 y no rompa tildes/ñ.
     return '\uFEFF' + lines.join('\r\n');
 };
 
+/**
+ * Descarga un texto CSV en el navegador mediante un enlace temporal.
+ * @param {string} csvContent Contenido CSV.
+ * @param {string} filename Nombre del archivo; se agrega `.csv` si falta.
+ * @returns {void}
+ */
 export const downloadCsvContent = (csvContent, filename) => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -38,6 +50,12 @@ export const downloadCsvContent = (csvContent, filename) => {
     URL.revokeObjectURL(url);
 };
 
+/**
+ * Construye el CSV a partir de las filas y lo descarga.
+ * @param {Array<Array<*>>} rows Filas en el orden final de columnas.
+ * @param {string} filename Nombre del archivo.
+ * @returns {void}
+ */
 export const downloadRowsAsCsv = (rows, filename) => {
     downloadCsvContent(buildCsv(rows), filename);
 };

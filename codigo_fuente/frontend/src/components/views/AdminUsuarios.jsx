@@ -1,18 +1,13 @@
 /**
- * Archivo: AdminUsuarios.jsx
- * Rol: panel "Pizarra" de administración de usuarios (Fase 5, 28/08/2026,
- * — patrón portado conceptualmente de
- * TripleA_VentasIA: app/auth/routes.py + templates/auth/*.html, adaptado a
- * React/FastAPI y a los colores oscuros de VicMar Data AI).
- *
- * Un solo componente cubre "Usuarios" (lista) y "Nuevo Usuario" (alta):
- * ambos ítems del sidebar apuntan aquí con un `initialMode` distinto. La
- * edición se abre inline en el mismo panel (nunca un popup pequeño, a
- * requisito explícito).
- *
- * Roles y módulos: security_config.json YA tiene un catálogo de roles con
- * sus módulos habilitados — este panel no inventa un sistema de permisos
- * nuevo, solo hace CRUD de usuarios sobre ESE catálogo (GET /api/admin/roles).
+ * @file Administración de usuarios. Un solo componente cubre «Usuarios» (lista) y
+ * «Nuevo Usuario» (alta): ambos ítems del menú lateral apuntan aquí con un
+ * `initialMode` distinto, y la edición se abre en el mismo panel, no en una ventana
+ * emergente. No define permisos propios: hace altas, ediciones, activaciones y bajas
+ * sobre el catálogo de roles de security_config.json (/api/admin/roles y
+ * /api/admin/users) y permite conceder motores de IA por usuario. Solo lo ve el rol
+ * ADMINISTRADOR.
+ * @author Marlon David Pérez Almachi
+ * @author Víctor Manuel Lluilema Pisco
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -24,8 +19,11 @@ import {
 import { apiDelete, apiGet, apiPost, apiPut } from '../../services/api';
 import { roleLabel } from '../../utils/roles';
 
+// Lado máximo, en píxeles, de la foto de perfil que se guarda.
 const MAX_AVATAR_DIM = 256;
 
+// Recorta la imagen al cuadrado central, la reduce a MAX_AVATAR_DIM como máximo
+// y la devuelve como data URL JPEG.
 function resizeImageToDataUrl(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -50,6 +48,7 @@ function resizeImageToDataUrl(file) {
     });
 }
 
+// Color de la etiqueta de cada rol; los roles no listados usan cian.
 const COLOR_ROL = {
     ADMINISTRADOR: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
     CONTABILIDAD: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
@@ -61,13 +60,12 @@ const COLOR_ROL = {
 
 const colorRol = (rol) => COLOR_ROL[rol] || 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300';
 
-// Catálogo de motores de IA seleccionables (30/08/2026) — espejo del que
-// usa ChatInput.jsx para el selector del chat, pero aquí sirve para que un
-// administrador decida qué motores puede elegir cada usuario en ese
-// selector. El motor Pro ya no se ofrece desde el 01/09/2026 (igual que en
-// el selector del chat); aquí se conceden los proveedores puntuales de la
-// cascada (para probar cada API por separado). "flash" no se muestra como
-// casilla: todos los roles lo tienen siempre, por diseño.
+// Catálogo de motores de IA seleccionables, espejo del que usa ChatInput.jsx en
+// el selector del chat: aquí permite que un administrador decida qué motores
+// puede elegir cada usuario. El motor Pro no se ofrece (igual que en el chat);
+// se conceden los proveedores puntuales de la cascada para probar cada API por
+// separado. «flash» no se muestra como casilla: todos los roles lo tienen
+// siempre, por diseño.
 const MODELOS_IA_EDITABLES = [
     { id: 'gemini', label: 'Gemini', desc: 'Google · principal de la cascada' },
     { id: 'groq', label: 'Groq', desc: 'Respaldo #2 de la cascada' },
@@ -78,6 +76,7 @@ const MODELOS_IA_EDITABLES = [
     { id: 'nvidia_muse', label: 'Muse Glimmer', desc: 'NVIDIA NIM' },
 ];
 
+// Formatea una fecha ISO en formato corto de Ecuador, con hora si se pide.
 function formatFecha(iso, conHora = false) {
     if (!iso) return '—';
     try {
@@ -89,6 +88,15 @@ function formatFecha(iso, conHora = false) {
     }
 }
 
+/**
+ * Muestra la gestión de usuarios: la tabla con sus acciones y el formulario de alta
+ * o edición. Carga usuarios y roles al montar y los recarga después de cada cambio.
+ *
+ * @param {object} props
+ * @param {object} props.userAuth - Administrador autenticado; su propia fila se trata aparte.
+ * @param {'list'|'create'} [props.initialMode='list'] - Vista inicial: lista o alta de usuario.
+ * @returns {JSX.Element} Vista de administración de usuarios.
+ */
 export function AdminUsuarios({ userAuth, initialMode = 'list' }) {
     const [modo, setModo] = useState(initialMode); // 'list' | 'create' | 'edit'
     const [usuarios, setUsuarios] = useState([]);
@@ -188,6 +196,7 @@ export function AdminUsuarios({ userAuth, initialMode = 'list' }) {
     );
 }
 
+// Tabla de usuarios con las acciones de editar, activar o desactivar y eliminar.
 function TablaUsuarios({ usuarios, loading, userAuth, onEditar, onCambio }) {
     const [ocupado, setOcupado] = useState('');
 
@@ -224,11 +233,10 @@ function TablaUsuarios({ usuarios, loading, userAuth, onEditar, onCambio }) {
     }
 
     // Misma tarjeta que TableCard en Indicadores (BentoDashboard): el borde
-    // redondeado con 32px de padding es el que da el "colchón" antes del
-    // contenido. Antes esta tabla usaba SU PROPIO borde como contenedor de
-    // scroll, así que el texto quedaba pegado al borde de la tarjeta — la
-    // regla visual pedida por el usuario: nada debe tocar el perímetro de
-    // su tarjeta/caja.
+    // redondeado con 32px de relleno da el margen antes del contenido. Si la
+    // tabla usara su propio borde como contenedor de scroll, el texto quedaría
+    // pegado al borde; la regla visual es que nada toque el perímetro de su
+    // tarjeta.
     return (
         <div className="rounded-[32px] border border-white/10 p-6 shadow-2xl sm:p-8" style={{ background: 'rgba(255,255,255,0.02)' }}>
             <div className="overflow-x-auto">
@@ -251,7 +259,7 @@ function TablaUsuarios({ usuarios, loading, userAuth, onEditar, onCambio }) {
                         // Cuenta del desarrollador (bandera `protected` del backend).
                         // Para cualquier otro administrador, esa fila no ofrece
                         // acciones: ni editar, ni desactivar, ni eliminar. El
-                        // backend rechaza igual esas operaciones con 403 — aquí
+                        // backend rechaza igual esas operaciones con 403; aquí
                         // solo se evita mostrar un botón que nunca va a funcionar.
                         const bloqueadaPorSerDesarrollador = !!u.protected && !esUnoMismo;
                         return (
@@ -325,17 +333,18 @@ function TablaUsuarios({ usuarios, loading, userAuth, onEditar, onCambio }) {
     );
 }
 
+// Formulario de alta (sin `usuario`) o de edición (con `usuario`): datos, rol,
+// motores de IA permitidos, contraseña y foto.
 function FormularioUsuario({ roles, usuario = null, onGuardado, onCancelar }) {
     const esEdicion = Boolean(usuario);
     const [nombre, setNombre] = useState(usuario?.name || '');
     const [username, setUsername] = useState(usuario?.username || '');
     const [correo, setCorreo] = useState(usuario?.email || '');
     const [rol, setRol] = useState(usuario?.role || roles[0]?.role || '');
-    // Modelos de IA permitidos (30/08/2026): override por usuario, aparte
-    // del rol — así un usuario puntual puede tener un motor adicional sin
-    // cambiar todo su rol. Al editar arranca con lo que el backend ya resolvió
-    // (default del rol si no había override); al crear arranca vacío y el
-    // backend aplica el default del rol elegido.
+    // Modelos de IA permitidos: ajuste por usuario, aparte del rol, para que
+    // un usuario puntual tenga un motor adicional sin cambiar todo su rol. Al
+    // editar arranca con lo que el backend ya resolvió (lo del rol si no había
+    // ajuste); al crear arranca vacío y el backend aplica lo del rol elegido.
     const [modelosIA, setModelosIA] = useState(usuario?.modelos_permitidos || []);
     const alternarModeloIA = (clave) => {
         setModelosIA((prev) => (
@@ -378,9 +387,8 @@ function FormularioUsuario({ roles, usuario = null, onGuardado, onCancelar }) {
         }
 
         // Flash está siempre incluido de fondo: no se muestra como casilla
-        // (todos los roles lo tienen por diseño), pero si se marcó otro motor
-        // hay que enviarlo igual junto a él para no dejar al usuario sin el
-        // básico.
+        // (todos los roles lo tienen por diseño), pero se envía junto a los
+        // motores marcados para no dejar al usuario sin el básico.
         const modelosFinales = modelosIA.includes('flash') ? modelosIA : ['flash', ...modelosIA];
 
         setGuardando(true);
@@ -540,6 +548,7 @@ function FormularioUsuario({ roles, usuario = null, onGuardado, onCancelar }) {
     );
 }
 
+// Campo del formulario: etiqueta sobre el control.
 function Campo({ label, children }) {
     return (
         <div className="flex flex-col gap-1.5">

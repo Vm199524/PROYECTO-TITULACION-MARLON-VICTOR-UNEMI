@@ -1,7 +1,13 @@
 """
-backend/knowledge/memory_consolidator.py
-Consolidación de consultas exitosas en reglas de negocio permanentes.
-Analiza el historial de consultas para destilar reglas de negocio permanentes.
+Consolidación de las consultas exitosas en memoria de largo plazo.
+
+Analiza la caché de consultas exitosas de un contexto de base de datos,
+identifica las tablas más consultadas y las guarda, junto con pistas de
+negocio, en consolidated_patterns.json como memoria permanente del motor
+NL2SQL.
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 import json
 import logging
@@ -13,17 +19,25 @@ from cache.query_cache import load_cache
 logger = logging.getLogger(__name__)
 
 class MemoryConsolidator:
-    """
-    Analiza el caché de consultas exitosas para extraer patrones de uso.
-    Esto permite que la IA sepa qué tablas son las más confiables para ciertos temas.
+    """Extrae patrones de uso de la caché de consultas exitosas de un contexto.
+
+    Sirve para que el motor NL2SQL sepa qué tablas son las más confiables
+    para ciertos temas.
     """
     def __init__(self, db_context: str):
         self.db_context = db_context
         self.memory_path = pathlib.Path(__file__).parent / "consolidated_patterns.json"
 
     def consolidar(self):
-        """
-        'Sueña' sobre los datos del caché para extraer sabiduría de negocio.
+        """Consolida la memoria del contexto a partir de su caché de consultas.
+
+        Toma las entradas de la caché cuya clave empieza por el contexto,
+        cuenta la tabla que sigue al primer FROM de cada SQL y guarda las 5
+        más usadas; si el contexto contiene "PROYECTO", agrega pistas fijas
+        de negocio sobre las vistas de nómina.
+
+        Returns:
+            El conocimiento guardado, o {} si no hay historial del contexto.
         """
         logger.info(f"[CONSOLIDACION] Iniciando consolidación de memoria para {self.db_context}...")
         
@@ -41,7 +55,8 @@ class MemoryConsolidator:
         used_tables = []
         for entry in relevant_entries.values():
             sql = str(entry.get("sql", "") or "").upper()
-            # Búsqueda simple de tablas en el SQL (Mejorable con Parser en v2)
+            # Extracción simple: solo la tabla que sigue al primer FROM (no
+            # analiza JOIN ni subconsultas; un parser de SQL sería más preciso).
             if "FROM " in sql:
                 parts = sql.split("FROM ")[1].split(" ")[0].replace("[", "").replace("]", "").split(".")
                 table = parts[-1] if parts else ""
@@ -66,8 +81,9 @@ class MemoryConsolidator:
         return knowledge_dna
 
     def _save_memory(self, data: dict):
+        """Guarda la memoria del contexto sin borrar la de otros; un error solo se registra en el log."""
         try:
-            # Cargamos memoria existente para no pisar otros contextos
+            # Se carga la memoria existente para no pisar la de otros contextos.
             current_memory = {}
             if self.memory_path.exists():
                 with open(self.memory_path, "r", encoding="utf-8") as f:
@@ -81,6 +97,6 @@ class MemoryConsolidator:
             logger.error(f"[CONSOLIDACION] Error al persistir memoria: {e}")
 
 def ejecutar_consolidacion(db_context: str):
-    """Ejecuta el ciclo de sueño y consolidación."""
+    """Ejecuta la consolidación de memoria del contexto indicado y devuelve su resultado."""
     consolidator = MemoryConsolidator(db_context)
     return consolidator.consolidar()

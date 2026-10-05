@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-seed_alumnos_prueba.py — carga alumnos_prueba.csv (dataset base de 14.508
-alumnos, ver codigo_fuente/base_de_datos/datos_de_prueba/) en
+Carga de los alumnos de prueba en UNEMI_PRUEBAS.
+
+Carga alumnos_prueba.csv (dataset base de 14.508 alumnos, ver
+codigo_fuente/base_de_datos/datos_de_prueba/) en
 UNEMI_PRUEBAS.dbo.alumnos_prueba.
 
-Protección de datos (Avance 2, RNF de privacidad — LOPDP): el CSV que se
-carga aquí es el ANONIMIZADO por _extract/anonimizar_padron.py (cédulas y
-nombres ficticios; el resto de columnas idéntico). La tabla de staging con
-el padrón crudo (dbo.stg_padron_electoral_raw) ya no se crea: si quedó de
-una carga anterior, este script la elimina, para que la base de pruebas no
-conserve ningún dato personal real.
+Protección de datos (RNF de privacidad, LOPDP): el CSV que se carga aquí es
+el ANONIMIZADO por codigo_fuente/base_de_datos/datos_de_prueba/anonimizar_padron.py
+(cédulas y nombres ficticios; el resto de columnas idéntico). La tabla de
+staging con el padrón crudo (dbo.stg_padron_electoral_raw) no se crea; si
+existe de una carga anterior, este script la elimina, para que la base de
+pruebas no conserve ningún dato personal real.
 
 Este es el primer paso de la cadena de reconstrucción de la base de datos
 (ver documentacion/tecnica/MANUAL_INSTALACION.md y codigo_fuente/scripts/demo_tesis.ps1).
@@ -17,6 +19,9 @@ Este es el primer paso de la cadena de reconstrucción de la base de datos
 Uso:
     cd backend
     python scripts/seed_alumnos_prueba.py
+
+Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
@@ -64,8 +69,11 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 
 def _crear_base_si_falta() -> None:
-    """UNEMI_PRUEBAS no la crea ningún otro script: se crea aquí para que la
-    reconstrucción completa quede en un solo paso reproducible."""
+    """Crea la base UNEMI_PRUEBAS si no existe.
+
+    Ningún otro script la crea: se crea aquí para que la reconstrucción
+    completa quede en un solo paso reproducible.
+    """
     conn = conectar_admin('master', timeout=30, autocommit=True)
     conn.cursor().execute(
         "IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'UNEMI_PRUEBAS') "
@@ -75,6 +83,7 @@ def _crear_base_si_falta() -> None:
 
 
 def main() -> int:
+    """Recrea dbo.alumnos_prueba y la llena desde el CSV; devuelve 1 si falta el CSV."""
     if not FINAL_CSV.exists():
         print(f"ERROR: no se encontró {FINAL_CSV}")
         print("Genéralo con: python \"codigo_fuente/base_de_datos/datos_de_prueba/anonimizar_padron.py\"")
