@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:backend": "cd ../backend && venv/Scripts/python.exe -m uvicorn main:app --reload --port 8090",
+    "dev:backend": "cd ..\\backend && venv\\Scripts\\python.exe -m uvicorn main:app --reload --port 8090",
     "build": "vite build",
     "start": "vite preview",
     "lint": "tsc --noEmit",
