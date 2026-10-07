@@ -68,18 +68,15 @@ _UNEMI_PRUEBAS = PerfilInstitucion(
         SELECT h.cedula, a.apellidos, a.nombres, a.genero, a.ciudad_residencia,
                h.facultad_codigo, h.facultad_nombre, h.carrera,
                h.sede_codigo, h.sede_nombre, h.canal_codigo AS modalidad,
-               CONCAT(YEAR(h.fecha_matricula), '-', CASE WHEN MONTH(h.fecha_matricula) <= 6 THEN '1' ELSE '2' END)
+               CONCAT(YEAR(h.inicio_clases), '-', CASE WHEN MONTH(h.inicio_clases) <= 6 THEN '1' ELSE '2' END)
                    AS periodo_academico,
-               DATEFROMPARTS(YEAR(h.fecha_matricula), CASE WHEN MONTH(h.fecha_matricula) <= 6 THEN 1 ELSE 7 END, 1)
-                   AS inicio_periodo,
+               h.inicio_clases AS inicio_periodo,
                h.semestre AS nivel, 1 AS corte, h.estado_matricula, h.promedio, h.asistencia_pct,
                h.fecha_matricula AS fecha_corte, h.es_ultimo_periodo,
                h.monto_matricula, h.beca_porcentaje, h.saldo_pendiente,
-               CAST(NULL AS SMALLINT) AS creditos_matriculados, CAST(NULL AS TINYINT) AS numero_matricula,
-               CAST(NULL AS SMALLINT) AS dias_anticipacion_matricula, CAST(NULL AS INT) AS actividad_lms,
-               CAST(NULL AS SMALLINT) AS dias_sin_actividad, CAST(NULL AS SMALLINT) AS evaluaciones_vencidas,
-               CAST(NULL AS SMALLINT) AS evaluaciones_entregadas, CAST(NULL AS SMALLINT) AS evaluaciones_tardias,
-               CAST(NULL AS DECIMAL(4,2)) AS nota_evaluaciones
+               h.creditos_matriculados, h.numero_matricula, h.dias_anticipacion_matricula,
+               h.actividad_lms, h.dias_sin_actividad, h.evaluaciones_vencidas,
+               h.evaluaciones_entregadas, h.evaluaciones_tardias, h.nota_evaluaciones
         FROM dbo.historial_matriculas h
         JOIN dbo.alumnos_prueba a ON a.cedula = h.cedula
     """,

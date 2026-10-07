@@ -43,7 +43,11 @@ CREATE TABLE dbo.historial_matriculas (
     carrera NVARCHAR(150) NOT NULL, sede_codigo VARCHAR(20) NOT NULL, sede_nombre NVARCHAR(100) NOT NULL,
     canal_codigo VARCHAR(20) NOT NULL, semestre TINYINT NOT NULL, estado_matricula VARCHAR(20) NOT NULL,
     promedio DECIMAL(4,2) NOT NULL, asistencia_pct DECIMAL(5,2) NOT NULL, fecha_matricula DATE NOT NULL,
-    monto_matricula DECIMAL(10,2) NOT NULL, beca_porcentaje TINYINT NOT NULL, saldo_pendiente DECIMAL(10,2) NOT NULL);
+    inicio_clases DATE NOT NULL, monto_matricula DECIMAL(10,2) NOT NULL, beca_porcentaje TINYINT NOT NULL,
+    saldo_pendiente DECIMAL(10,2) NOT NULL, creditos_matriculados SMALLINT NOT NULL, numero_matricula TINYINT NOT NULL,
+    dias_anticipacion_matricula SMALLINT NOT NULL, actividad_lms INT NOT NULL, dias_sin_actividad SMALLINT NOT NULL,
+    evaluaciones_vencidas SMALLINT NOT NULL, evaluaciones_entregadas SMALLINT NOT NULL,
+    evaluaciones_tardias SMALLINT NOT NULL, nota_evaluaciones DECIMAL(4,2) NULL);
 CREATE INDEX IX_historial_cedula ON dbo.historial_matriculas(cedula);
 """
 
@@ -75,12 +79,20 @@ def main() -> int:
     historial = [(r['cedula'], int(r['periodo_num']), int(r['es_ultimo_periodo']), r['facultad_codigo'], r['facultad_nombre'],
                   r['carrera'], r['sede_codigo'], r['sede_nombre'], r['canal_codigo'], int(r['semestre']),
                   r['estado_matricula'], float(r['promedio']), float(r['asistencia_pct']),
-                  date.fromisoformat(r['fecha_matricula']), float(r['monto_matricula']), int(r['beca_porcentaje']),
-                  float(r['saldo_pendiente'])) for r in leer_csv('historial_matriculas.csv')]
+                  date.fromisoformat(r['fecha_matricula']), date.fromisoformat(r['inicio_clases']),
+                  float(r['monto_matricula']), int(r['beca_porcentaje']), float(r['saldo_pendiente']),
+                  int(r['creditos_matriculados']), int(r['numero_matricula']), int(r['dias_anticipacion_matricula']),
+                  int(r['actividad_lms']), int(r['dias_sin_actividad']), int(r['evaluaciones_vencidas']),
+                  int(r['evaluaciones_entregadas']), int(r['evaluaciones_tardias']),
+                  float(r['nota_evaluaciones']) if r['nota_evaluaciones'] else None)
+                 for r in leer_csv('historial_matriculas.csv')]
     cur.executemany("""INSERT INTO dbo.historial_matriculas (cedula, periodo_num, es_ultimo_periodo, facultad_codigo,
                        facultad_nombre, carrera, sede_codigo, sede_nombre, canal_codigo, semestre, estado_matricula, promedio,
-                       asistencia_pct, fecha_matricula, monto_matricula, beca_porcentaje, saldo_pendiente)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", historial)
+                       asistencia_pct, fecha_matricula, inicio_clases, monto_matricula, beca_porcentaje, saldo_pendiente,
+                       creditos_matriculados, numero_matricula, dias_anticipacion_matricula, actividad_lms,
+                       dias_sin_actividad, evaluaciones_vencidas, evaluaciones_entregadas, evaluaciones_tardias,
+                       nota_evaluaciones)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", historial)
     conn.commit()
     conn.close()
     print(f'UNEMI_PRUEBAS cargada: {len(alumnos)} estudiantes y {len(historial)} filas de historial.')
