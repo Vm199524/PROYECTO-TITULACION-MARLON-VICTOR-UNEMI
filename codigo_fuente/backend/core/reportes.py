@@ -49,7 +49,7 @@ def lectura(resumen: dict) -> list[str]:
     frases = []
     if ind['evaluados']:
         frases.append(f"De {_num(ind['evaluados'])} estudiantes activos evaluados, {_num(ind['alto'])} "
-                      f"({_pct(100 * ind['alto'] / ind['evaluados'])}) están en riesgo ALTO y {_num(ind['medio'])} en riesgo MEDIO "
+                      f"({_pct(100 * ind['alto'] / ind['evaluados'])}) están en riesgo alto y {_num(ind['medio'])} en riesgo medio "
                       'de abandonar en el próximo periodo.')
     if resumen['riesgo_por_carrera']:
         c = resumen['riesgo_por_carrera'][0]
@@ -59,7 +59,7 @@ def lectura(resumen: dict) -> list[str]:
         frases.append(f"{_num(ind['carreras_prioritarias'])} carreras quedaron en el segmento de atención prioritaria por su "
                       'abandono histórico, rendimiento, asistencia y riesgo actual.')
     if conf.get('RECALL_MEDIO') is not None:
-        frases.append(f"En la prueba temporal, las alertas ALTO y MEDIO detectaron el {_pct(100 * conf['RECALL_MEDIO'], 0)} de los "
+        frases.append(f"En la prueba temporal, las alertas de riesgo alto y medio detectaron el {_pct(100 * conf['RECALL_MEDIO'], 0)} de los "
                       f"abandonos reales, con una precisión del {_pct(100 * (conf.get('PRECISION_MEDIO') or 0), 0)} "
                       f"(ROC-AUC {_num(conf.get('ROC_AUC'), 3)}).")
     if ind.get('cobertura_alto') is not None:

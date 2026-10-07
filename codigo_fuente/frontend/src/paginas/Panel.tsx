@@ -7,7 +7,7 @@
  */
 import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
-import { IconoAlerta, IconoDerecha, IconoDescargar, IconoEstudiantes, IconoSeguimiento, IconoTendencia } from '../componentes/iconos'
+import { IconoAlerta, IconoChispa, IconoDerecha, IconoDescargar, IconoEstudiantes, IconoSeguimiento, IconoTendencia } from '../componentes/iconos'
 import { EncabezadoPagina } from '../componentes/layout/EncabezadoPagina'
 import { Badge } from '../componentes/ui/Badge'
 import { Barra } from '../componentes/ui/Barra'
@@ -18,6 +18,7 @@ import { Kpi } from '../componentes/ui/Kpi'
 import { Skeleton } from '../componentes/ui/Skeleton'
 import { useToast } from '../componentes/ui/Toast'
 import { descargar } from '../lib/api'
+import { cn } from '../lib/cn'
 import { useDatos } from '../lib/consultas'
 import { capital, entero, fechaHora, porcentaje, primerNombre, proporcion, saludo } from '../lib/formato'
 import { useSesion } from '../lib/sesion'
@@ -77,6 +78,64 @@ function Confiabilidad({ c }: { c: ResumenPanel['confiabilidad'] }) {
           · 0,5 sería azar y 1 sería perfecto.
         </p>
       </CardBody>
+    </Card>
+  )
+}
+
+/** Termómetro institucional: todos los estudiantes evaluados en una sola barra, por nivel de riesgo. */
+function Termometro({ ind }: { ind: ResumenPanel['indicadores'] }) {
+  const total = ind.evaluados || 1
+  const tramos = [
+    { clave: 'alto', texto: 'Riesgo alto', n: ind.alto, clase: 'bg-danger', punto: 'bg-danger' },
+    { clave: 'medio', texto: 'Riesgo medio', n: ind.medio, clase: 'bg-warning', punto: 'bg-warning' },
+    { clave: 'bajo', texto: 'Riesgo bajo', n: ind.bajo, clase: 'bg-success/70', punto: 'bg-success' },
+  ]
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-[13px] font-semibold text-foreground">Termómetro institucional</p>
+        <p className="tabular text-xs text-muted-foreground">{entero(ind.evaluados)} estudiantes activos</p>
+      </div>
+      <div className="mt-3 flex h-4 w-full overflow-hidden rounded-full bg-surface-hover" role="img" aria-label={tramos.map((t) => `${t.texto}: ${entero(t.n)}`).join(', ')}>
+        {tramos.map((t) => (
+          <div key={t.clave} className={cn('h-full transition-[width] duration-700 first:rounded-l-full last:rounded-r-full', t.clase)} style={{ width: `${(100 * t.n) / total}%` }} />
+        ))}
+      </div>
+      <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
+        {tramos.map((t) => (
+          <li key={t.clave} className="flex items-center gap-1.5 text-muted-foreground">
+            <span className={cn('h-2 w-2 rounded-full', t.punto)} aria-hidden="true" />
+            {t.texto}
+            <span className="tabular font-semibold text-foreground">{porcentaje((100 * t.n) / total)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function LecturaPeriodo({ datos }: { datos: ResumenPanel }) {
+  const frases = (datos.lectura ?? []).filter((f) => !f.startsWith('Atención: esta institución usa datos sintéticos'))
+  return (
+    <Card className="relative overflow-hidden">
+      <div className="absolute inset-y-0 left-0 w-1 bg-marca" aria-hidden="true" />
+      <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)] xl:gap-10">
+        <Termometro ind={datos.indicadores} />
+        <div>
+          <p className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
+            <IconoChispa className="h-4 w-4 text-marca" />
+            En pocas palabras
+          </p>
+          <ul className="mt-2.5 space-y-1.5 text-[13.5px] leading-relaxed text-muted-foreground">
+            {frases.slice(0, 3).map((f) => (
+              <li key={f} className="flex gap-2">
+                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-subtle-foreground" aria-hidden="true" />
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </Card>
   )
 }
@@ -208,6 +267,8 @@ export default function Panel() {
         </Card>
       ) : (
         <div className="space-y-6">
+          <LecturaPeriodo datos={data} />
+
           <section aria-label="Indicadores clave" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <Kpi etiqueta="Estudiantes evaluados" valor={entero(ind.evaluados)} icono={IconoEstudiantes} tono="accent" contexto="activos con predicción vigente" />
             <Kpi

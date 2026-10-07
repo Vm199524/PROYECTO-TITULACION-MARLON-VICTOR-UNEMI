@@ -44,6 +44,8 @@ export interface ResumenPanel {
   riesgo_por_carrera: { carrera: string; alto: number; medio: number; activos: number }[]
   tendencia: { periodo: string; estudiantes: number; retirados: number; tasa: number }[]
   alertas: { token: string; nombre: string; carrera: string; probabilidad: number; percentil: number; factor: string | null }[]
+  /** Frases calculadas con reglas sobre las cifras (las mismas del reporte ejecutivo). */
+  lectura: string[]
 }
 
 // ── Estudiantes ────────────────────────────────────────────────────────────

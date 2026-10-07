@@ -50,7 +50,7 @@ function BarraLateral({ onNavegar }: { onNavegar?: () => void }) {
                           activo ? 'bg-sidebar-active text-sidebar-active-foreground' : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground'
                         )}
                       >
-                        {activo && <span className="absolute left-0 top-1.5 h-6 w-[3px] rounded-r-full bg-sidebar-active-foreground" aria-hidden="true" />}
+                        {activo && <span className="absolute left-0 top-1.5 h-6 w-[3px] rounded-r-full bg-marca" aria-hidden="true" />}
                         <I className="h-[18px] w-[18px] shrink-0" />
                         <span className="truncate">{item.etiqueta}</span>
                       </NavLink>

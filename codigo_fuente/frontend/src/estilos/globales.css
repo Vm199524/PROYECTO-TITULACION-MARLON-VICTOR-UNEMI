@@ -63,12 +63,13 @@
   --chart-4: 99 102 241;
   --chart-5: 148 163 184;
 
-  /* Marca: aparte del acento para que uno pueda cambiar sin desarmar el otro. */
-  --marca-desde: #1b8bbb;
-  --marca-medio: #0b5c7e;
-  --marca-hasta: #002e45;
-  --marca-alerta: #ff7a1a;
-  --marca-sombra: rgba(0, 46, 69, 0.38);
+  /* Marca: naranja institucional UNEMI (#FF6900), aparte del acento azul de las
+     acciones para que uno pueda cambiar sin desarmar el otro. */
+  --marca-desde: #ff9a3d;
+  --marca-medio: #ff6900;
+  --marca-hasta: #c94f00;
+  --marca-alerta: #002e45;
+  --marca-sombra: rgba(201, 79, 0, 0.35);
 
   --lienzo: #f3f6f9;
   --halo-1: rgba(27, 139, 187, 0.16);
@@ -116,7 +117,7 @@
   --chart-4: 165 180 252;
   --chart-5: 100 116 139;
 
-  --marca-sombra: rgba(27, 139, 187, 0.32);
+  --marca-sombra: rgba(255, 105, 0, 0.28);
 
   --lienzo: #070d16;
   --halo-1: rgba(27, 139, 187, 0.16);
@@ -304,6 +305,63 @@
     }
   }
 
+  /* ── Secuencia de apertura de la pantalla de acceso (una sola vez) ── */
+  .apertura-trazo {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: apertura-trazo 1.6s cubic-bezier(0.3, 0.6, 0.2, 1) forwards;
+  }
+  @keyframes apertura-trazo {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .apertura-aparece {
+    animation: apertura-aparece 0.5s ease-out both;
+  }
+  @keyframes apertura-aparece {
+    from {
+      opacity: 0;
+    }
+  }
+  .apertura-latido {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: apertura-latido 2.4s ease-in-out infinite;
+  }
+  @keyframes apertura-latido {
+    0%,
+    100% {
+      transform: scale(0.7);
+      opacity: 0.1;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0.25;
+    }
+  }
+  .apertura-titulo {
+    animation: entrada 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
+  }
+  .apertura-tarjeta {
+    animation: apertura-tarjeta 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s both;
+  }
+  @keyframes apertura-tarjeta {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.98);
+    }
+  }
+  .apertura-nodo {
+    animation: apertura-nodo 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  @keyframes apertura-nodo {
+    from {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+  }
+
   dialog::backdrop {
     background: rgb(2 12 22 / 0.55);
     backdrop-filter: blur(2px);
@@ -314,8 +372,17 @@
     .logo-destello,
     .skeleton::after,
     .entrada,
-    .escribiendo span {
+    .escribiendo span,
+    .apertura-aparece,
+    .apertura-latido,
+    .apertura-titulo,
+    .apertura-tarjeta,
+    .apertura-nodo {
       animation: none;
+    }
+    .apertura-trazo {
+      animation: none;
+      stroke-dashoffset: 0;
     }
   }
 }

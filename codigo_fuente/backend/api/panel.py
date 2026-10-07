@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends
 
 from core import db
 from core.privacidad import token_estudiante
+from core.reportes import lectura
 from core.seguridad import Sesion, requiere
 
 router = APIRouter(tags=['Panel'])
@@ -65,7 +66,7 @@ def resumen(sesion: Sesion = Depends(requiere('ver_panel'))) -> dict:
     tendencia = [{'periodo': t['periodo_academico'], 'estudiantes': t['estudiantes'], 'retirados': t['retirados'],
                   'tasa': round(100 * t['retirados'] / t['estudiantes'], 2) if t['estudiantes'] else 0.0}
                  for t in datos['tendencia']]
-    return {
+    salida = {
         'institucion': datos['institucion'][0] if datos['institucion'] else None,
         'calificacion': {'fecha': max((f['fecha'] for f in datos['riesgo'] if f.get('fecha')), default=None),
                          'version': next((f['version'] for f in datos['riesgo']), None),
@@ -86,3 +87,6 @@ def resumen(sesion: Sesion = Depends(requiere('ver_panel'))) -> dict:
                      'carrera': a['carrera'], 'probabilidad': a['probabilidad'], 'percentil': a['percentil_riesgo'],
                      'factor': a['factor_1']} for a in datos['alertas']],
     }
+    # Lectura del periodo: las mismas frases por reglas del reporte ejecutivo (sin texto libre de IA).
+    salida['lectura'] = lectura(salida)
+    return salida
