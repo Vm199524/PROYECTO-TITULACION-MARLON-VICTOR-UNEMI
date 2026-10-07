@@ -1,0 +1,39 @@
+{
+  "calificados": 8485,
+  "presentacion": "2014J",
+  "umbral_medio": 0.0188,
+  "y_siguiente": {
+    "positivos": 252,
+    "roc_auc": 0.7618,
+    "pr_auc": 0.1165,
+    "recall": 0.9127,
+    "precision": 0.0446,
+    "matriz_confusion": [
+      [
+        3308,
+        4925
+      ],
+      [
+        22,
+        230
+      ]
+    ]
+  },
+  "y_resto": {
+    "positivos": 1051,
+    "roc_auc": 0.7027,
+    "pr_auc": 0.2702,
+    "recall": 0.8325,
+    "precision": 0.1697,
+    "matriz_confusion": [
+      [
+        3154,
+        4280
+      ],
+      [
+        176,
+        875
+      ]
+    ]
+  }
+}

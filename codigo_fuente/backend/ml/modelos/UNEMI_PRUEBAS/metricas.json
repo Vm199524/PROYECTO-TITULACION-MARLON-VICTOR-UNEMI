@@ -1,0 +1,1679 @@
+{
+  "institucion": "UNEMI_PRUEBAS",
+  "version": "3.0",
+  "fecha": "2026-10-07T19:07:28",
+  "horizonte": "abandono en el periodo siguiente",
+  "grupos_de_variables": [
+    "base",
+    "financieras",
+    "matricula",
+    "aula_virtual",
+    "evaluaciones"
+  ],
+  "n_variables": 41,
+  "panel": {
+    "filas": 79268,
+    "etiquetadas": 64760,
+    "positivos": 4260,
+    "prevalencia": 0.0658,
+    "estudiantes": 14508,
+    "para_calificar": 7158,
+    "entrenamiento": 44375,
+    "prueba": 20385
+  },
+  "hiperparametros": {
+    "RF": {
+      "n_estimators": "400",
+      "min_samples_leaf": "20",
+      "max_features": "0.3",
+      "max_depth": "16"
+    },
+    "LIGHTGBM": {
+      "n_estimators": 300,
+      "learning_rate": 0.013625125234972692,
+      "num_leaves": 8,
+      "min_child_samples": 317,
+      "subsample": 0.691938814991795,
+      "colsample_bytree": 0.9869307910079174,
+      "reg_lambda": 0.15655516595439536,
+      "subsample_freq": 1
+    }
+  },
+  "busqueda": {
+    "RF": [
+      {
+        "n_estimators": "500",
+        "min_samples_leaf": "5",
+        "max_features": "sqrt",
+        "max_depth": "16",
+        "roc_auc": 0.815
+      },
+      {
+        "n_estimators": "300",
+        "min_samples_leaf": "10",
+        "max_features": "0.5",
+        "max_depth": "None",
+        "roc_auc": 0.8168
+      },
+      {
+        "n_estimators": "300",
+        "min_samples_leaf": "20",
+        "max_features": "0.3",
+        "max_depth": "16",
+        "roc_auc": 0.8208
+      },
+      {
+        "n_estimators": "300",
+        "min_samples_leaf": "20",
+        "max_features": "0.3",
+        "max_depth": "8",
+        "roc_auc": 0.8207
+      },
+      {
+        "n_estimators": "400",
+        "min_samples_leaf": "20",
+        "max_features": "0.3",
+        "max_depth": "16",
+        "roc_auc": 0.8212
+      },
+      {
+        "n_estimators": "400",
+        "min_samples_leaf": "20",
+        "max_features": "0.5",
+        "max_depth": "10",
+        "roc_auc": 0.8184
+      },
+      {
+        "n_estimators": "400",
+        "min_samples_leaf": "5",
+        "max_features": "0.5",
+        "max_depth": "10",
+        "roc_auc": 0.8103
+      },
+      {
+        "n_estimators": "500",
+        "min_samples_leaf": "5",
+        "max_features": "0.5",
+        "max_depth": "None",
+        "roc_auc": 0.8164
+      },
+      {
+        "n_estimators": "400",
+        "min_samples_leaf": "2",
+        "max_features": "0.5",
+        "max_depth": "16",
+        "roc_auc": 0.804
+      },
+      {
+        "n_estimators": "300",
+        "min_samples_leaf": "20",
+        "max_features": "sqrt",
+        "max_depth": "12",
+        "roc_auc": 0.8207
+      }
+    ],
+    "LIGHTGBM": [
+      {
+        "prueba": 0,
+        "roc_auc": 0.8244
+      },
+      {
+        "prueba": 1,
+        "roc_auc": 0.8117
+      },
+      {
+        "prueba": 2,
+        "roc_auc": 0.8037
+      },
+      {
+        "prueba": 3,
+        "roc_auc": 0.8059
+      },
+      {
+        "prueba": 4,
+        "roc_auc": 0.8143
+      },
+      {
+        "prueba": 5,
+        "roc_auc": 0.8171
+      },
+      {
+        "prueba": 6,
+        "roc_auc": 0.8005
+      },
+      {
+        "prueba": 7,
+        "roc_auc": 0.8178
+      },
+      {
+        "prueba": 8,
+        "roc_auc": 0.8148
+      },
+      {
+        "prueba": 9,
+        "roc_auc": 0.8004
+      },
+      {
+        "prueba": 10,
+        "roc_auc": 0.8236
+      },
+      {
+        "prueba": 11,
+        "roc_auc": 0.823
+      },
+      {
+        "prueba": 12,
+        "roc_auc": 0.8273
+      },
+      {
+        "prueba": 13,
+        "roc_auc": 0.8266
+      },
+      {
+        "prueba": 14,
+        "roc_auc": 0.8268
+      },
+      {
+        "prueba": 15,
+        "roc_auc": 0.8237
+      },
+      {
+        "prueba": 16,
+        "roc_auc": 0.8262
+      },
+      {
+        "prueba": 17,
+        "roc_auc": 0.8267
+      },
+      {
+        "prueba": 18,
+        "roc_auc": 0.8247
+      },
+      {
+        "prueba": 19,
+        "roc_auc": 0.8263
+      },
+      {
+        "prueba": 20,
+        "roc_auc": 0.8229
+      },
+      {
+        "prueba": 21,
+        "roc_auc": 0.827
+      },
+      {
+        "prueba": 22,
+        "roc_auc": 0.8251
+      },
+      {
+        "prueba": 23,
+        "roc_auc": 0.8219
+      },
+      {
+        "prueba": 24,
+        "roc_auc": 0.8267
+      }
+    ]
+  },
+  "comparacion_cv": {
+    "RF_PONDERADO": {
+      "roc_auc": {
+        "media": 0.8214,
+        "desviacion": 0.0056,
+        "pliegues": [
+          0.8191,
+          0.8165,
+          0.8194,
+          0.8324,
+          0.8196
+        ]
+      },
+      "pr_auc": {
+        "media": 0.4502,
+        "desviacion": 0.0064,
+        "pliegues": [
+          0.4386,
+          0.4514,
+          0.4493,
+          0.4576,
+          0.4542
+        ]
+      }
+    },
+    "RF_SMOTE": {
+      "roc_auc": {
+        "media": 0.8164,
+        "desviacion": 0.0053,
+        "pliegues": [
+          0.8159,
+          0.812,
+          0.8097,
+          0.8241,
+          0.8202
+        ]
+      },
+      "pr_auc": {
+        "media": 0.4211,
+        "desviacion": 0.01,
+        "pliegues": [
+          0.4171,
+          0.4228,
+          0.4052,
+          0.4358,
+          0.4247
+        ]
+      }
+    },
+    "LOGISTICA": {
+      "roc_auc": {
+        "media": 0.8188,
+        "desviacion": 0.0032,
+        "pliegues": [
+          0.8159,
+          0.822,
+          0.8156,
+          0.8232,
+          0.8175
+        ]
+      },
+      "pr_auc": {
+        "media": 0.3783,
+        "desviacion": 0.0114,
+        "pliegues": [
+          0.3698,
+          0.3998,
+          0.3769,
+          0.368,
+          0.3769
+        ]
+      }
+    },
+    "LIGHTGBM": {
+      "roc_auc": {
+        "media": 0.828,
+        "desviacion": 0.0034,
+        "pliegues": [
+          0.8282,
+          0.8269,
+          0.8263,
+          0.8344,
+          0.8242
+        ]
+      },
+      "pr_auc": {
+        "media": 0.4558,
+        "desviacion": 0.0087,
+        "pliegues": [
+          0.4407,
+          0.4658,
+          0.4522,
+          0.4591,
+          0.4609
+        ]
+      }
+    }
+  },
+  "modelo_final": "LIGHTGBM",
+  "calibracion": {
+    "metodo": "Platt (regresión logística sobre el logit, predicciones fuera de pliegue)"
+  },
+  "umbrales": {
+    "alto": 0.1795,
+    "medio": 0.0396,
+    "recall_objetivo_alto": 0.5,
+    "recall_objetivo_medio": 0.8
+  },
+  "validacion_temporal": {
+    "n": 20385,
+    "positivos": 1332,
+    "prevalencia": 0.0653,
+    "roc_auc": 0.8293,
+    "pr_auc": 0.4656,
+    "brier_sin_calibrar": 0.1337,
+    "brier_calibrado": 0.0455,
+    "captura_top_10": 0.5465,
+    "captura_top_20": 0.6787,
+    "umbral_medio": {
+      "umbral": 0.0396,
+      "recall": 0.7808,
+      "precision": 0.1464,
+      "tasa_alerta": 0.3484,
+      "fpr": 0.3182,
+      "matriz_confusion": [
+        [
+          12990,
+          6063
+        ],
+        [
+          292,
+          1040
+        ]
+      ]
+    },
+    "umbral_alto": {
+      "umbral": 0.1795,
+      "recall": 0.4917,
+      "precision": 0.4502,
+      "tasa_alerta": 0.0714,
+      "fpr": 0.042,
+      "matriz_confusion": [
+        [
+          18253,
+          800
+        ],
+        [
+          677,
+          655
+        ]
+      ]
+    },
+    "curva_roc": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0004,
+        0.0586
+      ],
+      [
+        0.0009,
+        0.0931
+      ],
+      [
+        0.0014,
+        0.1254
+      ],
+      [
+        0.002,
+        0.1449
+      ],
+      [
+        0.0025,
+        0.1719
+      ],
+      [
+        0.0031,
+        0.1862
+      ],
+      [
+        0.004,
+        0.217
+      ],
+      [
+        0.0047,
+        0.229
+      ],
+      [
+        0.0054,
+        0.244
+      ],
+      [
+        0.0058,
+        0.2583
+      ],
+      [
+        0.0064,
+        0.2703
+      ],
+      [
+        0.0074,
+        0.2785
+      ],
+      [
+        0.0085,
+        0.2898
+      ],
+      [
+        0.0092,
+        0.298
+      ],
+      [
+        0.01,
+        0.3063
+      ],
+      [
+        0.0109,
+        0.3183
+      ],
+      [
+        0.0118,
+        0.3281
+      ],
+      [
+        0.0123,
+        0.3423
+      ],
+      [
+        0.0136,
+        0.3521
+      ],
+      [
+        0.0145,
+        0.3611
+      ],
+      [
+        0.0155,
+        0.3716
+      ],
+      [
+        0.0163,
+        0.3821
+      ],
+      [
+        0.0177,
+        0.3896
+      ],
+      [
+        0.0185,
+        0.3994
+      ],
+      [
+        0.02,
+        0.4062
+      ],
+      [
+        0.0212,
+        0.4144
+      ],
+      [
+        0.0228,
+        0.4204
+      ],
+      [
+        0.0245,
+        0.4272
+      ],
+      [
+        0.0268,
+        0.4354
+      ],
+      [
+        0.0289,
+        0.4414
+      ],
+      [
+        0.0308,
+        0.4542
+      ],
+      [
+        0.0317,
+        0.461
+      ],
+      [
+        0.0331,
+        0.4692
+      ],
+      [
+        0.0341,
+        0.4752
+      ],
+      [
+        0.0375,
+        0.4812
+      ],
+      [
+        0.041,
+        0.4872
+      ],
+      [
+        0.0447,
+        0.4947
+      ],
+      [
+        0.0471,
+        0.5015
+      ],
+      [
+        0.0497,
+        0.5098
+      ],
+      [
+        0.0526,
+        0.5158
+      ],
+      [
+        0.054,
+        0.5225
+      ],
+      [
+        0.0598,
+        0.5285
+      ],
+      [
+        0.0636,
+        0.5338
+      ],
+      [
+        0.0658,
+        0.5398
+      ],
+      [
+        0.0687,
+        0.5465
+      ],
+      [
+        0.0716,
+        0.5533
+      ],
+      [
+        0.0745,
+        0.5601
+      ],
+      [
+        0.0767,
+        0.5683
+      ],
+      [
+        0.0801,
+        0.5758
+      ],
+      [
+        0.0848,
+        0.5818
+      ],
+      [
+        0.0904,
+        0.5871
+      ],
+      [
+        0.0954,
+        0.5961
+      ],
+      [
+        0.0984,
+        0.6021
+      ],
+      [
+        0.1012,
+        0.6089
+      ],
+      [
+        0.1048,
+        0.6141
+      ],
+      [
+        0.1081,
+        0.6201
+      ],
+      [
+        0.1132,
+        0.6269
+      ],
+      [
+        0.1156,
+        0.6329
+      ],
+      [
+        0.1222,
+        0.6381
+      ],
+      [
+        0.1309,
+        0.6456
+      ],
+      [
+        0.1386,
+        0.6517
+      ],
+      [
+        0.1472,
+        0.6577
+      ],
+      [
+        0.1515,
+        0.6637
+      ],
+      [
+        0.1601,
+        0.6697
+      ],
+      [
+        0.1633,
+        0.6757
+      ],
+      [
+        0.1706,
+        0.6824
+      ],
+      [
+        0.1772,
+        0.6877
+      ],
+      [
+        0.1849,
+        0.6937
+      ],
+      [
+        0.1896,
+        0.6997
+      ],
+      [
+        0.1938,
+        0.7057
+      ],
+      [
+        0.2004,
+        0.711
+      ],
+      [
+        0.2138,
+        0.717
+      ],
+      [
+        0.2236,
+        0.723
+      ],
+      [
+        0.2322,
+        0.729
+      ],
+      [
+        0.2407,
+        0.7342
+      ],
+      [
+        0.2572,
+        0.741
+      ],
+      [
+        0.2656,
+        0.7492
+      ],
+      [
+        0.2782,
+        0.7568
+      ],
+      [
+        0.2882,
+        0.762
+      ],
+      [
+        0.2952,
+        0.768
+      ],
+      [
+        0.305,
+        0.7748
+      ],
+      [
+        0.3163,
+        0.78
+      ],
+      [
+        0.3291,
+        0.786
+      ],
+      [
+        0.3436,
+        0.792
+      ],
+      [
+        0.351,
+        0.798
+      ],
+      [
+        0.3594,
+        0.8033
+      ],
+      [
+        0.3691,
+        0.8093
+      ],
+      [
+        0.3803,
+        0.8153
+      ],
+      [
+        0.3906,
+        0.8213
+      ],
+      [
+        0.3956,
+        0.8266
+      ],
+      [
+        0.4028,
+        0.8333
+      ],
+      [
+        0.4188,
+        0.8393
+      ],
+      [
+        0.4272,
+        0.8453
+      ],
+      [
+        0.437,
+        0.8506
+      ],
+      [
+        0.4597,
+        0.8574
+      ],
+      [
+        0.4701,
+        0.8634
+      ],
+      [
+        0.4798,
+        0.8701
+      ],
+      [
+        0.4874,
+        0.8754
+      ],
+      [
+        0.5025,
+        0.8814
+      ],
+      [
+        0.5198,
+        0.8874
+      ],
+      [
+        0.5292,
+        0.8941
+      ],
+      [
+        0.5473,
+        0.8994
+      ],
+      [
+        0.561,
+        0.9054
+      ],
+      [
+        0.5738,
+        0.9114
+      ],
+      [
+        0.5961,
+        0.9174
+      ],
+      [
+        0.6227,
+        0.9227
+      ],
+      [
+        0.6444,
+        0.9287
+      ],
+      [
+        0.6727,
+        0.9347
+      ],
+      [
+        0.6927,
+        0.9414
+      ],
+      [
+        0.7185,
+        0.9467
+      ],
+      [
+        0.7375,
+        0.9527
+      ],
+      [
+        0.7552,
+        0.9587
+      ],
+      [
+        0.7923,
+        0.9655
+      ],
+      [
+        0.8121,
+        0.9707
+      ],
+      [
+        0.8443,
+        0.9767
+      ],
+      [
+        0.8675,
+        0.9827
+      ],
+      [
+        0.8992,
+        0.9887
+      ],
+      [
+        0.9482,
+        0.994
+      ],
+      [
+        1.0,
+        1.0
+      ]
+    ],
+    "curva_pr": [
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.1104,
+        0.8596
+      ],
+      [
+        0.2042,
+        0.7953
+      ],
+      [
+        0.2793,
+        0.7251
+      ],
+      [
+        0.3401,
+        0.6613
+      ],
+      [
+        0.3889,
+        0.6051
+      ],
+      [
+        0.4257,
+        0.5521
+      ],
+      [
+        0.4565,
+        0.5071
+      ],
+      [
+        0.482,
+        0.4686
+      ],
+      [
+        0.4992,
+        0.4315
+      ],
+      [
+        0.5195,
+        0.404
+      ],
+      [
+        0.5323,
+        0.3763
+      ],
+      [
+        0.548,
+        0.3552
+      ],
+      [
+        0.5706,
+        0.3414
+      ],
+      [
+        0.5818,
+        0.3232
+      ],
+      [
+        0.5946,
+        0.3083
+      ],
+      [
+        0.6089,
+        0.296
+      ],
+      [
+        0.6216,
+        0.2843
+      ],
+      [
+        0.6336,
+        0.2738
+      ],
+      [
+        0.6419,
+        0.2628
+      ],
+      [
+        0.6486,
+        0.2522
+      ],
+      [
+        0.6539,
+        0.2421
+      ],
+      [
+        0.6637,
+        0.2346
+      ],
+      [
+        0.6697,
+        0.2265
+      ],
+      [
+        0.6802,
+        0.2204
+      ],
+      [
+        0.6877,
+        0.2139
+      ],
+      [
+        0.6952,
+        0.2079
+      ],
+      [
+        0.7042,
+        0.2028
+      ],
+      [
+        0.7125,
+        0.1979
+      ],
+      [
+        0.714,
+        0.1915
+      ],
+      [
+        0.7192,
+        0.1864
+      ],
+      [
+        0.7245,
+        0.1817
+      ],
+      [
+        0.732,
+        0.1779
+      ],
+      [
+        0.7372,
+        0.1737
+      ],
+      [
+        0.7387,
+        0.169
+      ],
+      [
+        0.7477,
+        0.1661
+      ],
+      [
+        0.7515,
+        0.1623
+      ],
+      [
+        0.7575,
+        0.1592
+      ],
+      [
+        0.7628,
+        0.1561
+      ],
+      [
+        0.768,
+        0.1531
+      ],
+      [
+        0.7755,
+        0.1508
+      ],
+      [
+        0.7778,
+        0.1475
+      ],
+      [
+        0.783,
+        0.145
+      ],
+      [
+        0.7868,
+        0.1423
+      ],
+      [
+        0.7905,
+        0.1397
+      ],
+      [
+        0.7958,
+        0.1375
+      ],
+      [
+        0.8026,
+        0.1357
+      ],
+      [
+        0.8071,
+        0.1335
+      ],
+      [
+        0.8131,
+        0.1317
+      ],
+      [
+        0.8176,
+        0.1298
+      ],
+      [
+        0.8251,
+        0.1283
+      ],
+      [
+        0.8311,
+        0.1267
+      ],
+      [
+        0.8356,
+        0.125
+      ],
+      [
+        0.8378,
+        0.1229
+      ],
+      [
+        0.8446,
+        0.1216
+      ],
+      [
+        0.8506,
+        0.1203
+      ],
+      [
+        0.8544,
+        0.1186
+      ],
+      [
+        0.8566,
+        0.1169
+      ],
+      [
+        0.8581,
+        0.115
+      ],
+      [
+        0.8626,
+        0.1137
+      ],
+      [
+        0.8694,
+        0.1127
+      ],
+      [
+        0.8754,
+        0.1116
+      ],
+      [
+        0.8799,
+        0.1104
+      ],
+      [
+        0.8821,
+        0.1089
+      ],
+      [
+        0.8844,
+        0.1075
+      ],
+      [
+        0.8889,
+        0.1063
+      ],
+      [
+        0.8949,
+        0.1054
+      ],
+      [
+        0.8971,
+        0.1041
+      ],
+      [
+        0.9024,
+        0.1032
+      ],
+      [
+        0.9039,
+        0.1019
+      ],
+      [
+        0.9077,
+        0.1008
+      ],
+      [
+        0.9114,
+        0.0998
+      ],
+      [
+        0.9137,
+        0.0987
+      ],
+      [
+        0.9159,
+        0.0976
+      ],
+      [
+        0.9189,
+        0.0966
+      ],
+      [
+        0.9204,
+        0.0954
+      ],
+      [
+        0.9219,
+        0.0943
+      ],
+      [
+        0.9257,
+        0.0935
+      ],
+      [
+        0.9272,
+        0.0924
+      ],
+      [
+        0.9294,
+        0.0915
+      ],
+      [
+        0.9302,
+        0.0904
+      ],
+      [
+        0.9332,
+        0.0896
+      ],
+      [
+        0.9339,
+        0.0886
+      ],
+      [
+        0.9384,
+        0.0879
+      ],
+      [
+        0.9392,
+        0.0869
+      ],
+      [
+        0.9422,
+        0.0862
+      ],
+      [
+        0.9444,
+        0.0854
+      ],
+      [
+        0.9459,
+        0.0845
+      ],
+      [
+        0.9489,
+        0.0839
+      ],
+      [
+        0.9512,
+        0.0831
+      ],
+      [
+        0.955,
+        0.0825
+      ],
+      [
+        0.9565,
+        0.0817
+      ],
+      [
+        0.9595,
+        0.0811
+      ],
+      [
+        0.961,
+        0.0803
+      ],
+      [
+        0.9625,
+        0.0796
+      ],
+      [
+        0.9625,
+        0.0788
+      ],
+      [
+        0.9677,
+        0.0784
+      ],
+      [
+        0.9692,
+        0.0777
+      ],
+      [
+        0.9715,
+        0.0771
+      ],
+      [
+        0.9752,
+        0.0766
+      ],
+      [
+        0.9767,
+        0.0759
+      ],
+      [
+        0.9767,
+        0.0752
+      ],
+      [
+        0.9782,
+        0.0746
+      ],
+      [
+        0.9812,
+        0.0741
+      ],
+      [
+        0.982,
+        0.0734
+      ],
+      [
+        0.985,
+        0.0729
+      ],
+      [
+        0.9857,
+        0.0723
+      ],
+      [
+        0.9872,
+        0.0717
+      ],
+      [
+        0.9887,
+        0.0712
+      ],
+      [
+        0.9902,
+        0.0706
+      ],
+      [
+        0.9902,
+        0.07
+      ],
+      [
+        0.991,
+        0.0694
+      ],
+      [
+        0.9925,
+        0.0689
+      ],
+      [
+        0.9932,
+        0.0683
+      ],
+      [
+        0.9955,
+        0.0679
+      ],
+      [
+        0.9955,
+        0.0673
+      ],
+      [
+        0.9962,
+        0.0668
+      ],
+      [
+        0.9977,
+        0.0663
+      ],
+      [
+        1.0,
+        0.0659
+      ],
+      [
+        1.0,
+        0.0653
+      ]
+    ],
+    "curva_calibracion": [
+      {
+        "predicha": 0.0067,
+        "observada": 0.0083,
+        "n": 2039
+      },
+      {
+        "predicha": 0.0093,
+        "observada": 0.0162,
+        "n": 2038
+      },
+      {
+        "predicha": 0.0122,
+        "observada": 0.0152,
+        "n": 2039
+      },
+      {
+        "predicha": 0.0156,
+        "observada": 0.0177,
+        "n": 2038
+      },
+      {
+        "predicha": 0.0207,
+        "observada": 0.0304,
+        "n": 2039
+      },
+      {
+        "predicha": 0.0287,
+        "observada": 0.0358,
+        "n": 2038
+      },
+      {
+        "predicha": 0.0396,
+        "observada": 0.0397,
+        "n": 2038
+      },
+      {
+        "predicha": 0.0569,
+        "observada": 0.0466,
+        "n": 2039
+      },
+      {
+        "predicha": 0.0933,
+        "observada": 0.0864,
+        "n": 2038
+      },
+      {
+        "predicha": 0.3548,
+        "observada": 0.357,
+        "n": 2039
+      }
+    ],
+    "periodos": [
+      "2024-2",
+      "2025-1",
+      "2025-2"
+    ]
+  },
+  "equidad": [
+    {
+      "variable": "genero",
+      "grupo": "F",
+      "n": 11291,
+      "prevalencia": 0.0653,
+      "roc_auc": 0.8293,
+      "recall": 0.7843,
+      "precision": 0.1458,
+      "tasa_alerta": 0.3511,
+      "fpr": 0.3208
+    },
+    {
+      "variable": "genero",
+      "grupo": "M",
+      "n": 9094,
+      "prevalencia": 0.0654,
+      "roc_auc": 0.8293,
+      "recall": 0.7765,
+      "precision": 0.1472,
+      "tasa_alerta": 0.3452,
+      "fpr": 0.315
+    },
+    {
+      "variable": "modalidad_codigo",
+      "grupo": "EN LINEA",
+      "n": 2984,
+      "prevalencia": 0.0704,
+      "roc_auc": 0.8366,
+      "recall": 0.8095,
+      "precision": 0.1482,
+      "tasa_alerta": 0.3844,
+      "fpr": 0.3522
+    },
+    {
+      "variable": "modalidad_codigo",
+      "grupo": "HIBRIDA",
+      "n": 3127,
+      "prevalencia": 0.064,
+      "roc_auc": 0.8182,
+      "recall": 0.75,
+      "precision": 0.1423,
+      "tasa_alerta": 0.3371,
+      "fpr": 0.3088
+    },
+    {
+      "variable": "modalidad_codigo",
+      "grupo": "PRESENCIAL",
+      "n": 14274,
+      "prevalencia": 0.0646,
+      "roc_auc": 0.8304,
+      "recall": 0.7809,
+      "precision": 0.1469,
+      "tasa_alerta": 0.3434,
+      "fpr": 0.3132
+    },
+    {
+      "variable": "sede_codigo",
+      "grupo": "DURAN",
+      "n": 4097,
+      "prevalencia": 0.0615,
+      "roc_auc": 0.8174,
+      "recall": 0.7579,
+      "precision": 0.1337,
+      "tasa_alerta": 0.3488,
+      "fpr": 0.322
+    },
+    {
+      "variable": "sede_codigo",
+      "grupo": "MILAGRO",
+      "n": 16288,
+      "prevalencia": 0.0663,
+      "roc_auc": 0.832,
+      "recall": 0.7861,
+      "precision": 0.1496,
+      "tasa_alerta": 0.3484,
+      "fpr": 0.3173
+    }
+  ],
+  "importancia_permutacion": [
+    {
+      "variable": "promedio_t",
+      "media": 0.2018,
+      "desviacion": 0.0034
+    },
+    {
+      "variable": "numero_matricula",
+      "media": 0.1994,
+      "desviacion": 0.0058
+    },
+    {
+      "variable": "pct_entregadas",
+      "media": 0.0136,
+      "desviacion": 0.0015
+    },
+    {
+      "variable": "saldo_pendiente_t",
+      "media": 0.0106,
+      "desviacion": 0.001
+    },
+    {
+      "variable": "promedio_media_movil",
+      "media": 0.0077,
+      "desviacion": 0.0073
+    },
+    {
+      "variable": "nivel",
+      "media": 0.0028,
+      "desviacion": 0.0011
+    },
+    {
+      "variable": "asistencia_t",
+      "media": 0.0027,
+      "desviacion": 0.0004
+    },
+    {
+      "variable": "avance_relativo",
+      "media": 0.0018,
+      "desviacion": 0.0012
+    },
+    {
+      "variable": "promedio_delta",
+      "media": 0.0016,
+      "desviacion": 0.0001
+    },
+    {
+      "variable": "beca_porcentaje",
+      "media": 0.0016,
+      "desviacion": 0.0008
+    },
+    {
+      "variable": "dias_anticipacion_matricula",
+      "media": 0.0014,
+      "desviacion": 0.0003
+    },
+    {
+      "variable": "actividad_lms_acum_log",
+      "media": 0.0013,
+      "desviacion": 0.0002
+    },
+    {
+      "variable": "promedio_minimo_hist",
+      "media": 0.001,
+      "desviacion": 0.001
+    },
+    {
+      "variable": "asistencia_media_acum",
+      "media": 0.001,
+      "desviacion": 0.0002
+    },
+    {
+      "variable": "asistencia_pct_cohorte",
+      "media": 0.0008,
+      "desviacion": 0.0001
+    },
+    {
+      "variable": "pct_periodos_con_mora",
+      "media": 0.0007,
+      "desviacion": 0.0002
+    },
+    {
+      "variable": "actividad_lms_delta",
+      "media": 0.0005,
+      "desviacion": 0.0004
+    },
+    {
+      "variable": "asistencia_pendiente",
+      "media": 0.0004,
+      "desviacion": 0.0002
+    },
+    {
+      "variable": "n_periodos_cursados",
+      "media": 0.0002,
+      "desviacion": 0.0003
+    },
+    {
+      "variable": "asistencia_delta",
+      "media": 0.0001,
+      "desviacion": 0.0001
+    },
+    {
+      "variable": "asistencia_minima_hist",
+      "media": 0.0001,
+      "desviacion": 0.0001
+    },
+    {
+      "variable": "promedio_rel_cohorte",
+      "media": 0.0001,
+      "desviacion": 0.0002
+    },
+    {
+      "variable": "en_mora_t",
+      "media": 0.0001,
+      "desviacion": 0.0
+    },
+    {
+      "variable": "actividad_rel_cohorte",
+      "media": 0.0001,
+      "desviacion": 0.0001
+    },
+    {
+      "variable": "dias_sin_actividad",
+      "media": 0.0001,
+      "desviacion": 0.0003
+    },
+    {
+      "variable": "pct_tardias",
+      "media": 0.0001,
+      "desviacion": 0.0
+    },
+    {
+      "variable": "corte",
+      "media": 0.0,
+      "desviacion": 0.0
+    },
+    {
+      "variable": "promedio_lag2",
+      "media": 0.0,
+      "desviacion": 0.0
+    },
+    {
+      "variable": "racha_asistencia_baja",
+      "media": 0.0,
+      "desviacion": 0.0
+    },
+    {
+      "variable": "promedio_pct_cohorte",
+      "media": -0.0,
+      "desviacion": 0.0015
+    },
+    {
+      "variable": "evaluaciones_vencidas",
+      "media": 0.0,
+      "desviacion": 0.0
+    },
+    {
+      "variable": "asistencia_rel_cohorte",
+      "media": -0.0001,
+      "desviacion": 0.0002
+    },
+    {
+      "variable": "actividad_lms_log",
+      "media": -0.0001,
+      "desviacion": 0.0004
+    },
+    {
+      "variable": "nota_evaluaciones",
+      "media": -0.0001,
+      "desviacion": 0.0012
+    },
+    {
+      "variable": "asistencia_lag1",
+      "media": -0.0002,
+      "desviacion": 0.0002
+    },
+    {
+      "variable": "promedio_lag1",
+      "media": -0.0003,
+      "desviacion": 0.0004
+    },
+    {
+      "variable": "asistencia_lag2",
+      "media": -0.0003,
+      "desviacion": 0.0003
+    },
+    {
+      "variable": "asistencia_media_movil",
+      "media": -0.0004,
+      "desviacion": 0.0001
+    },
+    {
+      "variable": "promedio_media_acum",
+      "media": -0.0005,
+      "desviacion": 0.0009
+    },
+    {
+      "variable": "promedio_pendiente",
+      "media": -0.0006,
+      "desviacion": 0.0012
+    },
+    {
+      "variable": "creditos_matriculados",
+      "media": -0.0007,
+      "desviacion": 0.0005
+    }
+  ],
+  "segundos": 2063.5
+}

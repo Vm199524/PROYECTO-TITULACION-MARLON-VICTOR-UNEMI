@@ -1,0 +1,60 @@
+{
+  "calificados": 7158,
+  "distribucion": {
+    "BAJO": 4574,
+    "MEDIO": 2024,
+    "ALTO": 560
+  },
+  "psi": [
+    {
+      "variable": "promedio_t",
+      "psi": 0.0038,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "numero_matricula",
+      "psi": 0.0006,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "pct_entregadas",
+      "psi": 0.0004,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "saldo_pendiente_t",
+      "psi": 0.0005,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "promedio_media_movil",
+      "psi": 0.0021,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "nivel",
+      "psi": 0.0507,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "asistencia_t",
+      "psi": 0.0018,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "avance_relativo",
+      "psi": 0.0511,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "promedio_delta",
+      "psi": 0.0092,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "beca_porcentaje",
+      "psi": 0.0005,
+      "estado": "ESTABLE"
+    }
+  ]
+}
