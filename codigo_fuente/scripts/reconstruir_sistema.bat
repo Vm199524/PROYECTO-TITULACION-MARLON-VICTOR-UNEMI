@@ -25,10 +25,21 @@ if errorlevel 1 (
     goto fin
 )
 
-where docker >nul 2>nul && (
-    echo Iniciando el contenedor de SQL Server ...
-    docker start vicmar-sqlserver >nul 2>nul
-)
+where docker >nul 2>nul || goto sin_docker
+docker info >nul 2>nul && goto docker_listo
+if not exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" goto sin_docker
+echo Iniciando Docker Desktop ...
+start "" "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+set /a ESPERA=0
+:esperar_docker
+timeout /t 3 /nobreak >nul
+docker info >nul 2>nul && goto docker_listo
+set /a ESPERA+=1
+if %ESPERA% lss 60 goto esperar_docker
+:docker_listo
+echo Iniciando el contenedor de SQL Server ...
+docker start vicmar-sqlserver >nul 2>nul
+:sin_docker
 
 set PYTHONIOENCODING=utf-8
 set PYTHONUTF8=1
