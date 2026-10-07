@@ -21,17 +21,11 @@ import { descargar } from '../lib/api'
 import { useDatos } from '../lib/consultas'
 import { entero, fechaHora, porcentaje, primerNombre, proporcion, saludo } from '../lib/formato'
 import { useSesion } from '../lib/sesion'
+import { NOMBRE_MODELO } from '../lib/modelos'
 import type { ResumenPanel } from '../lib/tipos'
 
 const GraficoCarreras = lazy(() => import('./panel/GraficoCarreras'))
 const GraficoTendencia = lazy(() => import('./panel/GraficoTendencia'))
-
-export const NOMBRE_MODELO: Record<string, string> = {
-  LIGHTGBM: 'LightGBM',
-  RF_PONDERADO: 'Random Forest ponderado',
-  RF_SMOTE: 'Random Forest con SMOTE',
-  LOGISTICA: 'Regresión logística',
-}
 
 function Confiabilidad({ c }: { c: ResumenPanel['confiabilidad'] }) {
   const recall = c.RECALL_MEDIO

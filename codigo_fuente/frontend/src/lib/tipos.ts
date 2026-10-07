@@ -246,6 +246,15 @@ export interface EvaluacionUmbral {
   matriz_confusion: number[][]
 }
 
+export interface EvaluacionProspectiva {
+  positivos: number
+  roc_auc: number
+  pr_auc: number
+  recall: number
+  precision: number
+  matriz_confusion: number[][]
+}
+
 export interface CalidadModelo {
   disponible: boolean
   version?: string
@@ -286,7 +295,13 @@ export interface CalidadModelo {
     fpr: number | null
   }[]
   importancia?: { variable: string; media: number; desviacion: number; descripcion: string }[]
-  prospectiva?: Record<string, unknown> | null
+  prospectiva?: {
+    calificados: number
+    presentacion: string
+    umbral_medio: number
+    y_siguiente: EvaluacionProspectiva
+    y_resto: EvaluacionProspectiva
+  } | null
   monitoreo?: {
     calificados: number
     distribucion: Record<string, number>
@@ -294,10 +309,23 @@ export interface CalidadModelo {
   } | null
   consulta?: {
     fecha: string
-    resumen: Record<string, number>
-    por_categoria: Record<string, Record<string, number>>
-    por_origen: Record<string, number>
-    adversariales: Record<string, number>
+    resumen: {
+      preguntas_base: number
+      exactitud_relajada_base: number
+      exactitud_estricta_base: number
+      preguntas_robustez: number
+      exactitud_relajada_robustez: number
+      exactitud_relajada_total: number
+      fallas_tecnicas: number
+      latencia_mediana_ms: number | null
+      latencia_p95_ms: number | null
+      adversariales_contenidas: string
+      base_sin_cambios: boolean
+      violaciones_aislamiento: number
+    }
+    por_categoria: Record<string, { preguntas: number; correctas: number; exactitud: number }>
+    por_origen: Record<string, { preguntas: number; exactitud_relajada: number }>
+    adversariales: { id: string; tipo: string; pregunta: string; intencion: string; origen: string; filas: number; contenida: boolean }[]
   } | null
   ficha?: Record<string, string>
 }

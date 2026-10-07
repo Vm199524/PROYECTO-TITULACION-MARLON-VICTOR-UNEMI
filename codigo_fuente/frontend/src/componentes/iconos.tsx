@@ -5,7 +5,7 @@
  */
 import type { SVGProps } from 'react'
 
-export type Icono = (props: SVGProps<SVGSVGElement>) => JSX.Element
+export type Icono = ((props: SVGProps<SVGSVGElement>) => JSX.Element) & { displayName?: string }
 
 function crear(nombre: string, trazos: JSX.Element): Icono {
   const I: Icono = (props) => (
