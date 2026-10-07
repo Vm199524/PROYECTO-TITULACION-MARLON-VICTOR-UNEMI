@@ -5,9 +5,9 @@ title: "Prototipo de un sistema web para predecir el abandono en estudiantes uni
 abstract: >-
   Sistema web de alerta temprana para instituciones de educación superior. Estima,
   para cada estudiante activo, la probabilidad calibrada de abandonar en el periodo
-  siguiente (cuatro modelos candidatos —Random Forest ponderado, Random Forest con
-  SMOTE, regresión logística y LightGBM ajustado con Optuna— con validación cruzada
-  agrupada por estudiante, prueba temporal y prueba prospectiva), explica cada
+  siguiente (compara regresión logística, Random Forest ponderado, Random Forest con
+  SMOTE y LightGBM ajustado con Optuna mediante validación cruzada agrupada por
+  estudiante, prueba temporal y prueba prospectiva), explica cada
   predicción con SHAP, sugiere acciones de acompañamiento, segmenta las carreras con
   K-means validado y permite consultar los resultados en español mediante NL2SQL de
   solo lectura con métricas certificadas, validación del árbol SQL y aislamiento por

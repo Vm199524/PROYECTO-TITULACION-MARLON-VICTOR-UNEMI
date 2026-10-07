@@ -33,7 +33,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 RAIZ = Path(__file__).resolve().parents[2]
 CARPETA = RAIZ / "documentacion" / "manuales"
-LOGO = RAIZ / "codigo_fuente" / "frontend" / "public" / "logo.png"
+LOGO = RAIZ / ".github" / "assets" / "logo-vicmar.png"   # isotipo de VicMar
 AUTORES = ["Marlon David Pérez Almachi", "Víctor Manuel Lluilema Pisco"]
 MANUALES = ["MANUAL_DE_USUARIO", "MANUAL_TECNICO_DE_INSTALACION", "GUIA_DE_PRUEBAS_DE_ACEPTACION"]
 
@@ -123,7 +123,7 @@ def portada(doc: Document, titulo: str, meta: dict) -> None:
     centro = WD_ALIGN_PARAGRAPH.CENTER
     p = doc.add_paragraph(); p.alignment = centro
     p.paragraph_format.space_before = Pt(36)
-    p.add_run().add_picture(str(LOGO), width=Cm(4.2))
+    p.add_run().add_picture(str(LOGO), width=Cm(3.4))
     for texto, tam, color, negrita in (
         ("UNIVERSIDAD ESTATAL DE MILAGRO", 15, AZUL, True),
         ("Facultad de Ciencias e Ingenierías", 12, GRIS, False),
@@ -134,9 +134,9 @@ def portada(doc: Document, titulo: str, meta: dict) -> None:
     p = doc.add_paragraph(); p.alignment = centro; p.paragraph_format.space_before = Pt(60)
     r = p.add_run(titulo.upper()); r.font.size = Pt(26); r.bold = True; r.font.color.rgb = AZUL
     p = doc.add_paragraph(); p.alignment = centro
-    r = p.add_run("VicMar Data AI"); r.font.size = Pt(18); r.bold = True; r.font.color.rgb = NARANJA
+    r = p.add_run("VicMar"); r.font.size = Pt(18); r.bold = True; r.font.color.rgb = NARANJA
     p = doc.add_paragraph(); p.alignment = centro
-    r = p.add_run("Predicción del abandono estudiantil con inteligencia de negocios\ny consultas en lenguaje natural")
+    r = p.add_run("Alerta temprana del abandono en estudiantes universitarios\ncon aprendizaje automático y consulta conversacional")
     r.font.size = Pt(12); r.font.color.rgb = GRIS
     p = doc.add_paragraph(); p.alignment = centro; p.paragraph_format.space_before = Pt(70)
     r = p.add_run("Autores"); r.bold = True; r.font.color.rgb = AZUL
@@ -157,7 +157,7 @@ def encabezado_y_pie(doc: Document, titulo: str) -> None:
     seccion.different_first_page_header_footer = True
     p = seccion.header.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    r = p.add_run(f"VicMar Data AI · {titulo}"); r.font.size = Pt(8.5); r.font.color.rgb = GRIS
+    r = p.add_run(f"VicMar · {titulo}"); r.font.size = Pt(8.5); r.font.color.rgb = GRIS
     p = seccion.footer.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = p.add_run("Universidad Estatal de Milagro · Página "); r.font.size = Pt(8.5); r.font.color.rgb = GRIS
@@ -217,13 +217,19 @@ def convertir(nombre: str) -> Path:
     lineas = fuente.read_text(encoding="utf-8").splitlines()
     titulo = lineas[0].lstrip("# ").strip()
     meta = {}
+    clave = None
     i = 1
     while i < len(lineas) and not lineas[i].startswith("---"):
         m = re.match(r"\*\*(.+?):\*\*\s*(.*)", lineas[i])
         if m:
-            meta[m.group(1)] = m.group(2)
+            clave = m.group(1)
+            meta[clave] = m.group(2).strip()
+        elif clave and lineas[i].strip() and not lineas[i].lstrip().startswith("<"):
+            meta[clave] += " " + lineas[i].strip()      # continuación de un valor en varias líneas
+        else:
+            clave = None
         i += 1
-    para_quien = next((f"**Para quién es:**{v}" for k, v in meta.items() if k == "Para quién es"), "")
+    para_quien = next((f"**Para quién es:** {v}" for k, v in meta.items() if k == "Para quién es"), "")
 
     doc = Document()
     for s in doc.sections:
@@ -234,7 +240,7 @@ def convertir(nombre: str) -> Path:
     encabezado_y_pie(doc, titulo)
     doc.core_properties.author = "; ".join(AUTORES)
     doc.core_properties.last_modified_by = AUTORES[0]
-    doc.core_properties.title = f"{titulo} — VicMar Data AI"
+    doc.core_properties.title = f"{titulo} · VicMar"
     doc.core_properties.subject = "Proyecto de titulación · Universidad Estatal de Milagro"
     if para_quien:
         texto_enriquecido(doc.add_paragraph(), para_quien)

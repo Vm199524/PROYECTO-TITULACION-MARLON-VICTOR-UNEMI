@@ -124,7 +124,7 @@
     "consecuencias": [
       "Se gana un aislamiento ya verificado con 22 pruebas de integración.",
       "Se sacrifica costo: en producción haría falta Express (límite de 10 GB) o una licencia de pago.",
-      "Riesgo: dependencia de T-SQL; la lógica está concentrada en crear_chat_academico.sql para facilitar una migración."
+      "Riesgo: dependencia de T-SQL; la lógica está concentrada en crear_almacen_academico.sql para facilitar una migración."
     ]
   },
   "verificacion_codigo": {

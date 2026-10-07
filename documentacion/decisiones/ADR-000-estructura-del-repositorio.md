@@ -6,7 +6,7 @@
 
 ## Contexto
 
-Hasta el Avance 2, el proyecto acumuló en la raíz carpetas de distintas épocas:
+Hasta el Avance 1, el proyecto acumuló en la raíz carpetas de distintas épocas:
 - un prototipo anterior en Node/Express;
 - un backend en Python;
 - documentos de cada avance mezclados con código;
@@ -40,7 +40,7 @@ Si se varía cada peso en ±20 %, la opción A sigue ganando en todos los casos,
    - Considerar la profundidad de la jerarquía rinde más que solo mirar si dos archivos están en la misma carpeta (pp. 14–15).
    - Los autores reconocen que la calidad de la jerarquía condiciona el resultado: en Hadoop, con pocos directorios y componentes dispersos, la mejora fue mínima (pp. 13, 16).
 
-   *Implicación:* si las carpetas siguen las capas (`frontend/`, `backend/api`, `backend/core` y `backend/ml`, `backend/etl` y `backend/knowledge`, `base_de_datos/`), la arquitectura se puede reconocer y verificar desde la estructura. El estudio no mide la comprensión humana; por eso se usa como respaldo indirecto.
+   *Implicación:* si las carpetas siguen las capas (`frontend/`, `backend/api`, `backend/core` y `backend/ml`, `backend/etl` y `backend/nl2sql`, `base_de_datos/`), la arquitectura se puede reconocer y verificar desde la estructura. El estudio no mide la comprensión humana; por eso se usa como respaldo indirecto.
 
 2. **La estructura del repositorio influye en la colaboración, sin una ganadora universal.** Shakikhanli y Bilicki (2025), en proyectos de código abierto de GitHub, encuentran que:
    - los proyectos con varios repositorios concentran más casos de colaboración alta;
@@ -64,18 +64,17 @@ Si se varía cada peso en ±20 %, la opción A sigue ganando en todos los casos,
 ## Decisión
 
 ```
-codigo_fuente/      frontend/ (presentación) · backend/ (api → core, ml → etl, knowledge) · base_de_datos/ · scripts/
-documentacion/      avances/ · generador_documentos/ · diagramas/ · figuras/ · matrices/ · literatura/ · decisiones/ · tecnica/ · auditoria/
+codigo_fuente/      frontend/ (presentación) · backend/ (api → core, ml, nl2sql → etl) · base_de_datos/ · scripts/
+documentacion/      avances/ · generador_documentos/ · diagramas/ · figuras/ · matrices/ · literatura/ · decisiones/ · tecnica/ · manuales/ · evidencias/
 datos/              instrucciones para obtener OULAD; los archivos se descargan aparte y no se versionan
 ```
 
-- Los nombres internos del backend (`api`, `core`, `ml`, `etl`, `knowledge`) se conservan para no romper los imports. La correspondencia entre carpetas y capas está en `codigo_fuente/README.md`.
+- En la versión 3 el backend quedó en `api`, `core`, `ml`, `nl2sql` y `etl`. La correspondencia entre carpetas y capas está en `codigo_fuente/README.md`.
 - No se versionan:
   - los PDF de artículos;
   - los datasets externos;
   - los videos;
-  - las credenciales (`.env`, `security_config.json`, `usuarios_prueba.local.json`);
-  - la carpeta `_POR_REVISAR_ELIMINAR/`.
+  - las credenciales y cuentas (`backend/.env` y `backend/datos_locales/`).
 
 ## Consecuencias
 

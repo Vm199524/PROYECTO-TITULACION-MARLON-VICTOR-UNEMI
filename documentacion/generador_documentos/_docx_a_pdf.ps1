@@ -12,7 +12,7 @@ la ruta del PDF. Requiere Microsoft Word instalado.
 Ruta del documento .docx que se actualiza y exporta.
 
 .EXAMPLE
-powershell -ExecutionPolicy Bypass -File _docx_a_pdf.ps1 -Docx ..\avances\Avance_2_VicMar_Data_AI.docx
+powershell -ExecutionPolicy Bypass -File _docx_a_pdf.ps1 -Docx ..\avances\AVANCE2_MARLON_VICTOR.docx
 
 .NOTES
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco

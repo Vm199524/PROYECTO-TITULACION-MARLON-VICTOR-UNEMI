@@ -1,99 +1,86 @@
-# Predicción de abandono estudiantil (módulo ML)
+# Predicción del abandono estudiantil
 
-Documento técnico del modelo predictivo, actualizado en el **Avance 2 (25/09/2026)**.
-Las cifras de esta página se toman de `codigo_fuente/backend/ml/models/<INSTITUCION>/metrics.json`;
-si se reentrena, esos archivos son la fuente de verdad, no esta página.
+Documento técnico del modelo predictivo (versión 3.0, Avance 2). Las cifras provienen de
+`codigo_fuente/backend/ml/modelos/<INSTITUCION>/metricas.json` y `prospectiva.json`; si se
+reentrena, esos archivos son la fuente de verdad.
 
 ## 1. Qué se predice
 
-**Con los datos de un alumno hasta su periodo actual, la probabilidad de que abandone en
-el periodo siguiente.** La unidad de análisis es el *alumno en un periodo* (sección 1.3
-del documento de titulación): cada fila del panel es (alumno, carrera, periodo t), con
-características calculadas solo con información hasta t y etiqueta
-`y = 1` si el periodo t+1 es `RETIRADO`.
+Con los datos de un estudiante hasta el cierre del periodo *t*, la probabilidad de que aparezca
+como retirado en *t + 1*. La unidad de análisis es el estudiante en un periodo: cada fila del
+panel usa solo información conocida al cierre de *t*. Graduarse o egresar no cuenta como
+abandono. Las filas del último periodo de cada estudiante activo no tienen etiqueta y son las que
+se califican.
 
-La versión anterior (hasta el 11/09/2026) tenía una fila por alumno y usaba la asistencia
-del mismo periodo en que el alumno ya se había retirado: detectaba el abandono, no lo
-anticipaba. Por eso su ROC-AUC de 0,9999 no era comparable con el actual.
+El Avance 1 usaba una fila por estudiante y datos deterministas; su ROC-AUC de 0,9999 no es
+comparable con el actual.
 
-## 2. Datos: dos instituciones
+## 2. Datos
 
-| Institución | Origen | Periodo | Filas del panel | Con periodo siguiente | Prevalencia al periodo siguiente |
+| Institución | Origen | Periodo | Filas | Etiquetadas | Abandonos en t+1 |
 |---|---|---|---|---|---|
-| UNEMI_PRUEBAS | Sintético y anonimizado (`codigo_fuente/base_de_datos/datos_de_prueba/`) | Semestre | 83.678 | 69.170 | 1,87 % |
-| OULAD_UK | Real y anonimizado: Open University Learning Analytics Dataset (Kuzilek et al., 2017, CC BY 4.0) | Bloque de 28 días | 189.299 | 156.706 | 2,54 % |
+| UNEMI_PRUEBAS | Sintético (simulador de factores latentes) | Semestre | 79.268 | 64.760 | 4.260 (6,58 %) |
+| OULAD_UK | Real anonimizado (Kuzilek et al., 2017) | Corte de 28 días | 189.299 | 156.706 | 3.986 (2,54 %) |
 
-**Advertencia sobre los datos sintéticos:** `generate_historial.py` hace caer la asistencia
-de quien abandona de ~89 % a ~55 % un periodo antes. Esa sola variable separa los casos
-(ROC-AUC 0,996 sin modelo). UNEMI_PRUEBAS sirve para probar la arquitectura; el desempeño
-realista se mide en OULAD.
+El perfil de calidad y las figuras exploratorias se generan con `python -m ml.exploracion`.
 
-En OULAD, `asistencia_pct` = días con actividad en el aula virtual / días del bloque × 100,
-y `promedio` = media (0-10) de las evaluaciones vencidas al cierre del bloque (no entregada
-= 0). La presentación 2014J se carga "en curso" hasta el bloque 3; su desenlace real queda
-en `OULAD_PRUEBAS.dbo.verdad_futura` para la evaluación prospectiva.
+## 3. Variables (`ml/caracteristicas.py`)
 
-## 3. Características (`codigo_fuente/backend/ml/features_abandono.py`)
+Una sola función (`construir_panel`) arma el panel para entrenar y para calificar.
 
-Una sola función (`construir_panel`) para entrenar y calificar (evita *training/serving skew*).
+| Grupo | Variables | Se activa |
+|---|---|---|
+| Base | Nivel, corte, periodos cursados, avance; promedio y asistencia actuales, rezagados, media móvil, acumulados, mínimos, tendencias, racha baja y posición en la cohorte | Siempre |
+| Cartera | En mora, saldo pendiente, porcentaje de periodos en mora, beca | Si hay `saldo_pendiente` |
+| Matrícula | Créditos, número de matrícula, días de anticipación | Si hay `numero_matricula` |
+| Aula virtual | Actividad (logaritmo), acumulada, cambio, posición en la cohorte, días sin actividad | Si hay `actividad_lms` |
+| Evaluaciones | Vencidas, porcentaje entregado, porcentaje tardío, nota | Si hay `evaluaciones_vencidas` |
 
-| Variable | Qué mide |
-|---|---|
-| `periodo`, `n_periodos_cursados` | Avance en la trayectoria |
-| `promedio_t`, `promedio_delta`, `promedio_media_movil`, `promedio_minimo_hist` | Rendimiento y su tendencia |
-| `asistencia_t`, `asistencia_delta`, `asistencia_media_movil`, `asistencia_minima_hist` | Asistencia y su tendencia |
-| `en_mora_t`, `saldo_pendiente_t`, `pct_periodos_con_mora` | Situación financiera |
-| `beca_porcentaje` | Apoyo financiero |
-| `sede_codigo`, `canal_codigo` (one-hot) | Sede y modalidad |
+UNEMI_PRUEBAS usa 41 variables y OULAD 37 (no tiene cartera).
 
-`informe_atipicos()` revisa atípicos por IQR (Alzabidi et al., 2026) sin eliminarlos.
+## 4. Entrenamiento y validación (`ml/entrenar.py`)
 
-## 4. Entrenamiento y validación (`codigo_fuente/backend/ml/entrenar_abandono.py`)
+Un modelo por institución, sin mezclar datos.
 
-Un modelo **por institución** (`--empresa`), nunca mezclando datos.
+1. **Prueba temporal:** los periodos más recientes (al menos el 25 % de las filas etiquetadas).
+2. **Ajuste:** búsqueda aleatoria para Random Forest y Optuna (TPE) para LightGBM, con
+   validación agrupada por estudiante.
+3. **Comparación:** regresión logística, Random Forest con pesos por clase, Random Forest con
+   SMOTE y LightGBM, con validación cruzada de 5 pliegues agrupada por estudiante. Se elige el
+   mayor ROC-AUC medio (desempate por PR-AUC).
+4. **Calibración y umbrales:** Platt sobre predicciones fuera de pliegue; umbral medio para
+   recall 0,80 y alto para recall 0,50.
+5. **Evaluación:** prueba temporal (ROC-AUC, PR-AUC, Brier, captura en el 10 y 20 % superior,
+   equidad por subgrupo, importancia por permutación) y, en OULAD, evaluación prospectiva.
 
-1. **Corte temporal:** el 25 % más reciente del panel se reserva como prueba final.
-2. **Ajuste:** `RandomizedSearchCV` (25 combinaciones) del Random Forest con
-   `StratifiedGroupKFold` (5 pliegues) **agrupado por alumno**.
-3. **Comparación con los mismos pliegues:** RF + ponderación de clases, RF + SMOTE
-   (solo en pliegues de entrenamiento), regresión logística y gradient boosting.
-   El final es la mejor variante de RF; si una línea base lo supera por > 0,01 de ROC-AUC,
-   queda como advertencia en `metrics.json`.
-4. **Umbral operativo:** el mayor umbral con recall ≥ 0,80 en las predicciones fuera de pliegue.
-5. **Prueba temporal** (una sola vez) + **importancia por permutación**.
-6. **Modelo final** reentrenado con todas las filas etiquetadas.
-
-### Resultados (25/09/2026)
+## 5. Resultados
 
 | Métrica | UNEMI_PRUEBAS | OULAD_UK |
 |---|---|---|
-| Modelo final | RF + SMOTE | RF + ponderación de clases |
-| ROC-AUC CV (RF elegido) | 0,996 | 0,758 |
-| ROC-AUC prueba temporal | 0,997 | 0,752 |
-| PR-AUC prueba temporal | 0,976 | 0,080 |
-| Recall / precisión en el umbral | 0,777 / 0,990 | 0,798 / 0,052 |
-| ROC-AUC prospectivo (bloque siguiente) | — | 0,725 |
-| Variable más importante | asistencia_t (artefacto del generador) | promedio_t (rendimiento) |
+| Validación cruzada, ROC-AUC de LightGBM | 0,828 ± 0,003 | 0,803 ± 0,010 |
+| Prueba temporal, ROC-AUC | 0,829 | 0,766 |
+| PR-AUC (prevalencia) | 0,466 (0,065) | 0,103 (0,031) |
+| Recall / precisión en el umbral medio | 0,781 / 0,146 | 0,786 / 0,060 |
+| Recall / precisión en el umbral alto | 0,492 / 0,450 | 0,462 / 0,092 |
+| Abandonos en el 20 % de mayor riesgo | 67,9 % | 55,2 % |
+| Brier sin calibrar → calibrado | 0,134 → 0,046 | 0,191 → 0,029 |
+| Prospectiva 2014J (corte siguiente) | | ROC-AUC 0,762 · recall 0,913 |
 
-Con datos reales, el criterio de éxito (a) (ROC-AUC ≥ 0,90) **no se cumple**; se discute
-en la sección 3.3 del Avance 2.
+Lectura: el umbral medio sirve para no dejar fuera a casi nadie que abandonará; el contacto
+directo se organiza con el umbral alto o con los primeros de la lista hasta la capacidad de
+bienestar. En OULAD, con abandonos muy poco frecuentes, la calibración ayuda a ordenar y a
+estimar cuántos casos esperar más que como valor individual.
 
-## 5. Calificación y explicación (`codigo_fuente/backend/ml/predecir_abandono.py`)
+## 6. Calificación, explicación y monitoreo (`ml/calificar.py`)
 
-Califica el periodo vigente de cada trayectoria activa. Categorías: ALTO (p ≥ umbral),
-MEDIO (p ≥ umbral/2), BAJO. Para ALTO y MEDIO calcula SHAP (TreeExplainer) y guarda los
-tres factores que más elevan el riesgo, en lenguaje natural (`factor_1..3`).
+Cada estudiante activo recibe probabilidad calibrada, nivel de riesgo, percentil y las tres
+razones principales según SHAP, redactadas en español. El PSI compara la distribución actual de
+las variables con la del entrenamiento y marca las que derivan (más de 0,25).
 
-## 6. Exposición: panel y chat, misma fuente
+## 7. Limitaciones
 
-`fact_prediccion_abandono` y `fact_evaluacion_modelo` se leen por
-`VIS_PREDICCION_ABANDONO` y `VIS_EVALUACION_MODELO` (filtradas por SESSION_CONTEXT, solo
-lectura para `chat_reader`), desde `GET /api/ml/prediccion-abandono`,
-`GET /api/ml/evaluacion-modelo` y el chat NL2SQL. Las figuras de validación se generan con
-`python -m ml.reporte_validacion --empresa X`.
-
-## 7. Reproducir todo
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\demo_tesis.ps1
-```
+- UNEMI_PRUEBAS es sintético: sus métricas prueban el sistema completo, no describen a la UNEMI.
+- En OULAD, «abandono» es retirarse del módulo en el corte siguiente; en UNEMI, no matricularse
+  en el semestre siguiente. Las cifras no se promedian entre instituciones.
+- El modelo identifica asociaciones, no causas; la decisión de intervenir es siempre de una
+  persona.

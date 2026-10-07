@@ -1,230 +1,221 @@
 # Manual de usuario
 
-**Sistema:** VicMar Data AI — predicción del abandono estudiantil con inteligencia de negocios y consultas en lenguaje natural
-**Versión del documento:** 1.0 · octubre de 2026
+**Sistema:** VicMar · alerta temprana del abandono en estudiantes universitarios con aprendizaje automático y consulta conversacional
+**Versión del documento:** 3.0 · octubre de 2026 (corresponde a la versión 3 del prototipo)
 **Autores:** Marlon David Pérez Almachi · Víctor Manuel Lluilema Pisco
 **Institución:** Universidad Estatal de Milagro · Facultad de Ciencias e Ingenierías
 
-**Para quién es:** autoridades académicas (decanos, directores de carrera), personal de bienestar estudiantil y administradores del sistema. No hace falta saber de bases de datos ni de programación. Si el sistema todavía no está instalado, empiece por el [Manual técnico de instalación](MANUAL_TECNICO_DE_INSTALACION.md).
+**Para quién es:** autoridades académicas, personal de bienestar estudiantil y administración de TI que usan el
+sistema desde el navegador. No hace falta ningún conocimiento técnico.
 
-> [!NOTE]
-> Las capturas usan la institución de pruebas `UNEMI_PRUEBAS`: los nombres son ficticios y las cédulas aparecen enmascaradas.
+<p align="center"><img src="../../.github/assets/logo-vicmar.png" alt="Isotipo de VicMar" width="96"></p>
 
 ---
 
-## 1. Qué hace el sistema
+## 1. Para qué sirve
 
-VicMar Data AI estima, para cada alumno activo, la **probabilidad de que abandone sus estudios en el próximo periodo**, explica los tres motivos que más pesan en esa estimación y permite consultar los datos de la institución **escribiendo preguntas en español**, sin conocimientos técnicos.
+VicMar estima, para cada estudiante con matrícula vigente, la **probabilidad de que abandone sus estudios en el próximo periodo**, explica las tres razones que más pesan en esa estimación, sugiere acciones de acompañamiento y permite consultar las cifras de la institución **escribiendo preguntas en español**, sin conocimientos técnicos.
 
-| Para… | Use… |
+| Si usted necesita… | Use |
 |---|---|
-| Saber qué alumnos necesitan atención primero | El panel **Riesgo de abandono estudiantil** (sección 4) |
-| Saber qué carreras priorizar | La tarjeta **Inteligencia institucional** (sección 5) |
-| Responder una pregunta puntual | El **chat** (sección 6) |
-| Llevar los datos a un informe | Los botones **PDF** y **Excel** (sección 7) |
+| Ver de un vistazo cómo está la institución | **Panel ejecutivo** (sección 4) |
+| Saber a quién atender primero | **Estudiantes en riesgo** (sección 5) |
+| Entender por qué un estudiante está en riesgo | **Ficha del estudiante** (sección 6) |
+| Registrar una tutoría, consejería o apoyo | **Seguimiento** (sección 7) |
+| Responder una pregunta puntual | **Consulta conversacional** (sección 8) |
+| Decidir qué carreras priorizar | **Carreras** (sección 9) |
+| Comparar con otras universidades | **Referentes externos** (sección 10) |
+| Saber cuánto confiar en el modelo | **Calidad del modelo** (sección 11) |
+| Llevar las cifras a una reunión | **Reportes ejecutivos** (sección 12) |
 
----
+> **Importante.** VicMar no decide nada por usted. Ordena y explica el riesgo para que bienestar estudiantil y las autoridades actúen a tiempo; la decisión de intervenir es siempre de una persona.
 
-## 2. Ingresar al sistema
+## 2. Ingresar
 
-1. Abra el navegador (Chrome, Edge o Firefox) en la dirección que le indique el personal de TI; en la instalación local es <http://localhost:3000>.
-2. Escriba su **usuario** y su **contraseña**. El ícono del ojo muestra u oculta la contraseña.
-3. Pulse **Ingresar al sistema**.
+Abra el navegador en la dirección que le indicó Administración de TI (en la instalación de prueba, `http://localhost:3000`). La pantalla de apertura dibuja el emblema de VicMar y muestra las seis capacidades del sistema alrededor del formulario.
 
-![Pantalla de inicio de sesión](../capturas/01_inicio_de_sesion.png)
+![Pantalla de apertura e ingreso](../capturas/av2_cap_ingreso.png)
 
-Si olvidó la contraseña, pulse **¿Olvidaste tu contraseña?**: el sistema envía un código de 6 dígitos a su correo (si el administrador configuró el correo saliente) o, si no, pida a un administrador que la restablezca.
+1. Escriba su **usuario** (`nombre.apellido`) y su **contraseña**.
+2. Pulse **Ingresar**. El sistema abre la primera pantalla que su rol puede ver.
 
-### Qué ve cada rol
+Cinco intentos fallidos seguidos bloquean la cuenta durante cinco minutos, y cada ingreso queda en la bitácora de auditoría. Si olvidó su contraseña, pídale a Administración de TI que la restablezca.
 
-| Rol | Ve |
+### Roles
+
+| Rol | Qué puede hacer |
 |---|---|
-| **ACADÉMICO** | Panel de riesgo, inteligencia institucional, indicadores académicos y chat |
-| **ADMINISTRADOR** | Todo lo anterior, más **Usuarios**, **Nuevo usuario** y **Auditoría** |
-| **CONTABILIDAD, RRHH, LOGÍSTICA** | Los indicadores de su área; no ven datos académicos |
-| **INVITADO** | Una demostración con datos ficticios, sin conectarse a ninguna base |
+| **Autoridad académica** | Panel, estudiantes y fichas, carreras, referentes, calidad del modelo, consulta conversacional, reportes y lectura del seguimiento |
+| **Bienestar estudiantil** | Todo lo anterior salvo la calidad del modelo, y además el simulador «¿qué pasaría si…?» y el **registro y cierre de intervenciones** |
+| **Administración de TI** | Todo lo anterior, y además cuentas de usuario, auditoría, estado del sistema y el SQL de las respuestas |
 
-La sesión se cierra sola después de **30 minutos sin actividad**. Para salir antes, pulse **Desconectar** (arriba a la derecha).
+Las opciones que su rol no permite no aparecen en el menú.
 
----
+## 3. La pantalla
 
-## 3. Conectarse a la base de datos
+- **Barra lateral (izquierda):** el menú agrupado por proceso: *Inicio*, *Alerta temprana*, *Análisis institucional*, *Confianza*, *Reportes* y *Administración*.
+- **Barra superior:** la ruta en la que está (migas de pan), el **selector de institución** (por ejemplo, «UNEMI (datos de prueba)» con la etiqueta *Datos sintéticos*), el botón de **tema claro u oscuro** y su cuenta.
+- **Institución activa:** todo lo que ve y pregunta corresponde solo a la institución elegida. Si su cuenta tiene más de una, cámbiela desde el selector; la base de datos impide leer cualquier otra.
 
-Al ingresar, el sistema todavía no sabe con qué institución trabajará. Este paso se hace una vez por sesión.
+## 4. Panel ejecutivo
 
-1. En el menú de la izquierda, pulse **Bases de Datos**. Se abre la pantalla **Orígenes de Datos**.
-2. En **Nombre del servidor**, elija de la lista **Docker Local — Base de Pruebas** o escriba `localhost,1433`.
-3. En **Autenticación**, elija **Autenticación de SQL Server**. El usuario `sa` ya aparece escrito.
-4. **Contraseña:** déjela **vacía** para usar la que el personal de TI configuró en el servidor, o escriba la que le hayan entregado.
-5. Pulse **Conectar**.
+![Panel ejecutivo](../capturas/av2_cap_panel.png)
 
-![Formulario de conexión](../capturas/02_conexion_formulario.png)
+El panel saluda por su nombre e indica cuándo y con qué modelo se calculó el riesgo.
 
-6. Cuando aparezca **«Conexión establecida con localhost,1433»**, abra **Empresa activa → Selecciona una empresa** y elija la institución: `UNEMI_PRUEBAS` (datos de prueba) u `OULAD_PRUEBAS` (datos reales anónimos de la Open University). Puede escribir en **Buscar por código o nombre…** para filtrar.
-
-![Lista de bases detectadas](../capturas/03_conexion_bases.png)
-
-La institución elegida queda arriba, en **Empresa activa**, y desde ahí puede cambiarla en cualquier momento.
-
-| Botón | Para qué sirve |
+| Elemento | Qué muestra |
 |---|---|
-| **Conectar** | Abre la conexión con el servidor indicado |
-| **Cancelar** | Detiene un intento de conexión que está tardando |
-| **Explorar** | Lista todas las bases del servidor |
-| **Catálogo** | Busca un catálogo maestro de empresas; en el servidor de pruebas no existe y aparece vacío, y eso es normal |
-| **Opciones avanzadas (Driver ODBC)** | Solo si el personal de TI lo indica; la opción recomendada ya viene elegida |
+| **Termómetro institucional** | El reparto de los estudiantes activos entre riesgo alto, medio y bajo |
+| **En pocas palabras** | Tres frases que resumen el periodo: cuántos están en riesgo, la carrera más afectada y cuántas carreras quedaron en atención prioritaria |
+| **Indicadores** | Estudiantes evaluados, riesgo alto, riesgo medio, abandono histórico y porcentaje del riesgo alto que ya tiene seguimiento |
+| **Estudiantes en riesgo por carrera** | Las carreras con más estudiantes en riesgo alto y medio |
+| **Atender primero** | Los estudiantes con la probabilidad más alta; pulse uno para abrir su ficha |
+| **Abandono por periodo académico** | Matriculados y retiros de cada periodo |
+| **Confiabilidad del modelo** | Cuántos abandonos anticipa el sistema y cuántas alertas terminaron en abandono, en palabras sencillas |
 
-> [!TIP]
-> `ALIM` y `CHAT` también aparecen en la lista, pero no son instituciones: `CHAT` es el almacén interno del sistema. Para el panel académico elija `UNEMI_PRUEBAS` u `OULAD_PRUEBAS`.
+Los botones **Reporte PDF** y **Ver estudiantes en riesgo** llevan directamente al reporte o a la lista.
 
----
+## 5. Estudiantes en riesgo
 
-## 4. Leer el panel de riesgo de abandono
+![Lista priorizada de estudiantes](../capturas/av2_cap_estudiantes.png)
 
-Pulse **Indicadores** en el menú de la izquierda.
+La lista ordena a los estudiantes con matrícula vigente por su **probabilidad de abandonar en el próximo periodo**.
 
-![Panel de indicadores](../capturas/04_indicadores.png)
+- **Filtros:** *En riesgo* (alto y medio), *Alto*, *Medio*, *Bajo* o *Todos*; la carrera; y la búsqueda por apellidos o nombres.
+- **Columnas:** estudiante (con la cédula enmascarada), carrera y nivel, promedio, asistencia, probabilidad, nivel de riesgo y las principales razones.
+- Pulse el nombre para abrir la **ficha**.
 
-Arriba están los indicadores generales (alumnos matriculados, carreras ofertadas) del **periodo** elegido en el selector **Período más reciente**. Debajo está la tarjeta **Riesgo de abandono estudiantil**:
+**Cómo leer el nivel de riesgo.** El umbral **medio** está fijado para no dejar fuera a casi nadie que vaya a abandonar (detecta cerca de 8 de cada 10); el umbral **alto** reúne a los casos más probables y sirve para organizar el contacto directo según la capacidad de bienestar.
 
-![Tarjeta de riesgo de abandono](../capturas/05_panel_riesgo.png)
+## 6. Ficha del estudiante
 
-| Elemento | Qué significa |
+![Ficha del estudiante](../capturas/av2_cap_ficha.png)
+
+| Parte | Para qué sirve |
 |---|---|
-| **ALTO / MEDIO / BAJO** | Cuántos alumnos activos hay en cada nivel de riesgo para el **próximo periodo** |
-| **de N activos evaluados** | Cuántos alumnos con matrícula vigente calificó el modelo |
-| **Confiabilidad: ROC-AUC · detecta X % de los abandonos** | Qué tan bien funcionó el modelo con datos que no vio al entrenar. El ROC-AUC va de 0,5 (al azar) a 1 (perfecto) |
-| **Alumno** | Nombre, cédula enmascarada y los **tres factores** que más elevan su riesgo |
-| **Probabilidad** | Probabilidad estimada de abandonar en el próximo periodo |
-| **Riesgo** | ALTO si la probabilidad supera el umbral del modelo; MEDIO si supera la mitad del umbral; BAJO en los demás casos |
+| **Riesgo de abandono** | Probabilidad, nivel, posición dentro de la institución y versión del modelo |
+| **Razones** | Los factores que más **aumentan** o **reducen** el riesgo de este estudiante, en lenguaje sencillo (rendimiento académico, asistencia, situación económica, repetición, entregas, aula virtual, carga académica) |
+| **Acciones sugeridas** | Reglas de acompañamiento según las razones; cada una tiene **Registrar** para convertirla en una intervención |
+| **¿Qué pasaría si…?** | *(Bienestar y TI)* Mueva promedio, asistencia, saldo, actividad en el aula virtual o entregas y pulse **Recalcular riesgo**: el mismo modelo muestra el riesgo *Ahora* y *Con los cambios*. No modifica ningún dato |
+| **Trayectoria académica** | Promedio y asistencia de cada periodo cursado |
+| **Historial de seguimiento** | Las intervenciones registradas con este estudiante, abiertas o cerradas |
 
-**Cómo usarlo:** empiece por los alumnos en **ALTO** y lea sus factores (por ejemplo, «asistencia del último periodo: 69,8 %» o «cambio de la asistencia respecto al periodo anterior: -22 puntos»). Esos factores indican **por dónde intervenir**: tutoría académica, seguimiento de asistencia, apoyo económico.
+Si aparece «Sin predicción vigente», el estudiante no tiene matrícula en el periodo actual o el modelo todavía no lo ha calificado.
 
-> [!IMPORTANT]
-> El modelo **prioriza**, no decide. Una probabilidad alta indica que conviene contactar al alumno, no que vaya a abandonar con certeza. El umbral se eligió para detectar al menos el 80 % de los abandonos, por eso algunos alumnos marcados como ALTO no abandonarán.
+## 7. Seguimiento
 
-Con `UNEMI_PRUEBAS` la confiabilidad aparece cercana a 1,00 porque esos datos son sintéticos; con datos reales (`OULAD_PRUEBAS`) es de alrededor de 0,75. Es el valor realista que se debe esperar.
+![Seguimiento de intervenciones](../capturas/av2_cap_seguimiento.png)
 
-![Panel de riesgo con datos reales](../capturas/09_panel_riesgo_oulad.png)
+**Registrar una intervención** *(Bienestar y TI)*: desde la ficha, pulse **Registrar intervención** (o **Registrar** en una acción sugerida), elija el tipo y describa lo acordado.
 
----
-
-## 5. Inteligencia institucional
-
-Más abajo en **Indicadores** está la tarjeta **Inteligencia institucional**:
-
-![Inteligencia institucional](../capturas/06_inteligencia_institucional.png)
-
-- **Segmentación por carrera:** agrupa las carreras según su tasa de abandono histórica, su rendimiento y el riesgo actual. Las marcadas como **ATENCIÓN PRIORITARIA** son las primeras a revisar; las **ESTABLES** tienen un comportamiento dentro de lo esperado.
-- **Benchmarking externo:** compara la tasa de abandono de la institución con cifras publicadas en revistas científicas, cada una con su **DOI**, para saber si la institución está por encima o por debajo de referentes comparables.
-
----
-
-## 6. Preguntar en lenguaje natural (chat)
-
-1. Pulse **Nueva Consulta** en el menú de la izquierda.
-2. Escriba la pregunta en el recuadro **¿Qué analizamos hoy?** y pulse Enter o la flecha.
-3. Espere la respuesta: suele tardar entre 10 y 60 segundos, según el proveedor de IA.
-
-![Respuesta del chat con tabla](../capturas/07_chat_respuesta.png)
-
-La respuesta trae una explicación y, cuando corresponde, una tabla (**Registros detallados**) o un gráfico. En la tabla puede **buscar**, **ordenar** por columna y **exportar a Excel**. El ícono del parlante lee la respuesta en voz alta (si está configurado) y la flecha circular la vuelve a generar.
-
-### Preguntas que puede hacer
-
-| Tema | Ejemplos |
+| Tipo | Ejemplo |
 |---|---|
-| Matrícula | ¿Cuántos alumnos tienen matrícula vigente? · ¿Cuántos alumnos con matrícula vigente hay en cada facultad? |
-| Abandono | ¿Cuál es la tasa de abandono de la institución? · ¿Qué carrera tiene la tasa de abandono más alta? |
-| Riesgo | ¿Cuántos alumnos hay en cada nivel de riesgo de abandono? · Muéstrame los 5 alumnos con mayor probabilidad de abandonar |
-| Segmentos | ¿Qué carreras necesitan atención prioritaria? · ¿En qué segmento de riesgo está la carrera de Medicina? |
-| Referentes | Compara nuestra tasa de abandono con la del referente de Ecuador |
-| Modelo | ¿Qué porcentaje de los abandonos detecta el modelo en la validación temporal? |
-| Evolución | ¿Cuántos alumnos se retiraron en el año 2025? · ¿Cómo ha evolucionado la asistencia promedio por año? |
+| Tutoría académica | Tutoría de Cálculo los martes |
+| Consejería | Cita con psicología |
+| Apoyo económico | Trámite de beca o plan de pagos |
+| Contacto con el estudiante | Llamada o mensaje de seguimiento |
+| Derivación a otra instancia | Remisión a la dirección de carrera |
 
-**Consejos:** una pregunta por mensaje; nombre la carrera, la facultad o el año cuando importe; si la respuesta no es lo que esperaba, reformule con otras palabras.
+**Cerrar una intervención:** en la ficha o en la pantalla *Seguimiento*, pulse **Cerrar intervención** y anote el resultado (por ejemplo, «Asiste a tutorías y aprobó el parcial»). Así la institución aprende qué acciones funcionan.
 
-### Lo que el chat no hace
+La pantalla **Seguimiento** lista las 300 intervenciones más recientes con su estado. La autoridad académica la consulta en modo de lectura.
 
-El chat **solo consulta**: no puede borrar, cambiar ni agregar datos. Si se le pide, lo rechaza y no ejecuta nada en la base:
+## 8. Consulta conversacional
 
-![Petición de borrado rechazada](../capturas/08_peticion_de_borrado_rechazada.png)
+![Consulta conversacional](../capturas/av2_cap_consulta.png)
 
-Además, cada consulta solo ve los datos de la **institución activa**, y los nombres y cédulas se enmascaran antes de enviarse a cualquier proveedor externo de IA.
+Escriba una pregunta en español y pulse Enter (Mayúsculas + Enter agrega una línea). También puede tocar una de las **Preguntas frecuentes** de la derecha. Ejemplos:
 
-### Otras funciones del chat
+- «¿Qué carreras tienen más estudiantes en riesgo?»
+- «¿Cuántos estudiantes de Derecho están en riesgo alto?»
+- «¿Cómo evolucionó el abandono por periodo?»
+- «¿Qué tan preciso es el modelo?»
 
-- **Historial reciente** (menú de la izquierda): vuelve a abrir conversaciones anteriores; con **Seleccionar** puede borrar varias a la vez.
-- **Clip:** adjunta una imagen (por ejemplo, la foto de un reporte) para que la IA la analice.
-- **Micrófono:** dicta la pregunta en lugar de escribirla.
-- **AURA** (botón redondo azul, abajo a la derecha, solo en computadora): conversación por voz con el asistente, si el navegador lo admite.
+Cada respuesta indica **de dónde salió la cifra**:
 
----
-
-## 7. Exportar
-
-| Dónde | Botón | Resultado |
-|---|---|---|
-| **Indicadores** | **PDF** | Reporte ejecutivo con los indicadores de la institución activa |
-| **Indicadores** | **Excel** | Libro con los indicadores, con formato |
-| **Chat** (tabla de una respuesta) | **Excel** | La tabla de esa respuesta |
-
----
-
-## 8. Mi perfil
-
-Pulse su nombre o su inicial (arriba a la derecha) para abrir **Mi perfil**. Ahí puede cambiar la foto y la **contraseña**; la nueva debe tener al menos 8 caracteres. También ve la fecha de registro y el último acceso.
-
----
-
-## 9. Administración (solo ADMINISTRADOR)
-
-### Usuarios
-
-**Usuarios** muestra todas las cuentas con su rol, estado y último acceso. Desde **Nuevo usuario** se crean cuentas (contraseña de 8 o más caracteres) y se asigna el rol. Las cuentas marcadas como **PROTEGIDA** no se pueden editar ni desactivar desde la interfaz.
-
-![Gestión de usuarios](../capturas/10_gestion_de_usuarios.png)
-
-### Auditoría
-
-**Auditoría** registra los inicios de sesión, las conexiones a bases y los cambios de configuración, con fecha, usuario, acción y dirección IP. Se puede filtrar por acción, entidad y rango de fechas, y **Exportar Excel**.
-
-![Registro de auditoría](../capturas/11_auditoria.png)
-
----
-
-## 10. Uso en el teléfono
-
-La aplicación se adapta a la pantalla del teléfono. Abajo aparecen cuatro pestañas: **Chat**, **Indicadores**, **Datos** (la conexión de la sección 3) y **Más** (historial y, para administradores, la administración).
-
-<p align="center"><img src="../capturas/13_movil_riesgo.png" alt="Panel de riesgo en el teléfono" width="300"></p>
-
----
-
-## 11. Problemas frecuentes
-
-| Qué pasa | Qué hacer |
+| Etiqueta | Significado |
 |---|---|
-| «Usuario o contraseña incorrectos» | Revise mayúsculas y minúsculas; si persiste, pida a un administrador que restablezca la contraseña |
-| «Sesión cerrada por inactividad» | Vuelva a ingresar; la sesión dura 30 minutos sin uso |
-| **Indicadores** dice que espera una base operativa | Conéctese y elija una institución (sección 3) |
-| No aparece el panel de riesgo | Su rol no es ACADÉMICO ni ADMINISTRADOR, o la institución elegida no es académica |
-| La conexión tarda y termina en «Tiempo de espera agotado» | El servidor de base de datos está apagado: avise al personal de TI |
-| El chat responde con un aviso de proveedor no disponible | Se agotó la cuota gratuita de IA del día: los paneles siguen funcionando; vuelva a intentar más tarde |
-| Una respuesta del chat no coincide con el panel | Compare con el panel, que siempre es la referencia; reformule la pregunta o avise al administrador |
+| **Métrica certificada** | Consulta fija revisada por los autores; la IA no interviene en la cifra |
+| **Generada con IA y validada** | La IA propuso la consulta y el sistema la validó (solo lectura, solo vistas autorizadas) antes de ejecutarla |
+| **Barrera de seguridad** | La pregunta no se ejecuta contra la base de datos |
+| **Sin respuesta** | No se encontró cómo responder con los datos disponibles |
 
----
+Con la respuesta en pantalla puede:
+- pulsar **Interpretar con IA** para obtener una lectura en palabras; la marca *Cifras verificadas* indica que los números del texto coinciden con la tabla;
+- descargar la tabla en **Excel**;
+- *(TI)* pulsar **Ver SQL** para revisar la consulta ejecutada.
 
-## 12. Glosario
+### Lo que la consulta no hace
 
-| Término | Significado |
+Solo **lee**. Si se le pide borrar, cambiar o agregar datos, o mostrar información de otra institución, responde con una barrera de seguridad y no ejecuta nada. Las cédulas siempre se muestran enmascaradas.
+
+## 9. Carreras
+
+![Segmentación de carreras](../capturas/av2_cap_carreras.png)
+
+Las carreras se agrupan por su abandono histórico, rendimiento, asistencia y riesgo actual. Los segmentos se ordenan por el riesgo combinado (el abandono que ya ocurrió y el que el modelo anticipa); el primero es el de **atención prioritaria**.
+
+- **Mapa de carreras:** cada punto es una carrera; el tamaño indica el número de estudiantes.
+- **¿Qué tan sólida es la agrupación?:** la calidad de la separación y la comparación con otros algoritmos, explicadas en palabras.
+- **Detalle por carrera:** pulse una carrera para ver sus estudiantes.
+
+## 10. Referentes externos
+
+Muestra la tasa de abandono de la institución activa junto a las publicadas en estudios con revisión de pares. Lea el **nivel de comparabilidad** antes de sacar conclusiones: las definiciones de abandono no siempre coinciden.
+
+## 11. Calidad del modelo
+
+![Calidad del modelo](../capturas/av2_cap_calidad.png)
+
+*(Autoridad y TI.)* Resume cómo se validó el modelo de la institución activa:
+- **Modelos comparados** con validación cruzada agrupada por estudiante;
+- **Matrices de confusión** en los umbrales medio y alto;
+- curvas **ROC**, **precisión y exhaustividad** y **calibración** («cerca de la diagonal, la probabilidad dice la verdad»);
+- **equidad** por subgrupo, **exactitud por tema** de la consulta conversacional, **pruebas de ataque** y la **ficha del modelo** (para qué sirve, para qué no y cómo se controla).
+
+## 12. Reportes ejecutivos
+
+Descargue el estado del riesgo de la institución activa:
+- **Reporte ejecutivo en PDF** para reuniones;
+- **Libro de Excel** con el detalle para análisis.
+
+Se generan al momento con los datos vigentes, con las cédulas enmascaradas, y la descarga queda registrada en la auditoría.
+
+## 13. Mi cuenta
+
+En el menú de su cuenta, **Mi cuenta** muestra su usuario, rol e instituciones, y permite **cambiar la contraseña** (mínimo 8 caracteres; se pide la actual).
+
+## 14. Administración de TI
+
+| Pantalla | Qué permite |
 |---|---|
-| **Abandono** | El alumno no continúa sus estudios en el periodo siguiente |
-| **Probabilidad de abandono** | Estimación del modelo, de 0 % a 100 %, para el próximo periodo |
-| **Umbral** | Probabilidad a partir de la cual un alumno se marca como riesgo ALTO |
-| **Factores** | Las tres características del alumno que más elevan su riesgo según el modelo |
-| **ROC-AUC** | Medida de 0,5 a 1 de qué tan bien el modelo separa a quienes abandonan de quienes continúan |
-| **Recall (detecta X %)** | De cada 100 alumnos que abandonan, cuántos marca el modelo |
-| **Segmento** | Grupo de carreras con comportamiento parecido frente al abandono |
-| **Benchmarking** | Comparación con referentes publicados en revistas científicas |
-| **Institución activa** | La base de datos con la que está trabajando en ese momento |
+| **Usuarios y roles** | Crear cuentas (**Nueva cuenta**, con contraseña inicial de al menos 8 caracteres), editar nombre, correo, rol e instituciones, activar o desactivar, asignar una nueva contraseña y eliminar |
+| **Auditoría** | Los 500 eventos más recientes: ingresos y rechazos, fichas abiertas, simulaciones, consultas (con la huella del SQL), exportaciones, intervenciones y altas, cambios y bajas de cuentas; filtrable por usuario y acción |
+| **Estado del sistema** | Carga de datos, modelo y calificación de cada institución, alertas de **deriva** de las variables, proveedores de IA configurados y la última corrida de los procesos por lotes |
+
+![Usuarios y roles](../capturas/av2_cap_usuarios.png)
+
+## 15. En el teléfono
+
+La aplicación se adapta a la pantalla del teléfono: el menú se abre con el botón de la esquina superior y la lista de estudiantes pasa a tarjetas.
+
+<p align="center">
+  <img src="../capturas/av2_cap_movil_panel.png" alt="Panel en el teléfono" width="280">
+  &nbsp;
+  <img src="../capturas/av2_cap_movil_estudiantes.png" alt="Lista en el teléfono" width="280">
+</p>
+
+## 16. Problemas frecuentes
+
+| Situación | Qué hacer |
+|---|---|
+| «Usuario o contraseña incorrectos» | Revise mayúsculas; tras cinco intentos espere cinco minutos o pida a TI que restablezca la clave |
+| El panel dice «Todavía no hay estudiantes calificados» | Los procesos por lotes no se han ejecutado para esa institución: avise a TI (lo ve en *Estado del sistema*) |
+| No aparece una opción del menú | Su rol no la incluye (sección 2) |
+| La consulta responde «Sin respuesta» | Reformule con palabras del menú (carrera, riesgo, periodo, nivel) o use una pregunta frecuente |
+| Aviso de proveedor de IA no disponible | Se agotó la cuota del proveedor: las métricas certificadas y todas las pantallas siguen funcionando |
+| Una cifra de la consulta no coincide con el panel | El panel es la referencia; reformule la pregunta y avise a TI |
+
+## 17. Cuidado de los datos
+
+VicMar aplica la Ley Orgánica de Protección de Datos Personales del Ecuador: el modelo no usa nombres ni cédulas, las cédulas se muestran enmascaradas, cada institución ve solo sus datos y cada acceso a información de estudiantes queda registrado. No comparta su cuenta ni descargue reportes en equipos públicos.

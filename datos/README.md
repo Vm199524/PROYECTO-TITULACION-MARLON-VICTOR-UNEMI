@@ -9,7 +9,7 @@ Esta carpeta guarda datasets públicos que **no se versionan** por su tamaño.
 - **Descarga:** UCI Machine Learning Repository, https://archive.ics.uci.edu/dataset/349/open+university+learning+analytics+dataset (archivo `.zip` de 44,6 MB; consultado el 03/10/2026).
 - **Ubicación esperada:** descomprimir los CSV en `datos/externos/oulad/`:
   `assessments.csv`, `courses.csv`, `studentAssessment.csv`, `studentInfo.csv`, `studentRegistration.csv`, `studentVle.csv`, `vle.csv`.
-- **Carga:** `codigo_fuente/backend/scripts/seed_oulad.py` (la ejecuta `codigo_fuente/scripts/demo_tesis.ps1`).
+- **Carga:** `codigo_fuente/backend/scripts/cargar_oulad.py`, que ejecuta el paso `oulad` de `codigo_fuente/scripts/reconstruir_sistema.bat`. Sin estos archivos, use `reconstruir_sistema.bat --sin-oulad`.
 
 ## Datos de prueba de UNEMI
 Son sintéticos y anonimizados, y sí se versionan: `codigo_fuente/base_de_datos/datos_de_prueba/`.

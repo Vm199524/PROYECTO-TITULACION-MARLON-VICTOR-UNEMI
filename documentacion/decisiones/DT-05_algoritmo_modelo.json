@@ -2,13 +2,13 @@
   "id": "DT-05",
   "tipo": "tecnologia",
   "decision": "Algoritmo del modelo predictivo de abandono",
-  "contexto": "Clasificación binaria del abandono en el periodo siguiente sobre un panel alumno-periodo con clases desbalanceadas. Las tres opciones se compararon con los mismos 5 pliegues agrupados por alumno en las dos instituciones; OULAD (datos reales) pesa más que UNEMI_PRUEBAS (sintético).",
+  "contexto": "Clasificación binaria del abandono en el periodo siguiente sobre un panel estudiante-periodo con clases desbalanceadas. Los cuatro candidatos se compararon con los mismos 5 pliegues agrupados por estudiante en las dos instituciones; OULAD (datos reales) pesa más que UNEMI_PRUEBAS (sintético). Reemplaza la versión de la matriz del 03/10/2026, hecha con el panel anterior.",
   "criterios": [
     {
       "id": "C1",
       "nombre": "Discriminación en datos reales (ROC-AUC en OULAD)",
       "peso": 35,
-      "origen": "OE3 y criterio de éxito (a)",
+      "origen": "OE2 y RNF de calidad (ROC-AUC ≥ 0,75)",
       "descripcion": ""
     },
     {
@@ -22,125 +22,125 @@
       "id": "C3",
       "nombre": "Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS)",
       "peso": 10,
-      "origen": "RNF-11 (portabilidad)",
+      "origen": "Portabilidad entre instituciones",
       "descripcion": ""
     },
     {
       "id": "C4",
-      "nombre": "Explicación por alumno",
+      "nombre": "Explicación por estudiante",
       "peso": 15,
-      "origen": "RF-05 y HU-02",
+      "origen": "HU-03 y RF de explicación SHAP",
       "descripcion": ""
     },
     {
       "id": "C5",
       "nombre": "Evidencia en trabajos previos",
       "peso": 15,
-      "origen": "Sección 1.3",
+      "origen": "Sección 1.3.6",
       "descripcion": ""
     },
     {
       "id": "C6",
       "nombre": "Costo de entrenamiento",
       "peso": 10,
-      "origen": "RNF-06 (procesos por lotes)",
+      "origen": "Procesos por lotes nocturnos",
       "descripcion": ""
     }
   ],
   "candidatas": [
     {
-      "id": "rf",
-      "nombre": "Random Forest",
-      "version": "scikit-learn 1.9.1",
+      "id": "lightgbm",
+      "nombre": "LightGBM ajustado con Optuna",
+      "version": "lightgbm 4.7.0",
       "puntajes": {
         "C1": {
           "valor": 5,
-          "justificacion": "ROC-AUC 0,758 ± 0,008, empatado con gradient boosting.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+          "justificacion": "ROC-AUC 0,803 ± 0,010, el mayor de los cuatro.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
         },
         "C2": {
           "valor": 5,
-          "justificacion": "PR-AUC 0,074, el mayor de los tres.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+          "justificacion": "PR-AUC 0,095, el mayor de los cuatro (prevalencia 0,025).",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
         },
         "C3": {
           "valor": 5,
-          "justificacion": "ROC-AUC 0,996.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+          "justificacion": "ROC-AUC 0,828 ± 0,003, el mayor de los cuatro.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
         },
         "C4": {
           "valor": 5,
-          "justificacion": "Explicación SHAP por alumno implementada (tres factores en lenguaje natural); SHAP con árboles también en Carballo-Mendívil et al. (2025) y Khatun et al. (2025).",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues); Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+          "justificacion": "SHAP para árboles implementado: tres razones por estudiante redactadas en español.",
+          "fuente": "codigo_fuente/backend/ml/explicacion.py"
+        },
+        "C5": {
+          "valor": 4,
+          "justificacion": "El boosting de gradiente aparece en 9 estudios y XGBoost en 12 de la revisión; Carballo-Mendívil et al. (2025) compararon LightGBM y XGBoost.",
+          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9-10, https://doi.org/10.3390/computers15030164; Carballo-Mendívil et al. (2025), tabla de trabajos previos (documentacion/literatura/trabajos_previos.json)"
+        },
+        "C6": {
+          "valor": 3,
+          "justificacion": "La búsqueda con Optuna (25 pruebas) es el paso más costoso del entrenamiento; cabe en un proceso por lotes.",
+          "fuente": "datos_locales/pipeline_estado.json"
+        }
+      }
+    },
+    {
+      "id": "rf_ponderado",
+      "nombre": "Random Forest con pesos por clase",
+      "version": "scikit-learn 1.9.1",
+      "puntajes": {
+        "C1": {
+          "valor": 4,
+          "justificacion": "ROC-AUC 0,797 ± 0,010.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
+        },
+        "C2": {
+          "valor": 4,
+          "justificacion": "PR-AUC 0,085.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
+        },
+        "C3": {
+          "valor": 4,
+          "justificacion": "ROC-AUC 0,821 ± 0,006.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Explicable con el mismo SHAP para árboles.",
+          "fuente": "codigo_fuente/backend/ml/explicacion.py"
         },
         "C5": {
           "valor": 5,
-          "justificacion": "Es el algoritmo más usado en la revisión de 61 estudios (33), y en Romero y Liao (2025) obtuvo el mejor AUC.",
-          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
+          "justificacion": "Es el algoritmo más usado en la revisión de 61 estudios (33).",
+          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9-10, https://doi.org/10.3390/computers15030164"
         },
         "C6": {
           "valor": 4,
-          "justificacion": "En Romero y Liao (2025) entrenó en 4,14 s frente a 348,6 s de XGBoost.",
+          "justificacion": "Búsqueda aleatoria de 10 combinaciones; más barato que la búsqueda bayesiana.",
           "fuente": "Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
         }
       }
     },
     {
-      "id": "gb",
-      "nombre": "Gradient boosting (HistGradientBoosting)",
-      "version": "scikit-learn 1.9.1",
-      "puntajes": {
-        "C1": {
-          "valor": 5,
-          "justificacion": "ROC-AUC 0,758 ± 0,008, empatado con Random Forest.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
-        },
-        "C2": {
-          "valor": 5,
-          "justificacion": "PR-AUC 0,073.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
-        },
-        "C3": {
-          "valor": 4,
-          "justificacion": "ROC-AUC 0,980, el más bajo de los tres en la segunda institución.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
-        },
-        "C4": {
-          "valor": 4,
-          "justificacion": "Explicable con SHAP para árboles, pero no implementado en el prototipo.",
-          "fuente": "Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
-        },
-        "C5": {
-          "valor": 3,
-          "justificacion": "Gradient boosting aparece en 9 estudios y XGBoost en 12 de la revisión; Carballo-Mendívil et al. (2025) y Khatun et al. (2025) eligen XGBoost.",
-          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
-        },
-        "C6": {
-          "valor": 3,
-          "justificacion": "En Romero y Liao (2025) XGBoost fue el más lento (348,6 s); HistGradientBoosting no se midió allí.",
-          "fuente": "Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
-        }
-      }
-    },
-    {
-      "id": "lr",
+      "id": "logistica",
       "nombre": "Regresión logística",
       "version": "scikit-learn 1.9.1",
       "puntajes": {
         "C1": {
           "valor": 3,
-          "justificacion": "ROC-AUC 0,730 ± 0,008, el menor en datos reales.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+          "justificacion": "ROC-AUC 0,787 ± 0,010.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
         },
         "C2": {
           "valor": 3,
-          "justificacion": "PR-AUC 0,059.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+          "justificacion": "PR-AUC 0,082.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
         },
         "C3": {
-          "valor": 5,
-          "justificacion": "ROC-AUC 0,997; en datos sintéticos todas las opciones superan 0,98.",
-          "fuente": "Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)"
+          "valor": 4,
+          "justificacion": "ROC-AUC 0,819 ± 0,003.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
         },
         "C4": {
           "valor": 5,
@@ -149,13 +149,50 @@
         },
         "C5": {
           "valor": 4,
-          "justificacion": "Segundo algoritmo más usado (27 estudios); la mejor individual en Rabelo y Zárate (2025).",
-          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+          "justificacion": "Segundo algoritmo más usado (27 estudios).",
+          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9-10, https://doi.org/10.3390/computers15030164"
         },
         "C6": {
           "valor": 5,
-          "justificacion": "Es el más barato de entrenar de los tres.",
+          "justificacion": "El más barato de entrenar de los cuatro.",
           "fuente": "Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047"
+        }
+      }
+    },
+    {
+      "id": "rf_smote",
+      "nombre": "Random Forest con SMOTE",
+      "version": "imbalanced-learn 0.14.2",
+      "puntajes": {
+        "C1": {
+          "valor": 2,
+          "justificacion": "ROC-AUC 0,777 ± 0,007, el menor de los cuatro.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
+        },
+        "C2": {
+          "valor": 2,
+          "justificacion": "PR-AUC 0,071, el menor de los cuatro.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
+        },
+        "C3": {
+          "valor": 3,
+          "justificacion": "ROC-AUC 0,816 ± 0,005.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Explicable con SHAP para árboles.",
+          "fuente": "codigo_fuente/backend/ml/explicacion.py"
+        },
+        "C5": {
+          "valor": 3,
+          "justificacion": "SMOTE es frecuente en la literatura, pero con validación agrupada no supera a los pesos por clase.",
+          "fuente": "Duro et al. (2026), Computers, 15(3), 164, pp. 9-10, https://doi.org/10.3390/computers15030164"
+        },
+        "C6": {
+          "valor": 2,
+          "justificacion": "El sobremuestreo multiplica las filas de la clase minoritaria en cada pliegue.",
+          "fuente": "Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)"
         }
       }
     }
@@ -163,17 +200,17 @@
   "desempate": "C2",
   "eleccion": {
     "estado": "Aceptada",
-    "fecha": "2026-10-03",
-    "razon": "Random Forest y gradient boosting empatan en datos reales; Random Forest gana por detectar mejor la clase minoritaria, por rendir igual en la segunda institución, por tener la explicación SHAP ya implementada y por ser el más respaldado en la literatura. La regresión logística queda como línea base.",
+    "fecha": "2026-10-07",
+    "razon": "LightGBM obtuvo el mayor ROC-AUC y el mayor PR-AUC medios en las dos instituciones con la misma validación cruzada agrupada por estudiante, y admite la explicación SHAP ya implementada. La elección no se fija a mano: el entrenamiento compara los cuatro candidatos en cada reentrenamiento y conserva el de mayor ROC-AUC medio (desempate por PR-AUC); esta matriz documenta el resultado de la versión 3.",
     "consecuencias": [
-      "Se gana un modelo estable entre instituciones y explicable por alumno.",
-      "Se sacrifica la interpretabilidad global directa de la regresión logística.",
-      "Riesgo: el empate con gradient boosting debe revisarse con cada reentrenamiento; el entrenamiento lo registra como advertencia si una alternativa supera en más de 0,01 de ROC-AUC."
+      "Se gana el mejor ordenamiento del riesgo en datos reales y sintéticos, con explicación por estudiante.",
+      "Se acepta un entrenamiento más costoso por la búsqueda de hiperparámetros con Optuna.",
+      "La regresión logística queda como línea base; si un reentrenamiento cambia la ganadora, el sistema la registra en metricas.json y la pantalla Calidad del modelo la muestra."
     ]
   },
   "verificacion_codigo": {
     "archivo": "codigo_fuente/backend/requirements.txt",
-    "paquete": "scikit-learn",
-    "version": "1.9.1"
+    "paquete": "lightgbm",
+    "version": "4.7.0"
   }
 }

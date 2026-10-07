@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-labelledby="t">
+<title id="t">VicMar · isotipo</title>
+<style>
+  .iso-pulso { transform-box: fill-box; transform-origin: center; animation: iso-pulso 2.4s ease-out infinite; }
+  @keyframes iso-pulso { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(3.2); opacity: 0; } }
+  .iso-destello { animation: iso-destello 5s ease-in-out infinite; }
+  @keyframes iso-destello { 0%, 62% { transform: translateX(-40px); } 82%, 100% { transform: translateX(44px); } }
+  @media (prefers-reduced-motion: reduce) { .iso-pulso, .iso-destello { animation: none; opacity: 0; } }
+</style>
+<g transform="translate(4 2) scale(1.8333)" role="img" aria-label="Isotipo de VicMar">
+    <defs>
+      <linearGradient id="iso-fondo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC58F"/><stop offset=".5" stop-color="#F59447"/><stop offset="1" stop-color="#D9682A"/></linearGradient>
+      <linearGradient id="iso-brillo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".32"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <clipPath id="iso-recorte"><rect x="1" y="1" width="46" height="46" rx="13"/></clipPath>
+      <filter id="iso-sombra" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.8" flood-color="#D9682A" flood-opacity=".35"/></filter>
+    </defs>
+    <rect x="1" y="1" width="46" height="46" rx="13" fill="url(#iso-fondo)" filter="url(#iso-sombra)"/>
+    <rect x="1" y="1" width="46" height="23" rx="13" fill="url(#iso-brillo)"/>
+    <rect x="1.6" y="1.6" width="44.8" height="44.8" rx="12.4" fill="none" stroke="#fff" stroke-opacity=".26" stroke-width="1.2"/>
+    <g clip-path="url(#iso-recorte)">
+      <path d="M24 8.5 38 14 24 19.5 10 14Z" fill="#fff"/>
+      <path d="M16 16.6v4.2c0 2.3 16 2.3 16 0v-4.2L24 19.8Z" fill="#fff" fill-opacity=".72"/>
+      <path d="M37.2 14.4v6.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M8.5 38.5 16 33l7 2.2 8.2-6.4" pathLength="1" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="16" cy="33" r="1.7" fill="#fff"/><circle cx="23" cy="35.2" r="1.7" fill="#fff"/>
+      <circle cx="36" cy="26.6" r="5" fill="#0B3A52" opacity=".22"/>
+      <circle cx="36" cy="26.6" r="3.2" fill="#0B3A52" stroke="#fff" stroke-width="1.3"/>
+      <circle class="iso-pulso" cx="36" cy="26.6" r="3.2" fill="none" stroke="#fff" stroke-width="1.2"/><g transform="rotate(20 24 24)"><rect class="iso-destello" x="17" y="-12" width="12" height="72" fill="#fff" fill-opacity=".28"/></g>
+    </g>
+  </g>
+</svg>

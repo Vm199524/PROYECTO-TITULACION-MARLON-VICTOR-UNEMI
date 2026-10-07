@@ -13,7 +13,8 @@ Salida:
 
 Uso:
     cd backend
-    python -m scripts.generar_diccionario
+    python -m scripts.generar_diccionario            # desde SQL Server
+    python -m scripts.generar_diccionario --script   # sin servidor: desde base_de_datos/crear_almacen_academico.sql
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
@@ -95,7 +96,44 @@ DESCRIPCIONES = {
 }
 
 
-def main() -> int:
+SCRIPT_ALMACEN = RAIZ / 'codigo_fuente' / 'base_de_datos' / 'crear_almacen_academico.sql'
+
+
+def esquema_desde_script(ruta: Path = SCRIPT_ALMACEN):
+    """Columnas, llaves primarias y foráneas leídas del script que crea el almacén.
+
+    Devuelve lo mismo que las consultas a INFORMATION_SCHEMA, para generar el
+    diccionario sin un servidor disponible (integración continua o revisión).
+    """
+    import re
+    texto = ruta.read_text(encoding='utf-8')
+    columnas, pk, fk = [], set(), {}
+    for m in re.finditer(r'CREATE TABLE dbo\.(\w+) \((.*?)\n\);', texto, re.S):
+        tabla, cuerpo = m.group(1), m.group(2)
+        orden = 0
+        for linea in cuerpo.splitlines():
+            linea = linea.split('--')[0].strip().rstrip(',')
+            d = re.match(r'(\w+)\s+(VARCHAR|NVARCHAR|CHAR|DECIMAL|INT|BIGINT|SMALLINT|TINYINT|BIT|DATE|DATETIME2)'
+                         r'(?:\((MAX|\d+)(?:,(\d+))?\))?(.*)$', linea, re.I)
+            if not d:
+                continue
+            orden += 1
+            nombre, tipo_sql, a1, a2, resto = d.groups()
+            tipo_sql = tipo_sql.lower()
+            largo = (-1 if a1 == 'MAX' else int(a1)) if a1 and tipo_sql in ('varchar', 'nvarchar', 'char') else None
+            prec = int(a1) if a1 and tipo_sql == 'decimal' else None
+            esc = int(a2) if a2 else None
+            nulo = 'NO' if ('NOT NULL' in resto.upper() or 'PRIMARY KEY' in resto.upper()) else 'YES'
+            columnas.append((tabla, nombre, tipo_sql, largo, prec, esc, nulo, orden))
+            if 'PRIMARY KEY' in resto.upper():
+                pk.add((tabla, nombre))
+            r = re.search(r'REFERENCES dbo\.(\w+)', resto, re.I)
+            if r:
+                fk[(tabla, nombre)] = r.group(1)
+    return columnas, pk, fk
+
+
+def esquema_desde_servidor():
     from core.db import conectar_admin
     conn = conectar_admin()
     cur = conn.cursor()
@@ -113,6 +151,11 @@ def main() -> int:
                    JOIN sys.tables tr ON tr.object_id = fkc.referenced_object_id""")
     fk = {(t, c): r for t, c, r in cur.fetchall()}
     conn.close()
+    return columnas, pk, fk
+
+
+def main() -> int:
+    columnas, pk, fk = esquema_desde_script() if '--script' in sys.argv else esquema_desde_servidor()
 
     def tipo(d, largo, prec, esc):
         if d in ('varchar', 'nvarchar', 'char'):
@@ -133,7 +176,8 @@ def main() -> int:
     SALIDA_JSON.parent.mkdir(parents=True, exist_ok=True)
     SALIDA_JSON.write_text(json.dumps(ordenado, indent=2, ensure_ascii=False), encoding='utf-8')
     lineas = ['# Diccionario de datos del almacén ALMACEN_ACADEMICO', '',
-              'Generado desde el esquema real de la base con `python -m scripts.generar_diccionario`.', '']
+              'Generado desde el esquema real con `python -m scripts.generar_diccionario` (servidor) o con la opción '
+              '`--script` (desde `base_de_datos/crear_almacen_academico.sql`). No se edita a mano.', '']
     for t, info in ordenado.items():
         lineas += [f'## {t}', '', info['descripcion'], '', '| Columna | Tipo | Nulo | Clave | Descripción |', '|---|---|---|---|---|']
         lineas += [f"| {c['columna']} | {c['tipo']} | {'sí' if c['nulo'] else 'no'} | {c['clave']} | {c['descripcion']} |"

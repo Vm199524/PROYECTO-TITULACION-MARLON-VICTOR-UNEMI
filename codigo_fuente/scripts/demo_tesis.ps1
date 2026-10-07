@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Reconstruye y valida de punta a punta el prototipo VicMar Data AI: "Prototipo de un
+Reconstruye y valida de punta a punta el prototipo VicMar: "Prototipo de un
 sistema web para predecir el abandono en estudiantes universitarios mediante
 aprendizaje automático y consulta conversacional".
 

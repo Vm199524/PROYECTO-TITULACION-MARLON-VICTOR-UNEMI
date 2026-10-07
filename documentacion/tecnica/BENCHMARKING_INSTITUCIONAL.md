@@ -1,9 +1,8 @@
-# Benchmarking con enfoque en inteligencia institucional (Módulo 2)
+# Referentes externos y segmentación de carreras
 
-Implementa el segundo work package pedido. Documenta fuentes, metodología,
-limitaciones y proceso de actualización — para citar en el capítulo de
-metodología de la tesis, igual que [PREDICCION_ABANDONO.md](PREDICCION_ABANDONO.md)
-para el Módulo 1.
+Fuentes, metodología, limitaciones y proceso de actualización de los referentes externos de
+abandono (RF-12, HU-08) y de la segmentación de carreras (RF-11, HU-07). El modelo predictivo
+se documenta en [PREDICCION_ABANDONO.md](PREDICCION_ABANDONO.md).
 
 ## 1. Identificación de fuentes externas
 
@@ -29,99 +28,57 @@ referente de tasa: su muestra está balanceada 50/50 por diseño.
 Cifras oficiales de SENESCYT/SIAU o CACES se incorporarán solo cuando se verifiquen en el
 portal oficial del organismo.
 
-## 2. Dónde vive: `dim_institucion_externa` / `fact_benchmark_externo`
+## 2. Dónde viven: `dim_referente` y `fact_referente_externo`
 
-Patrón "indicator fact" (EAV acotado) en `CHAT`, deliberadamente separado
-del modelo dimensional de matrícula (`fact_matriculas`): los indicadores
-externos son heterogéneos, pocos, y de fuentes/años distintos — forzarlos al
-mismo grano que las matrículas propias sería una mala decisión de diseño.
-Ver `codigo_fuente/base_de_datos/crear_chat_academico.sql`.
+Patrón de hecho de indicadores en `ALMACEN_ACADEMICO`, separado de `fact_matriculas`: los
+indicadores externos son pocos, heterogéneos y de años distintos, y forzarlos al grano de las
+matrículas propias sería un error de diseño. La vista `VIS_REFERENTE_EXTERNO` exige una sesión
+con institución activa (aunque los referentes son públicos), para que la consulta conversacional
+no lea nada sin contexto. Ver `codigo_fuente/base_de_datos/crear_almacen_academico.sql`.
 
-Sin `SESSION_CONTEXT`: son datos públicos, no pertenecen a ninguna empresa
-conectada — visibles siempre, a diferencia de `VIS_ALUMNO`.
+## 3. Carga y actualización
 
-## 3. Pipeline de integración
+`codigo_fuente/backend/etl/etl_referentes.py` carga
+`codigo_fuente/backend/etl/fuentes_externas/referentes_abandono.csv` (paso `referentes` del
+pipeline). Es un CSV versionado y auditable, no un extractor automático: los organismos
+ecuatorianos no ofrecen una API estable y cada fila declara su fuente, DOI y URL.
 
-`codigo_fuente/backend/etl/etl_benchmarking.py` carga
-`codigo_fuente/backend/etl/fuentes_externas/benchmark_educacion_superior_ecuador.csv` (el
-dataset curado de la sección 1) al warehouse. Es un CSV versionado, no un
-scraper en vivo — decisión deliberada:
+Para actualizar: (1) ubicar la cifra en una fuente académica con DOI o en el portal oficial del
+organismo; (2) agregar la fila al CSV con su definición exacta, país, modalidad y nivel de
+comparabilidad; (3) ejecutar `python -m etl.etl_referentes` desde `codigo_fuente/backend`.
 
-- CACES/SENESCYT/CES no ofrecen una API estable; automatizar el scraping de
-  un portal gubernamental que puede rediseñarse sin aviso sería frágil y
-  quedaría desactualizado sin que nadie lo note.
-- Un CSV versionado es **auditable**: cada fila declara su fuente y URL
-  exactas (columnas `fuente`, `url_fuente`), así que cualquiera puede
-  verificar de dónde salió cada cifra.
+## 4. Segmentación de carreras
 
-### Proceso de actualización (cuando un organismo publique un reporte nuevo)
+`codigo_fuente/backend/ml/segmentar.py` agrupa las carreras (o módulos) de cada institución con
+K-means sobre cuatro indicadores estandarizados: tasa histórica de abandono, promedio histórico,
+asistencia histórica y riesgo promedio actual (salida del modelo). Se segmentan las carreras
+propias y no las universidades, porque con cuatro referentes externos un agrupamiento entre
+instituciones no sería defendible.
 
-1. Ubicar la cifra nueva en una fuente académica con DOI o en el portal oficial del
-   organismo y anotar: institución, indicador, valor, año, definición exacta, país,
-   modalidad, nivel de comparabilidad, fuente, DOI y URL.
-2. Agregar una fila a
-   `codigo_fuente/backend/etl/fuentes_externas/benchmark_educacion_superior_ecuador.csv`
-   (o corregir una existente si el organismo revisó una cifra).
-3. Correr `python -m etl.etl_benchmarking` (recarga completa, igual que
-   `etl_academico.py`).
+- **Elección de k:** barrido de 2 a 6 con silueta y Davies-Bouldin; se usa k = 3, número que una
+  autoridad puede gestionar.
+- **Validación:** estabilidad con 100 remuestreos (ARI), comparación con Ward y HDBSCAN, y
+  prueba de Kruskal-Wallis de la tasa histórica entre segmentos. Como esa tasa también se usa
+  para agrupar, la prueba confirma la separación pero no es una validación independiente.
+- **Etiquetas:** los segmentos se ordenan por un índice de riesgo combinado
+  (z de la tasa histórica + z del riesgo promedio) y se nombran «Atención prioritaria»,
+  «Estable» y «Bajo riesgo». Los nombres son relativos dentro de la institución.
 
-No hay cadencia fija porque estos organismos no publican en un calendario
-predecible — CACES evalúa por ciclos plurianuales, SENESCYT publica reportes
-cuando cierra cada período. Revisar manualmente antes de cada defensa de
-tesis o entrega institucional.
+Resultados actuales (`ml/modelos/*/segmentacion.json`): UNEMI_PRUEBAS, 18 carreras, silueta
+0,355, ARI 0,540, Kruskal-Wallis p = 0,004; OULAD, 7 módulos, silueta 0,229, p = 0,145
+(descriptiva).
 
-## 4. Clustering institucional
+## 5. Exposición en el sistema
 
-`codigo_fuente/backend/ml/clustering_institucional.py` — K-Means, `k=3`, sobre 3
-indicadores por carrera (`StandardScaler` antes, porque las escalas son muy
-distintas): tasa de abandono histórica, rendimiento académico histórico, y
-riesgo promedio actual (salida del modelo de
-[PREDICCION_ABANDONO.md](PREDICCION_ABANDONO.md)).
+El panel, la página de carreras, la de referentes y la consulta conversacional leen las mismas
+vistas (`VIS_SEGMENTO_CARRERA`, `VIS_REFERENTE_EXTERNO`). Preguntas como «¿qué carreras necesitan
+atención prioritaria?» o «compara nuestra tasa de abandono con la del referente de Ecuador» se
+responden con métricas certificadas.
 
-**Interpretación explícita del requerimiento** (documentada porque es
-ambigua): "clustering institucional" podría leerse como agrupar
-universidades completas, o como segmentar unidades *dentro* de una
-institución. Con solo 3-4 puntos de comparación externos reales (sección 1),
-un K-Means entre universidades no es estadísticamente defendible — n
-demasiado chico para que los clusters signifiquen algo. Lo que sí tiene
-volumen real es segmentar las **carreras/facultades propias** (18 carreras
-en los datos de prueba) por perfil de riesgo — es la lectura que aporta
-inteligencia institucional accionable de verdad: qué programas necesitan
-atención prioritaria.
+## 6. Limitaciones
 
-Los clusters se etiquetan por el centroide de tasa de abandono (ascendente),
-nunca por un id numérico arbitrario:
-`Bajo riesgo / alto rendimiento` · `Estable` · `Atención prioritaria`.
-
-## 5. Indicadores comparativos y exposición dual
-
-Igual que el Módulo 1, panel + chat leen la **misma fuente**:
-
-- `GET /api/ml/clusters-carrera` y `GET /api/benchmarking/comparativo`
-  (dashboard, `InteligenciaInstitucionalCard.jsx`).
-- `VIS_CLUSTER_CARRERA` / `VIS_BENCHMARK_EXTERNO` están en la lista blanca
-  `VIS_*`, así que el motor NL2SQL las descubre solo — se le puede preguntar
-  al chat "¿qué carreras necesitan atención prioritaria?" o "¿cómo se
-  compara nuestra tasa de abandono con la del referente de Ecuador?" sin cambios
-  adicionales en `main.py`.
-
-## 6. Hallazgos y recomendaciones (sobre los datos de prueba)
-
-Con los datos sintéticos de `UNEMI_PRUEBAS` (10,02 % de abandono histórico), la tasa propia
-queda por debajo de los cuatro referentes publicados (24,4 % a 44,9 %). No es una
-conclusión sobre UNEMI: la tasa base del dataset de prueba se fijó al generarlo. Con datos
-reales, el mismo comparativo ubica a la institución frente a pares de comparabilidad
-declarada, y el clustering de carreras indica qué programas priorizar.
-
-**Recomendación estratégica** (aplicable con datos reales): priorizar la intervención en las
-carreras del segmento "Atención prioritaria" y usar el comparativo como referencia de
-urgencia frente a pares de comparabilidad ALTA, no como meta a igualar mecánicamente.
-
-## 7. Limitaciones honestas
-
-- Los referentes son **puntuales** (una cifra por estudio), no series temporales.
-- Las definiciones de abandono difieren entre estudios (cohorte, matrícula-módulo,
-  resultado final); por eso cada fila declara su definición y su comparabilidad.
-- El clustering de UNEMI_PRUEBAS usa datos sintéticos; con datos reales, los centroides
-  y las etiquetas cambiarán. En OULAD (7 módulos) la segmentación no es significativa.
-- No hay integración con datos socioeconómicos de INEC; queda como extensión futura.
+- Los referentes son cifras puntuales, no series temporales, y sus definiciones de abandono
+  difieren; por eso cada fila declara su definición y comparabilidad.
+- La tasa histórica de UNEMI_PRUEBAS está sobrestimada por la censura a la derecha de una
+  ventana 2019-2026 y proviene de datos sintéticos: no describe a la UNEMI.
+- No se integran todavía datos socioeconómicos del INEC.

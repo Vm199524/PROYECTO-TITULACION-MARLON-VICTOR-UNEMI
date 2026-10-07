@@ -310,7 +310,10 @@ export default function Panel() {
                 actions={
                   data.indicadores.carreras_prioritarias > 0 ? (
                     <Link to="/carreras">
-                      <Badge variant="danger">{entero(data.indicadores.carreras_prioritarias)} carreras en atención prioritaria</Badge>
+                      <Badge variant="danger">
+                        {entero(data.indicadores.carreras_prioritarias)}{' '}
+                        {data.indicadores.carreras_prioritarias === 1 ? 'carrera' : 'carreras'} en atención prioritaria
+                      </Badge>
                     </Link>
                   ) : null
                 }

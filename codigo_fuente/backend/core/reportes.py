@@ -56,8 +56,9 @@ def lectura(resumen: dict) -> list[str]:
         frases.append(f"La carrera con más estudiantes en riesgo es {c['carrera']}: {_num(c['alto'])} en riesgo alto y "
                       f"{_num(c['medio'])} en riesgo medio de {_num(c['activos'])} activos.")
     if ind.get('carreras_prioritarias'):
-        frases.append(f"{_num(ind['carreras_prioritarias'])} carreras quedaron en el segmento de atención prioritaria por su "
-                      'abandono histórico, rendimiento, asistencia y riesgo actual.')
+        n = ind['carreras_prioritarias']
+        frases.append(f"{_num(n)} {'carrera quedó' if n == 1 else 'carreras quedaron'} en el segmento de atención "
+                      'prioritaria por su abandono histórico, rendimiento, asistencia y riesgo actual.')
     if conf.get('RECALL_MEDIO') is not None:
         frases.append(f"En la prueba temporal, las alertas de riesgo alto y medio detectaron el {_pct(100 * conf['RECALL_MEDIO'], 0)} de los "
                       f"abandonos reales, con una precisión del {_pct(100 * (conf.get('PRECISION_MEDIO') or 0), 0)} "

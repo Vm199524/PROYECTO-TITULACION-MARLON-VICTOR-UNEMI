@@ -1,30 +1,36 @@
-# Pendientes para la siguiente sesión (04/10/2026)
+# Pendientes para la siguiente sesión (7 de octubre de 2026)
 
-## Por terminar del plan actual
-1. **PDF de los manuales:** ya están en Markdown y en Word en `documentacion/manuales/`. Falta exportar el PDF de cada uno:
-   `powershell -File documentacion\generador_documentos\_docx_a_pdf.ps1 -Docx documentacion\manuales\<MANUAL>.docx`
-   y revisar páginas de muestra.
-2. **README.en.md:** agregarle el mismo pie (autores con foto y banda) y las capturas.
-3. **Enlaces viejos:** `documentacion/README.md` (línea 81) y `codigo_fuente/backend/scripts/seed_alumnos_prueba.py` (línea 17) todavía apuntan a `tecnica/MANUAL_INSTALACION.md`, que ahora es `manuales/MANUAL_TECNICO_DE_INSTALACION.md`. También falta agregar la sección «Manuales» en `documentacion/README.md` y en `codigo_fuente/README.md`.
-4. **Generador del Avance 2:** comprobar que `_build_avance2.py` siga encontrando los fragmentos de código que copia en la tesis, porque los comentarios de esos archivos cambiaron. Hay que probarlo generando en una copia, sin sobrescribir el Avance 2 entregado.
-5. **CI:** confirmar que la ejecución del último envío (commit `51ba59d`) quedó en verde.
-6. **Plan del proyecto:** actualizar `documentacion/PLAN_Y_ESTADO_DEL_PROYECTO.md`: P1 (capturas) resuelto y manuales hechos.
+Estado general: Avance 2 generado (85 páginas, sin errores en `_verificar_coherencia.py`), prototipo versión 3 con
+153 pruebas del backend y 11 de la interfaz en verde, README en español e inglés con el isotipo, la apertura y el
+recorrido animados y las capturas nuevas, manuales en Markdown y Word actualizados. El detalle está en
+[`documentacion/PLAN_Y_ESTADO_DEL_PROYECTO.md`](documentacion/PLAN_Y_ESTADO_DEL_PROYECTO.md).
 
-## Errores de código encontrados al documentar (no corregidos; decidir)
-- `core/nl2sql_engine.py` → `generate_correction` usa `ChatPromptTemplate` y `StrOutputParser` sin importarlos. La autocorrección de SQL nunca funciona.
-- `config.py` (cerca de la línea 233) usa `logger` sin definirlo: si falla la carga de `demo_dataset.json`, se produce un NameError.
-- `core/sql_sanitizer.py` → `strip_ghost_filters` puede dejar un `AND` sin `WHERE`.
-- `core/mirror_manager.py`: el conteo de niveles todavía filtra por `RTRIM(PERIODO)` y podría devolver 0.
+## En el equipo con SQL Server (Windows)
 
-## Decisiones de los autores
-- **Imagen `documentacion/presentaciones/Predicción_de_abandono_estudiantil.png`:** tiene la marca de agua «Gemini Notebook» y la cifra del 26 % de la SENESCYT sin fuente académica. ¿Se mueve a revisión?
-- **Cédula de Marlon** en la portada de los avances publicados.
-- **Descripción y temas del repositorio:** los cambia Víctor; ya tiene el comando.
-- **Ramas `AAA` y `MARLON` en GitHub:** guardan el historial viejo, con firma de IA. Se borran solo si Víctor está de acuerdo.
-- **Credenciales:** cambiar las de `sa`, `chat_reader`, las claves de IA y la de `adminvm` (su contraseña estuvo escrita en un script publicado).
-- **Textos visibles antiguos en la interfaz:** «VICMAR DATA AI V4.5/V4.1», «Soy Aura», «Quantum BI».
+1. Actualizar la copia local del repositorio (rama `v3-sistema-academico`).
+2. Medir la exactitud global de la consulta conversacional con los proveedores de IA (requiere al menos una clave en
+   `codigo_fuente\backend\.env`):
+   ```bat
+   codigo_fuente\scripts\reconstruir_sistema.bat --solo consulta --con-consulta
+   ```
+3. Regenerar el Avance 2 para que tome esa evaluación en lugar de la réplica:
+   ```bat
+   cd documentacion\generador_documentos
+   python construir_avance2.py --base ..\avances\AVANCE1_MARLON_VICTOR.docx --salida ..\avances\AVANCE2_MARLON_VICTOR.docx
+   powershell -ExecutionPolicy Bypass -File _docx_a_pdf.ps1 -Docx ..\avances\AVANCE2_MARLON_VICTOR.docx
+   python _verificar_coherencia.py
+   ```
+4. Exportar el PDF de los tres manuales con `_docx_a_pdf.ps1`.
 
-## Del plan general
-- Video de la demostración.
-- Prueba con 3 a 5 usuarios (guía en `documentacion/manuales/GUIA_DE_PRUEBAS_DE_ACEPTACION.md`, sección 4).
-- Avance 3.
+## Lo que solo pueden hacer los autores
+
+- Enlaces de los videos en el Anexo C del Avance 2.
+- Tabla de actividades con la tutora en la declaración de autoría.
+- Porcentaje real de Compilatio.
+- Decidir si se borran las ramas antiguas `AAA` y `MARLON` de GitHub (guardan el historial anterior).
+- Cambiar las credenciales de `sa`, `chat_reader`, `app_seguimiento` y las claves de IA antes de usar datos reales.
+
+## Para el Avance 3
+
+- Prueba de usabilidad con 3 a 5 usuarios (protocolo en la sección 3.1.8 y en la guía de pruebas de aceptación).
+- Video de la demostración completa.

@@ -1,67 +1,76 @@
 # ADR-005: Algoritmo del modelo predictivo de abandono
 
-- **Estado:** Aceptada · **Fecha:** 2026-10-03
-- **Decisión:** Random Forest (versión scikit-learn 1.9.1)
+- **Estado:** Aceptada · **Fecha:** 2026-10-07 (reemplaza la versión del 03/10/2026)
+- **Decisión:** LightGBM ajustado con Optuna (lightgbm 4.7.0), elegido por validación cruzada
 
 ## Contexto
 
-Clasificación binaria del abandono en el periodo siguiente sobre un panel alumno-periodo con clases desbalanceadas. Las tres opciones se compararon con los mismos 5 pliegues agrupados por alumno en las dos instituciones; OULAD (datos reales) pesa más que UNEMI_PRUEBAS (sintético).
+Clasificación binaria del abandono en el periodo siguiente sobre un panel estudiante-periodo con clases desbalanceadas. Los cuatro candidatos se compararon con los mismos 5 pliegues agrupados por estudiante en las dos instituciones; OULAD (datos reales) pesa más que UNEMI_PRUEBAS (sintético). Reemplaza la versión de la matriz del 03/10/2026, hecha con el panel anterior.
 
 ## Criterios (origen → peso)
 
-- **Discriminación en datos reales (ROC-AUC en OULAD)** (35 %):  *Origen:* OE3 y criterio de éxito (a)
-- **Detección de la clase minoritaria (PR-AUC en OULAD)** (15 %):  *Origen:* Prioridad del recall (fase 1 de CRISP-DM)
-- **Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS)** (10 %):  *Origen:* RNF-11 (portabilidad)
-- **Explicación por alumno** (15 %):  *Origen:* RF-05 y HU-02
-- **Evidencia en trabajos previos** (15 %):  *Origen:* Sección 1.3
-- **Costo de entrenamiento** (10 %):  *Origen:* RNF-06 (procesos por lotes)
+- **Discriminación en datos reales (ROC-AUC en OULAD)** (35 %): *Origen:* OE2 y RNF de calidad (ROC-AUC ≥ 0,75)
+- **Detección de la clase minoritaria (PR-AUC en OULAD)** (15 %): *Origen:* Prioridad del recall (fase 1 de CRISP-DM)
+- **Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS)** (10 %): *Origen:* Portabilidad entre instituciones
+- **Explicación por estudiante** (15 %): *Origen:* HU-03 y RF de explicación SHAP
+- **Evidencia en trabajos previos** (15 %): *Origen:* Sección 1.3.6
+- **Costo de entrenamiento** (10 %): *Origen:* Procesos por lotes nocturnos
 
 ## Opciones evaluadas
 
-### Random Forest — 4,90 / 5
-- Discriminación en datos reales (ROC-AUC en OULAD): **5**. ROC-AUC 0,758 ± 0,008, empatado con gradient boosting. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Detección de la clase minoritaria (PR-AUC en OULAD): **5**. PR-AUC 0,074, el mayor de los tres. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS): **5**. ROC-AUC 0,996. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Explicación por alumno: **5**. Explicación SHAP por alumno implementada (tres factores en lenguaje natural); SHAP con árboles también en Carballo-Mendívil et al. (2025) y Khatun et al. (2025). *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues); Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)
-- Evidencia en trabajos previos: **5**. Es el algoritmo más usado en la revisión de 61 estudios (33), y en Romero y Liao (2025) obtuvo el mejor AUC. *Fuente:* Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047
-- Costo de entrenamiento: **4**. En Romero y Liao (2025) entrenó en 4,14 s frente a 348,6 s de XGBoost. *Fuente:* Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047
+### LightGBM ajustado con Optuna: 4,65 / 5
+- Discriminación en datos reales (ROC-AUC en OULAD): **5**. ROC-AUC 0,803 ± 0,010, el mayor de los cuatro. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Detección de la clase minoritaria (PR-AUC en OULAD): **5**. PR-AUC 0,095, el mayor de los cuatro (prevalencia 0,025). *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS): **5**. ROC-AUC 0,828 ± 0,003, el mayor de los cuatro. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Explicación por estudiante: **5**. SHAP para árboles implementado: tres razones por estudiante redactadas en español. *Fuente:* codigo_fuente/backend/ml/explicacion.py
+- Evidencia en trabajos previos: **4**. El boosting de gradiente aparece en 9 estudios y XGBoost en 12 de la revisión; Carballo-Mendívil et al. (2025) compararon LightGBM y XGBoost. *Fuente:* Duro et al. (2026), Computers, 15(3), 164, pp. 9-10, https://doi.org/10.3390/computers15030164; Carballo-Mendívil et al. (2025), tabla de trabajos previos (documentacion/literatura/trabajos_previos.json)
+- Costo de entrenamiento: **3**. La búsqueda con Optuna (25 pruebas) es el paso más costoso del entrenamiento; cabe en un proceso por lotes. *Fuente:* datos_locales/pipeline_estado.json
 
-### Gradient boosting (HistGradientBoosting) — 4,25 / 5
-- Discriminación en datos reales (ROC-AUC en OULAD): **5**. ROC-AUC 0,758 ± 0,008, empatado con Random Forest. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Detección de la clase minoritaria (PR-AUC en OULAD): **5**. PR-AUC 0,073. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS): **4**. ROC-AUC 0,980, el más bajo de los tres en la segunda institución. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Explicación por alumno: **4**. Explicable con SHAP para árboles, pero no implementado en el prototipo. *Fuente:* Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)
-- Evidencia en trabajos previos: **3**. Gradient boosting aparece en 9 estudios y XGBoost en 12 de la revisión; Carballo-Mendívil et al. (2025) y Khatun et al. (2025) eligen XGBoost. *Fuente:* Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)
-- Costo de entrenamiento: **3**. En Romero y Liao (2025) XGBoost fue el más lento (348,6 s); HistGradientBoosting no se midió allí. *Fuente:* Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047
+### Random Forest con pesos por clase: 4,30 / 5
+- Discriminación en datos reales (ROC-AUC en OULAD): **4**. ROC-AUC 0,797 ± 0,010. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Detección de la clase minoritaria (PR-AUC en OULAD): **4**. PR-AUC 0,085. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS): **4**. ROC-AUC 0,821 ± 0,006. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Explicación por estudiante: **5**. Explicable con el mismo SHAP para árboles. *Fuente:* codigo_fuente/backend/ml/explicacion.py
+- Evidencia en trabajos previos: **5**. Es el algoritmo más usado en la revisión de 61 estudios (33). *Fuente:* Duro et al. (2026), Computers, 15(3), 164, pp. 9-10, https://doi.org/10.3390/computers15030164
+- Costo de entrenamiento: **4**. Búsqueda aleatoria de 10 combinaciones; más barato que la búsqueda bayesiana. *Fuente:* Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047
 
-### Regresión logística — 3,85 / 5
-- Discriminación en datos reales (ROC-AUC en OULAD): **3**. ROC-AUC 0,730 ± 0,008, el menor en datos reales. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Detección de la clase minoritaria (PR-AUC en OULAD): **3**. PR-AUC 0,059. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS): **5**. ROC-AUC 0,997; en datos sintéticos todas las opciones superan 0,98. *Fuente:* Resultados propios: codigo_fuente/backend/ml/models/<institución>/metrics.json (validación cruzada agrupada por alumno, 5 pliegues)
-- Explicación por alumno: **5**. Sus coeficientes se interpretan directamente. *Fuente:* Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047
-- Evidencia en trabajos previos: **4**. Segundo algoritmo más usado (27 estudios); la mejor individual en Rabelo y Zárate (2025). *Fuente:* Duro et al. (2026), Computers, 15(3), 164, pp. 9–10, https://doi.org/10.3390/computers15030164; Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)
-- Costo de entrenamiento: **5**. Es el más barato de entrenar de los tres. *Fuente:* Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047
+### Regresión logística: 3,75 / 5
+- Discriminación en datos reales (ROC-AUC en OULAD): **3**. ROC-AUC 0,787 ± 0,010. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Detección de la clase minoritaria (PR-AUC en OULAD): **3**. PR-AUC 0,082. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS): **4**. ROC-AUC 0,819 ± 0,003. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Explicación por estudiante: **5**. Sus coeficientes se interpretan directamente. *Fuente:* Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047
+- Evidencia en trabajos previos: **4**. Segundo algoritmo más usado (27 estudios). *Fuente:* Duro et al. (2026), Computers, 15(3), 164, pp. 9-10, https://doi.org/10.3390/computers15030164
+- Costo de entrenamiento: **5**. El más barato de entrenar de los cuatro. *Fuente:* Romero y Liao (2025), PLOS ONE, 20(6), e0325047, p. 12, https://doi.org/10.1371/journal.pone.0325047
+
+### Random Forest con SMOTE: 2,70 / 5
+- Discriminación en datos reales (ROC-AUC en OULAD): **2**. ROC-AUC 0,777 ± 0,007, el menor de los cuatro. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Detección de la clase minoritaria (PR-AUC en OULAD): **2**. PR-AUC 0,071, el menor de los cuatro. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Desempeño en la segunda institución (ROC-AUC en UNEMI_PRUEBAS): **3**. ROC-AUC 0,816 ± 0,005. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
+- Explicación por estudiante: **5**. Explicable con SHAP para árboles. *Fuente:* codigo_fuente/backend/ml/explicacion.py
+- Evidencia en trabajos previos: **3**. SMOTE es frecuente en la literatura, pero con validación agrupada no supera a los pesos por clase. *Fuente:* Duro et al. (2026), Computers, 15(3), 164, pp. 9-10, https://doi.org/10.3390/computers15030164
+- Costo de entrenamiento: **2**. El sobremuestreo multiplica las filas de la clase minoritaria en cada pliegue. *Fuente:* Resultados propios: codigo_fuente/backend/ml/modelos/<institución>/metricas.json (validación cruzada de 5 pliegues agrupada por estudiante)
 
 ## Resultado
 
 | Opción | Puntaje |
 |---|---|
-| Random Forest | 4,90 |
-| Gradient boosting (HistGradientBoosting) | 4,25 |
-| Regresión logística | 3,85 |
+| LightGBM ajustado con Optuna | 4,65 |
+| Random Forest con pesos por clase | 4,30 |
+| Regresión logística | 3,75 |
+| Random Forest con SMOTE | 2,70 |
 
 **Sensibilidad:** estable: ninguna variación de ±20 % en un peso cambia la ganadora.
 
 ## Decisión y razón
 
-Random Forest y gradient boosting empatan en datos reales; Random Forest gana por detectar mejor la clase minoritaria, por rendir igual en la segunda institución, por tener la explicación SHAP ya implementada y por ser el más respaldado en la literatura. La regresión logística queda como línea base.
+LightGBM obtuvo el mayor ROC-AUC y el mayor PR-AUC medios en las dos instituciones con la misma validación cruzada agrupada por estudiante, y admite la explicación SHAP ya implementada. La elección no se fija a mano: el entrenamiento compara los cuatro candidatos en cada reentrenamiento y conserva el de mayor ROC-AUC medio (desempate por PR-AUC); esta matriz documenta el resultado de la versión 3.
 
 ## Consecuencias
 
-- Se gana un modelo estable entre instituciones y explicable por alumno.
-- Se sacrifica la interpretabilidad global directa de la regresión logística.
-- Riesgo: el empate con gradient boosting debe revisarse con cada reentrenamiento; el entrenamiento lo registra como advertencia si una alternativa supera en más de 0,01 de ROC-AUC.
+- Se gana el mejor ordenamiento del riesgo en datos reales y sintéticos, con explicación por estudiante.
+- Se acepta un entrenamiento más costoso por la búsqueda de hiperparámetros con Optuna.
+- La regresión logística queda como línea base; si un reentrenamiento cambia la ganadora, el sistema la registra en metricas.json y la pantalla Calidad del modelo la muestra.
 
 ## Verificación en el código
 
-`codigo_fuente/backend/requirements.txt` debe fijar `scikit-learn` en la versión `1.9.1` (lo comprueba verificar_coherencia.py).
+`codigo_fuente/backend/requirements.txt` fija `lightgbm` en la versión `4.7.0`; `ml/entrenar.py` compara los cuatro candidatos y guarda la comparación en `metricas.json` (clave `comparacion_cv`).
