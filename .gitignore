@@ -50,8 +50,8 @@ codigo_fuente/backend/tmp/
 *.log
 # Modelos entrenados y predicciones por estudiante: se regeneran con
 # scripts/pipeline.py. Sí se versionan las métricas (JSON) de cada corrida.
-codigo_fuente/backend/ml/modelos/*/*.joblib
-codigo_fuente/backend/ml/modelos/*/*.csv
+# Modelos y reportes de validación: los genera el pipeline en cada equipo (scripts/pipeline.py).
+codigo_fuente/backend/ml/modelos/
 
 # ── Material con derechos de autor o datos personales ─────────────────────
 # PDF de artículos científicos (se citan por DOI; no se redistribuyen) y exportaciones
