@@ -22,7 +22,7 @@ AZUL_MEDIO = '0B5C7E'
 NARANJA = 'FF6900'
 GRIS_900, GRIS_600, GRIS_200, GRIS_50 = '0F172A', '475569', 'E2E8F0', 'F8FAFC'
 ROJO, AMBAR, VERDE = 'DC2626', 'D97706', '059669'
-SISTEMA = 'VicMar Data AI'
+SISTEMA = 'VicMar · Alerta temprana de abandono'
 
 
 def _num(v: Any, dec: int = 0) -> str:

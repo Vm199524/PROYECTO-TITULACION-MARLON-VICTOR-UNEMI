@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-API del prototipo VicMar Data AI: predicción del abandono estudiantil y
+API del prototipo VicMar (alerta temprana de abandono): predicción del abandono estudiantil y
 consulta conversacional.
 
 Arma la aplicación FastAPI con sus routers por proceso académico (sesión,
@@ -36,7 +36,7 @@ CONFIG.validar_produccion()
 VERSION = '3.0.0'
 
 app = FastAPI(
-    title='VicMar Data AI · API',
+    title='VicMar · API de alerta temprana de abandono',
     version=VERSION,
     description='Prototipo de sistema web para predecir el abandono en estudiantes universitarios mediante '
                 'aprendizaje automático y consulta conversacional (UNEMI, 2026).',

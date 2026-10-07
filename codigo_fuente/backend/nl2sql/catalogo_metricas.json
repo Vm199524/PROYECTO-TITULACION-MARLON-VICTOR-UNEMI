@@ -537,7 +537,7 @@
     "cobertura de las alertas de riesgo alto",
     "estudiantes en riesgo alto sin atender"
    ],
-   "sql": "SELECT COUNT(*) AS [En riesgo alto], SUM(CASE WHEN EXISTS (SELECT 1 FROM VIS_INTERVENCION i WHERE i.cedula = p.cedula) THEN 1 ELSE 0 END) AS [Con seguimiento] FROM VIS_PREDICCION_ABANDONO p WHERE p.riesgo_categoria = 'ALTO'",
+   "sql": "SELECT COUNT(*) AS [En riesgo alto], SUM(CASE WHEN i.cedula IS NOT NULL THEN 1 ELSE 0 END) AS [Con seguimiento] FROM VIS_PREDICCION_ABANDONO p LEFT JOIN (SELECT DISTINCT cedula FROM VIS_INTERVENCION) i ON i.cedula = p.cedula WHERE p.riesgo_categoria = 'ALTO'",
    "parametros": [],
    "visualizacion": "tabla"
   },

@@ -43,9 +43,10 @@ CONSULTAS = {
                  "AS retirados FROM VIS_ALUMNO GROUP BY periodo_academico ORDER BY MIN(inicio_periodo)",
     'alertas': "SELECT TOP 6 cedula, apellidos, nombres, carrera, probabilidad, percentil_riesgo, factor_1 "
                "FROM VIS_PREDICCION_ABANDONO WHERE riesgo_categoria = 'ALTO' ORDER BY probabilidad DESC, percentil_riesgo DESC",
-    'seguimiento': "SELECT COUNT(*) AS en_alto, SUM(CASE WHEN EXISTS (SELECT 1 FROM VIS_INTERVENCION i "
-                   "WHERE i.cedula = p.cedula) THEN 1 ELSE 0 END) AS atendidos FROM VIS_PREDICCION_ABANDONO p "
-                   "WHERE p.riesgo_categoria = 'ALTO'",
+    # Sin EXISTS dentro de SUM: SQL Server no admite subconsultas en un agregado (error 130).
+    'seguimiento': "SELECT COUNT(*) AS en_alto, SUM(CASE WHEN i.cedula IS NOT NULL THEN 1 ELSE 0 END) AS atendidos "
+                   "FROM VIS_PREDICCION_ABANDONO p LEFT JOIN (SELECT DISTINCT cedula FROM VIS_INTERVENCION) i "
+                   "ON i.cedula = p.cedula WHERE p.riesgo_categoria = 'ALTO'",
     'abiertas': "SELECT COUNT(*) AS abiertas FROM VIS_INTERVENCION WHERE estado = 'ABIERTA'",
 }
 

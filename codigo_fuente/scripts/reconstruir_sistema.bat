@@ -4,7 +4,7 @@ REM  Reconstruye el sistema de punta a punta en Windows:
 REM  entorno virtual + dependencias + SQL Server (Docker) + procesos por lotes.
 REM  Uso: doble clic, o desde una consola:  reconstruir_sistema.bat [opciones]
 REM  Opciones (se pasan a scripts.pipeline): --rapido  --con-consulta
-REM           --desde PASO  --solo PASO1,PASO2  --sin-oulad
+REM           --desde PASO  --solo PASO1,PASO2  --sin-oulad  --reentrenar INSTITUCION
 REM  Las credenciales se leen de codigo_fuente\backend\.env; este archivo no
 REM  contiene ni muestra contraseñas.
 REM  Autores: Marlon David Perez Almachi, Victor Manuel Lluilema Pisco (UNEMI, 2026)

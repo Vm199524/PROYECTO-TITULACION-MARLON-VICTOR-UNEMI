@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from nl2sql.esquema import GLOSARIO, texto_esquema
 from nl2sql.proveedores import RespuestaIA, completar
 
-SISTEMA = """Eres el traductor de preguntas a SQL del sistema académico VicMar Data AI, que predice el abandono
+SISTEMA = """Eres el traductor de preguntas a SQL del sistema académico VicMar, que predice el abandono
 estudiantil en una universidad. Tu única tarea es escribir UNA consulta SELECT en T-SQL (SQL Server 2022) que
 responda la pregunta de una autoridad académica, usando EXCLUSIVAMENTE estas vistas:
 

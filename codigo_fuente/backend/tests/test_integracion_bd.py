@@ -54,9 +54,14 @@ def test_la_institucion_de_la_sesion_no_se_puede_cambiar():
 
 
 def test_aislamiento_entre_instituciones():
-    _, unemi = db.leer('SELECT DISTINCT institucion_codigo FROM VIS_ALUMNO', 'UNEMI_PRUEBAS')
-    _, oulad = db.leer('SELECT DISTINCT institucion_codigo FROM VIS_ALUMNO', 'OULAD_UK')
+    # VIS_ALUMNO no expone el código de institución: el aislamiento se comprueba con
+    # VIS_INSTITUCION y con los identificadores (los de OULAD empiezan por «OU»).
+    _, unemi = db.leer('SELECT institucion_codigo FROM VIS_INSTITUCION', 'UNEMI_PRUEBAS')
+    _, oulad = db.leer('SELECT institucion_codigo FROM VIS_INSTITUCION', 'OULAD_UK')
     assert unemi == [['UNEMI_PRUEBAS']] and oulad == [['OULAD_UK']]
+    _, cruce_unemi = db.leer("SELECT COUNT(*) FROM VIS_ALUMNO WHERE cedula LIKE 'OU%'", 'UNEMI_PRUEBAS')
+    _, cruce_oulad = db.leer("SELECT COUNT(*) FROM VIS_ALUMNO WHERE cedula NOT LIKE 'OU%'", 'OULAD_UK')
+    assert cruce_unemi == [[0]] and cruce_oulad == [[0]]
 
 
 def test_cuenta_de_seguimiento_solo_ejecuta_sus_procedimientos():

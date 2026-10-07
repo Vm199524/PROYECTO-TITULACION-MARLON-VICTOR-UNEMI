@@ -38,6 +38,7 @@ Uso:
     python -m scripts.pipeline --desde entrenar    # retoma desde un paso
     python -m scripts.pipeline --solo calificar,segmentar
     python -m scripts.pipeline --rapido            # menos búsquedas de hiperparámetros
+    python -m scripts.pipeline --reentrenar UNEMI_PRUEBAS   # no reentrena OULAD (horas de cómputo)
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
@@ -177,8 +178,10 @@ def comandos(paso: str, args) -> list[list[str]]:
     if paso == 'referentes':
         return [py + ['etl.etl_referentes']]
     if paso == 'entrenar':
+        # --reentrenar limita el paso a las instituciones indicadas; las demás conservan su modelo.
+        destino = [i for i in instituciones if not args.reentrenar or i in args.reentrenar.upper().split(',')]
         return [py + ['ml.entrenar', '--institucion', i, '--intentos-rf', str(rf), '--pruebas-optuna', str(optuna)]
-                for i in instituciones]
+                for i in destino]
     if paso == 'calificar':
         return [py + ['ml.calificar', '--institucion', i] for i in instituciones]
     if paso == 'segmentar':
@@ -213,6 +216,7 @@ def main() -> int:
     parser.add_argument('--sin-oulad', action='store_true', help='Omitir la institución OULAD_UK')
     parser.add_argument('--sin-bd', action='store_true', help='Pruebas sin base de datos (solo unitarias)')
     parser.add_argument('--rapido', action='store_true', help='Menos combinaciones de hiperparámetros')
+    parser.add_argument('--reentrenar', help='Entrenar solo estas instituciones (separadas por coma); las demás conservan su modelo')
     parser.add_argument('--intentos-rf', type=int, default=10)
     parser.add_argument('--pruebas-optuna', type=int, default=25)
     parser.add_argument('--pausa', type=float, default=3.0)

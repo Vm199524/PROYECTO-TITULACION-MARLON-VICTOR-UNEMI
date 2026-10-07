@@ -10,13 +10,12 @@ setlocal
 set RAIZ=%~dp0..
 where docker >nul 2>nul && docker start vicmar-sqlserver >nul 2>nul
 
-start "VicMar Data AI - API (8090)" cmd /k "cd /d "%RAIZ%\backend" && set PYTHONUTF8=1 && venv\Scripts\python.exe -m uvicorn main:app --port 8090"
+start "VicMar - API (8090)" cmd /k "cd /d "%RAIZ%\backend" && set PYTHONUTF8=1 && venv\Scripts\python.exe -m uvicorn main:app --port 8090"
 
 cd /d "%RAIZ%\frontend"
-if not exist node_modules (
-    echo Instalando dependencias de la aplicación web ...
-    call npm install --no-fund --no-audit
-)
-start "VicMar Data AI - Web (3000)" cmd /k "cd /d "%RAIZ%\frontend" && npm run dev"
+REM npm install siempre: si package.json cambió (nueva versión de la interfaz), instala lo que falte.
+echo Verificando las dependencias de la aplicación web ...
+call npm install --no-fund --no-audit
+start "VicMar - Web (3000)" cmd /k "cd /d "%RAIZ%\frontend" && npm run dev"
 echo Sistema iniciado: http://localhost:3000
 endlocal
