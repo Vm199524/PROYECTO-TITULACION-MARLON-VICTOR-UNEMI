@@ -39,14 +39,19 @@ datos/externos/
 *.sqlite
 
 # ── Datos de ejecución, cachés y logs del backend ─────────────────────────
+# datos_locales/: cuentas de usuario (hash bcrypt), contraseñas de las cuentas
+# de demostración, bitácora de auditoría y estado de los procesos por lotes.
+codigo_fuente/backend/datos_locales/
 codigo_fuente/backend/.cache/
-codigo_fuente/backend/cache/*.json
-codigo_fuente/backend/knowledge/consolidated_patterns.json
+codigo_fuente/backend/cache/
 codigo_fuente/backend/debug/
 codigo_fuente/backend/security_logs/
 codigo_fuente/backend/tmp/
-codigo_fuente/backend/eval/ultima_corrida.log
 *.log
+# Modelos entrenados y predicciones por estudiante: se regeneran con
+# scripts/pipeline.py. Sí se versionan las métricas (JSON) de cada corrida.
+codigo_fuente/backend/ml/modelos/*/*.joblib
+codigo_fuente/backend/ml/modelos/*/*.csv
 
 # ── Material con derechos de autor o datos personales ─────────────────────
 # PDF de artículos científicos (se citan por DOI; no se redistribuyen) y exportaciones
@@ -76,5 +81,6 @@ desktop.ini
 .idea/
 .vscode/
 
-# Contraseñas locales de los usuarios de prueba
+# Archivos locales del prototipo anterior (no se versionan)
 codigo_fuente/backend/usuarios_prueba.local.json
+codigo_fuente/backend/usuarios_demo.local.json

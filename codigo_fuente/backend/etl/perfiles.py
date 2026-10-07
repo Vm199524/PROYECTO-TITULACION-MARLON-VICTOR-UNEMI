@@ -1,34 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-Perfiles de institución para el ETL académico.
+Perfiles de institución: cómo se lleva el sistema académico de cada
+universidad al contrato del almacén.
 
-Hacen que scripts/etl_academico.py sea agnóstico de institución. El ETL no
-tiene fijo el nombre de ninguna tabla ni columna de origen: solo sabe leer
-un conjunto de COLUMNAS_REQUERIDAS (el contrato del modelo dimensional)
-desde UN SELECT que cada institución define en su propio "perfil". Conectar
-una IES nueva (p. ej., la Universidad Politécnica Salesiana) es agregar un
-perfil, no reescribir el script de ETL.
+El ETL no conoce el esquema de ninguna universidad. Cada perfil declara UN
+SELECT que entrega, con alias, las columnas lógicas del contrato:
 
-──────────────────────────────────────────────────────────────────────────
-CÓMO CONECTAR UNA INSTITUCIÓN NUEVA (p. ej., UPS Cuenca)
-──────────────────────────────────────────────────────────────────────────
-1. Pide a la institución el esquema real de su base de matrícula (nombres
-   de tablas y columnas). Es un requisito de acceso institucional, no
-   técnico; ver documentacion/tecnica/PREDICCION_ABANDONO.md, sección "Módulo 1".
-2. Agrega un PerfilInstitucion nuevo a PERFILES (abajo), con UN SELECT que
-   mapee sus columnas reales a los nombres lógicos de COLUMNAS_REQUERIDAS
-   (con alias SQL: `SELECT su_columna AS cedula, ...`).
-3. Si la institución no registra alguna variable (p. ej., no tiene "canal"
-   de ingreso), usa un LITERAL en el SELECT en vez de una columna real:
-   `SELECT 'PRESENCIAL' AS canal_codigo, ...`. El ETL no distingue entre
-   un valor real y uno fijo, así que las instituciones de un solo campus o
-   modalidad no necesitan ese dato para funcionar.
-4. Ejecuta: `python scripts/etl_academico.py --perfil <nombre_del_perfil>`
+  - Obligatorias (COLUMNAS_OBLIGATORIAS): identidad, carrera, sede,
+    modalidad, periodo académico, nivel, corte, estado, promedio, asistencia,
+    fecha del corte y si es el último periodo de la trayectoria.
+  - Opcionales (COLUMNAS_OPCIONALES): financieras, de matrícula, de aula
+    virtual y de evaluaciones. Si la institución no las registra, el SELECT
+    las entrega como NULL y el modelo de esa institución no las usa.
 
-Ningún otro archivo de backend/scripts ni de backend/ml/ necesita cambiar: el
-resto del pipeline (warehouse CHAT, características del modelo, endpoints,
-panel) trabaja solo con los nombres lógicos de abajo, nunca con el esquema
-de origen de una institución en particular.
+Conectar una universidad nueva = agregar un perfil (sin tocar el ETL, el
+modelo, la API ni la interfaz):
+  1. Obtener, con autorización institucional, el esquema de su base de
+     matrícula.
+  2. Escribir un PerfilInstitucion con su SELECT (alias a los nombres
+     lógicos; literales para lo que no registre, p. ej. 'PRESENCIAL' AS
+     modalidad).
+  3. Ejecutar: python -m etl.etl_academico --perfil <NOMBRE>
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
@@ -37,145 +29,118 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Contrato del modelo dimensional (ver codigo_fuente/base_de_datos/crear_chat_academico.sql):
-# toda columna que el ETL necesita, sin importar de qué institución venga.
-COLUMNAS_REQUERIDAS = [
+COLUMNAS_OBLIGATORIAS = [
     'cedula', 'apellidos', 'nombres', 'genero', 'ciudad_residencia',
-    'facultad_codigo', 'facultad_nombre', 'carrera',
-    'sede_codigo', 'sede_nombre', 'canal_codigo',
-    'semestre', 'estado_matricula', 'promedio', 'asistencia_pct',
-    'fecha_matricula', 'monto_matricula', 'beca_porcentaje', 'saldo_pendiente',
-    'es_ultimo_periodo',
+    'facultad_codigo', 'facultad_nombre', 'carrera', 'sede_codigo', 'sede_nombre', 'modalidad',
+    'periodo_academico', 'inicio_periodo', 'nivel', 'corte', 'estado_matricula',
+    'promedio', 'asistencia_pct', 'fecha_corte', 'es_ultimo_periodo',
 ]
+COLUMNAS_OPCIONALES = [
+    'monto_matricula', 'beca_porcentaje', 'saldo_pendiente', 'creditos_matriculados', 'numero_matricula',
+    'dias_anticipacion_matricula', 'actividad_lms', 'dias_sin_actividad', 'evaluaciones_vencidas',
+    'evaluaciones_entregadas', 'evaluaciones_tardias', 'nota_evaluaciones',
+]
+ESTADOS_VALIDOS = {'ACTIVO', 'RETIRADO', 'GRADUADO', 'EGRESADO', 'REPROBADO'}
+MODALIDADES_VALIDAS = {'PRESENCIAL', 'EN LINEA', 'HIBRIDA'}
 
 
 @dataclass(frozen=True)
 class PerfilInstitucion:
-    """Describe cómo extraer los datos académicos de una institución al contrato de CHAT."""
+    """Cómo extraer los datos de una institución al contrato del almacén."""
 
-    nombre: str  # empresa_codigo en CHAT (aislamiento por SESSION_CONTEXT)
-    business_name: str  # nombre comercial que se registra en dim_empresa
-    base_datos_origen: str  # BD operativa donde correr el SELECT (contexto inicial de conexión)
-    sql_origen: str  # SELECT que produce EXACTAMENTE las columnas de COLUMNAS_REQUERIDAS (alias incluidos)
+    codigo: str            # identificador en el almacén (aislamiento por SESSION_CONTEXT)
+    nombre: str            # nombre que ve la autoridad
+    pais: str
+    tipo_datos: str        # SINTETICO / REAL_ANONIMIZADO
+    unidad_periodo: str    # cómo se lee "periodo" en esta institución
+    base_origen: str       # base operativa donde corre el SELECT
+    sql_origen: str
 
 
-# ── UNEMI_PRUEBAS: perfil de referencia / datos de prueba de esta tesis ──
 _UNEMI_PRUEBAS = PerfilInstitucion(
-    nombre='UNEMI_PRUEBAS',
-    business_name='UNEMI_PRUEBAS',
-    base_datos_origen='UNEMI_PRUEBAS',
+    codigo='UNEMI_PRUEBAS',
+    nombre='UNEMI (datos de prueba)',
+    pais='Ecuador',
+    tipo_datos='SINTETICO',
+    unidad_periodo='semestre',
+    base_origen='UNEMI_PRUEBAS',
     sql_origen="""
         SELECT h.cedula, a.apellidos, a.nombres, a.genero, a.ciudad_residencia,
                h.facultad_codigo, h.facultad_nombre, h.carrera,
-               h.sede_codigo, h.sede_nombre, h.canal_codigo,
-               h.semestre, h.estado_matricula, h.promedio, h.asistencia_pct,
-               h.fecha_matricula, h.monto_matricula, h.beca_porcentaje, h.saldo_pendiente,
-               h.es_ultimo_periodo
+               h.sede_codigo, h.sede_nombre, h.canal_codigo AS modalidad,
+               CONCAT(YEAR(h.fecha_matricula), '-', CASE WHEN MONTH(h.fecha_matricula) <= 6 THEN '1' ELSE '2' END)
+                   AS periodo_academico,
+               DATEFROMPARTS(YEAR(h.fecha_matricula), CASE WHEN MONTH(h.fecha_matricula) <= 6 THEN 1 ELSE 7 END, 1)
+                   AS inicio_periodo,
+               h.semestre AS nivel, 1 AS corte, h.estado_matricula, h.promedio, h.asistencia_pct,
+               h.fecha_matricula AS fecha_corte, h.es_ultimo_periodo,
+               h.monto_matricula, h.beca_porcentaje, h.saldo_pendiente,
+               CAST(NULL AS SMALLINT) AS creditos_matriculados, CAST(NULL AS TINYINT) AS numero_matricula,
+               CAST(NULL AS SMALLINT) AS dias_anticipacion_matricula, CAST(NULL AS INT) AS actividad_lms,
+               CAST(NULL AS SMALLINT) AS dias_sin_actividad, CAST(NULL AS SMALLINT) AS evaluaciones_vencidas,
+               CAST(NULL AS SMALLINT) AS evaluaciones_entregadas, CAST(NULL AS SMALLINT) AS evaluaciones_tardias,
+               CAST(NULL AS DECIMAL(4,2)) AS nota_evaluaciones
         FROM dbo.historial_matriculas h
         JOIN dbo.alumnos_prueba a ON a.cedula = h.cedula
-        ORDER BY h.cedula, h.periodo_num
     """,
 )
 
-# ── Plantilla para una IES real (ej. UPS) — DESACTIVADA hasta tener acceso ──
-# Ejemplo de cómo luciría (columnas inventadas a modo ilustrativo; se
-# reemplazan por el esquema real de UPS una vez autorizado el acceso):
-#
-# _UPS_CUENCA = PerfilInstitucion(
-#     nombre='UPS_CUENCA',
-#     business_name='Universidad Politecnica Salesiana - Sede Cuenca',
-#     base_datos_origen='UPS_SIS',
-#     sql_origen="""
-#         SELECT m.numero_identificacion AS cedula, m.apellidos, m.nombres,
-#                m.sexo AS genero, m.ciudad AS ciudad_residencia,
-#                m.cod_facultad AS facultad_codigo, m.facultad AS facultad_nombre,
-#                m.carrera, m.cod_sede AS sede_codigo, m.sede AS sede_nombre,
-#                m.modalidad AS canal_codigo, m.ciclo AS semestre,
-#                m.estado AS estado_matricula, m.promedio_ponderado AS promedio,
-#                m.pct_asistencia AS asistencia_pct, m.fecha_matricula,
-#                m.valor_matricula AS monto_matricula, m.pct_beca AS beca_porcentaje,
-#                m.saldo_pendiente,
-#                CASE WHEN m.es_periodo_actual = 1 THEN 1 ELSE 0 END AS es_ultimo_periodo
-#         FROM dbo.vw_historial_matriculas m
-#     """,
-# )
-
-# ── OULAD_UK: segunda institución REAL ─────────────────────────────────────
-# Open University Learning Analytics Dataset (Kuzilek, Hlosta & Zdrahal,
-# 2017), cargado en OULAD_PRUEBAS por scripts/seed_oulad.py. Demuestra lo
-# que afirma el documento: conectar otra institución es agregar ESTE perfil
-# (un SELECT con alias), sin tocar el ETL ni el motor predictivo.
-#   - periodo = bloque de 28 días (semestre = número de bloque);
-#   - asistencia = días con actividad en el aula virtual / días del bloque;
-#   - la institución no registra datos financieros: se usan literales 0
-#     (paso 3 del procedimiento de arriba).
+# Open University (Reino Unido), cargada por scripts/cargar_oulad.py. Periodo
+# académico = presentación del módulo; corte = bloque de 28 días. No registra
+# datos financieros (NULL) y sí aula virtual, evaluaciones y matrícula.
 _OULAD_UK = PerfilInstitucion(
-    nombre='OULAD_UK',
-    business_name='Open University (Reino Unido) - OULAD',
-    base_datos_origen='OULAD_PRUEBAS',
+    codigo='OULAD_UK',
+    nombre='Open University, Reino Unido (OULAD)',
+    pais='Reino Unido',
+    tipo_datos='REAL_ANONIMIZADO',
+    unidad_periodo='corte de 28 días dentro de la presentación del módulo',
+    base_origen='OULAD_PRUEBAS',
     sql_origen="""
         SELECT h.cedula, h.apellidos, h.nombres, h.genero, h.ciudad_residencia,
                h.facultad_codigo, h.facultad_nombre, h.carrera,
-               'OU_UK' AS sede_codigo, 'Open University (Reino Unido)' AS sede_nombre,
-               'EN LINEA' AS canal_codigo,
-               h.bloque AS semestre, h.estado_matricula, h.promedio, h.asistencia_pct,
-               h.fecha_matricula,
-               0 AS monto_matricula, 0 AS beca_porcentaje, 0 AS saldo_pendiente,
-               h.es_ultimo_periodo
+               'OU_UK' AS sede_codigo, 'Open University (Reino Unido)' AS sede_nombre, 'EN LINEA' AS modalidad,
+               h.code_presentation AS periodo_academico, h.inicio_presentacion AS inicio_periodo,
+               1 AS nivel, h.corte, h.estado_matricula, h.promedio, h.asistencia_pct,
+               h.fecha_corte, h.es_ultimo_periodo,
+               CAST(NULL AS DECIMAL(10,2)) AS monto_matricula, CAST(NULL AS TINYINT) AS beca_porcentaje,
+               CAST(NULL AS DECIMAL(10,2)) AS saldo_pendiente,
+               h.creditos AS creditos_matriculados, h.intentos_previos + 1 AS numero_matricula,
+               -h.dia_registro AS dias_anticipacion_matricula, h.clics AS actividad_lms, h.dias_sin_actividad,
+               h.evaluaciones_vencidas, h.evaluaciones_entregadas, h.evaluaciones_tardias, h.nota_evaluaciones
         FROM dbo.historial_bloques h
-        ORDER BY h.cedula, h.code_module, h.code_presentation, h.bloque
     """,
 )
 
-PERFILES: dict[str, PerfilInstitucion] = {
-    _UNEMI_PRUEBAS.nombre: _UNEMI_PRUEBAS,
-    _OULAD_UK.nombre: _OULAD_UK,
-}
+PERFILES: dict[str, PerfilInstitucion] = {p.codigo: p for p in (_UNEMI_PRUEBAS, _OULAD_UK)}
 
 
-def obtener_perfil(nombre: str) -> PerfilInstitucion:
-    """Devuelve el perfil con ese nombre, sin distinguir mayúsculas.
-
-    Raises:
-        KeyError: si no existe, con la lista de perfiles disponibles.
-    """
-    perfil =PERFILES.get(nombre.strip().upper())
+def obtener_perfil(codigo: str) -> PerfilInstitucion:
+    """Devuelve el perfil (sin distinguir mayúsculas) o explica cómo crearlo."""
+    perfil = PERFILES.get((codigo or '').strip().upper())
     if perfil is None:
-        disponibles = ', '.join(PERFILES.keys())
-        raise KeyError(
-            f"No existe un perfil de ETL para '{nombre}'. "
-            f"Perfiles disponibles: {disponibles}. "
-            f"Para conectar una institucion nueva, agrega un PerfilInstitucion "
-            f"en backend/etl/perfiles.py (ver docstring del archivo)."
-        )
+        raise KeyError(f"No existe el perfil '{codigo}'. Disponibles: {', '.join(PERFILES)}. "
+                       'Para una institución nueva, agregue un PerfilInstitucion en backend/etl/perfiles.py.')
     return perfil
 
 
-def institucion_de_base(nombre_base: str) -> str:
-    """Código de institución con que el almacén CHAT guarda los datos de una base operativa.
-
-    La interfaz identifica la institución por el nombre de la base a la que se
-    conectó (por ejemplo, OULAD_PRUEBAS), pero el ETL guarda las filas con el
-    nombre del perfil (OULAD_UK). Si ningún perfil usa esa base, el nombre se
-    devuelve tal cual.
-    """
-    base = (nombre_base or "").strip().upper()
-    for perfil in PERFILES.values():
-        if perfil.base_datos_origen.upper() == base:
-            return perfil.nombre
-    return base
-
-
-def validar_columnas(columnas_obtenidas: list[str], perfil: PerfilInstitucion) -> None:
-    """Comprueba que el SELECT del perfil produzca todas las COLUMNAS_REQUERIDAS.
-
-    Raises:
-        ValueError: con las columnas que faltan.
-    """
-    faltantes =set(COLUMNAS_REQUERIDAS) - set(columnas_obtenidas)
+def validar_columnas(columnas: list[str], perfil: PerfilInstitucion) -> None:
+    """Comprueba que el SELECT del perfil entregue todo el contrato."""
+    faltantes = set(COLUMNAS_OBLIGATORIAS + COLUMNAS_OPCIONALES) - set(columnas)
     if faltantes:
-        raise ValueError(
-            f"El SELECT del perfil '{perfil.nombre}' no produce las columnas "
-            f"requeridas: {sorted(faltantes)}. Revisa los alias en "
-            f"PerfilInstitucion.sql_origen (backend/etl/perfiles.py)."
-        )
+        raise ValueError(f"El SELECT del perfil '{perfil.codigo}' no entrega: {sorted(faltantes)}. "
+                         'Las opcionales que la institución no registre se entregan como NULL.')
+
+
+def validar_filas(filas: list[dict]) -> list[str]:
+    """Reglas de calidad del contrato; devuelve los problemas encontrados (vacío si todo está bien)."""
+    problemas = []
+    estados = {f['estado_matricula'] for f in filas}
+    if estados - ESTADOS_VALIDOS:
+        problemas.append(f'Estados no reconocidos: {sorted(estados - ESTADOS_VALIDOS)}')
+    modalidades = {f['modalidad'] for f in filas}
+    if modalidades - MODALIDADES_VALIDAS:
+        problemas.append(f'Modalidades no reconocidas: {sorted(modalidades - MODALIDADES_VALIDAS)}')
+    fuera = sum(1 for f in filas if not (0 <= float(f['promedio']) <= 10) or not (0 <= float(f['asistencia_pct']) <= 100))
+    if fuera:
+        problemas.append(f'{fuera} filas con promedio fuera de 0-10 o asistencia fuera de 0-100')
+    return problemas

@@ -1,41 +1,42 @@
-# Versiones fijadas (Python 3.14). El listado completo con dependencias
-# transitivas está en requirements.lock.txt (pip freeze) — usarlo para
+# Dependencias del backend (versión 3 del prototipo).
+# Versiones fijadas y probadas con Python 3.13 y 3.14. El listado completo con
+# dependencias transitivas está en requirements.lock.txt; usarlo para
 # reproducir exactamente el entorno con el que se obtuvieron las métricas.
 
-# API
+# API web
 fastapi==0.141.1
 uvicorn==0.54.0
 pydantic==2.13.5
 python-multipart==0.0.32
 python-jose[cryptography]==3.5.0
-passlib[bcrypt]==1.7.4
 bcrypt==5.0.0
-sentry-sdk[fastapi]==2.70.0
+cryptography==50.0.2
 
-# Datos
-SQLAlchemy==2.1.0
+# Datos y base de datos
 pyodbc==5.3.0
 python-dotenv==1.2.3
 pandas==3.0.6
 numpy==2.5.3
-openpyxl==3.1.5
-redis==8.1.0
-google-cloud-storage==3.15.0
+pyarrow==25.0.1
 
-# Motor NL2SQL
-langchain==1.4.2
-langchain-openai==1.6.6
-requests==2.34.2
-beautifulsoup4==4.15.0
-lxml==6.1.3
-
-# Aprendizaje automático
+# Aprendizaje automático (CRISP-DM: modelado, evaluación y explicación)
 scikit-learn==1.9.1
 scipy==1.18.1
-joblib==1.6.0
+lightgbm==4.7.0
+optuna==5.0.0
 imbalanced-learn==0.14.2
 shap==0.52.0
+joblib==1.6.0
 matplotlib==3.11.2
+
+# Consulta conversacional (NL2SQL)
+openai==3.26.0
+sqlglot==30.21.0
+
+# Reportes ejecutivos
+openpyxl==3.1.5
+reportlab==5.0.1
 
 # Pruebas
 pytest==9.1.1
+httpx==0.28.1
