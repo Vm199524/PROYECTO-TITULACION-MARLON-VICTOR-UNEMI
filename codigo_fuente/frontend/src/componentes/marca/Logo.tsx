@@ -42,7 +42,7 @@ function Placa({ id, children }: { id: string; children: ReactNode }) {
   )
 }
 
-export function Logo({ className, animado = true }: { className?: string; animado?: boolean }) {
+export function Logo({ className, animado = true, trazo = false }: { className?: string; animado?: boolean; trazo?: boolean }) {
   // useId: varios logos en pantalla no deben compartir ids de <defs>.
   const id = `logo${useId().replace(/:/g, '')}`
 
@@ -53,12 +53,23 @@ export function Logo({ className, animado = true }: { className?: string; animad
       <path d="M16 16.6v4.2c0 2.3 16 2.3 16 0v-4.2L24 19.8Z" fill="#fff" fillOpacity="0.72" />
       <path d="M37.2 14.4v6.4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
       {/* Trayectoria por periodos */}
-      <path d="M8.5 38.5 16 33l7 2.2 8.2-6.4" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M8.5 38.5 16 33l7 2.2 8.2-6.4"
+        pathLength={1}
+        className={trazo ? 'logo-trazo' : undefined}
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       <circle cx="16" cy="33" r="1.7" fill="#fff" />
       <circle cx="23" cy="35.2" r="1.7" fill="#fff" />
       {/* Alerta temprana */}
-      <circle cx="36" cy="26.6" r="5" fill="var(--marca-alerta)" opacity="0.28" />
-      <circle cx="36" cy="26.6" r="3.2" fill="var(--marca-alerta)" stroke="#fff" strokeWidth="1.3" />
+      <g className={trazo ? 'logo-alerta' : undefined}>
+        <circle cx="36" cy="26.6" r="5" fill="var(--marca-alerta)" opacity="0.22" />
+        <circle cx="36" cy="26.6" r="3.2" fill="var(--marca-alerta)" stroke="#fff" strokeWidth="1.3" />
+      </g>
       {animado && (
         <g transform="rotate(20 24 24)">
           <rect className="logo-destello" x="17" y="-12" width="12" height="72" fill="#fff" fillOpacity="0.3" />
@@ -89,6 +100,39 @@ export function Logo({ className, animado = true }: { className?: string; animad
         </span>
       </span>
     </span>
+  )
+}
+
+/**
+ * Emblema de la pantalla de apertura: la ficha del logo (que dibuja su trayectoria y
+ * enciende la alerta al aparecer) dentro de un halo que respira, una órbita punteada
+ * en degradado azul-naranja que gira lenta y dos satélites que la recorren en sentido
+ * contrario: el sistema vigilando, sin pausa, a cada estudiante.
+ */
+export function Emblema({ className }: { className?: string }) {
+  const id = `emblema${useId().replace(/:/g, '')}`
+  return (
+    <div role="img" aria-label={NOMBRE_SISTEMA} className={cn('emblema relative shrink-0', className)}>
+      <span className="emblema-halo absolute inset-[6%] rounded-full" aria-hidden="true" />
+      <svg viewBox="0 0 100 100" className="emblema-orbita absolute inset-0 h-full w-full" aria-hidden="true">
+        <defs>
+          <linearGradient id={`${id}-orbita`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="rgb(var(--accent))" />
+            <stop offset="1" stopColor="var(--marca-medio)" />
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="50" r="47" fill="none" stroke={`url(#${id}-orbita)`} strokeWidth="1.1" strokeDasharray="1.5 4.5" strokeLinecap="round" />
+      </svg>
+      <svg viewBox="0 0 100 100" className="emblema-satelites absolute inset-0 h-full w-full" aria-hidden="true">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="rgb(var(--accent) / 0.14)" strokeWidth="1" />
+        <circle cx="50" cy="10" r="3.2" fill="var(--marca-medio)" />
+        <circle cx="50" cy="10" r="6" fill="var(--marca-medio)" opacity="0.18" />
+        <circle cx="50" cy="90" r="2.2" fill="rgb(var(--accent))" />
+      </svg>
+      <span className="emblema-ficha absolute inset-[23%]">
+        <Logo className="h-full w-full drop-shadow-[0_10px_20px_var(--marca-sombra)]" trazo />
+      </span>
+    </div>
   )
 }
 
