@@ -1,6 +1,5 @@
 @startuml av2_colaboracion
 !include _estilo.iuml
-title Diagrama de colaboración: calificación de estudiantes activos
 left to right direction
 skinparam linetype ortho
 object ":Orquestador\n(scripts.pipeline)" as O

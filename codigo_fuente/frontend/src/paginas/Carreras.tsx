@@ -50,7 +50,7 @@ function Validacion({ v }: { v: Segmentacion['validacion'] }) {
     },
     {
       nombre: 'Diferencia real de abandono entre grupos (Kruskal-Wallis)',
-      valor: kw ? `p = ${decimal(kw.p, 4)}` : '—',
+      valor: kw ? (kw.p < 0.001 ? 'p < 0,001' : `p = ${decimal(kw.p, 3)}`) : '—',
       lectura: kw ? (kw.p < 0.05 ? 'La tasa de abandono difiere entre segmentos (no es azar).' : 'Las tasas no difieren de forma significativa.') : '—',
     },
   ]

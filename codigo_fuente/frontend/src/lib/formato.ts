@@ -9,9 +9,13 @@
 const VACIO = '—'
 const nf = (min: number, max: number) => new Intl.NumberFormat('es-EC', { minimumFractionDigits: min, maximumFractionDigits: max })
 const ENTERO = nf(0, 0)
-const UNO = nf(1, 1)
-const DOS = nf(2, 2)
-const TRES = nf(3, 3)
+const DECIMALES = new Map<number, Intl.NumberFormat>()
+const conDecimales = (n: number) => {
+  if (!DECIMALES.has(n)) DECIMALES.set(n, nf(n, n))
+  return DECIMALES.get(n) as Intl.NumberFormat
+}
+const UNO = conDecimales(1)
+const DOS = conDecimales(2)
 
 const vacio = (v: unknown) => v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v))
 
@@ -21,7 +25,7 @@ export function entero(v: number | null | undefined): string {
 
 export function decimal(v: number | null | undefined, decimales = 2): string {
   if (vacio(v)) return VACIO
-  return (decimales === 1 ? UNO : decimales === 3 ? TRES : DOS).format(v as number)
+  return conDecimales(Math.max(0, Math.min(6, Math.round(decimales)))).format(v as number)
 }
 
 /** Porcentaje a partir de un valor ya expresado en 0–100. */

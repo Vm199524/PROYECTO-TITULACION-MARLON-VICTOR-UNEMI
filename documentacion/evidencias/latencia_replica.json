@@ -1,0 +1,42 @@
+{
+ "rutas": {
+  "/panel/resumen": [
+   200,
+   177,
+   197
+  ],
+  "/estudiantes?riesgo=ALTO&pagina=1": [
+   200,
+   41,
+   44
+  ],
+  "/carreras/segmentos": [
+   200,
+   4,
+   6
+  ],
+  "/modelo/calidad": [
+   200,
+   4,
+   5
+  ],
+  "/referentes": [
+   200,
+   24,
+   27
+  ],
+  "/seguimiento": [
+   200,
+   142,
+   146
+  ],
+  "/estudiantes/{token}": [
+   200,
+   44,
+   45
+  ]
+ },
+ "mediana_ms": 41,
+ "p95_ms": 178,
+ "nota": "Réplica de validación (SQLite) en la nube, 10 solicitudes por servicio; [código HTTP, mediana ms, máximo ms]."
+}

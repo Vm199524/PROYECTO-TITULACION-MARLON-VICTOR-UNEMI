@@ -1,0 +1,37 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<body>
+<div class="fila" style="margin-bottom:6px">
+  <div class="caja" style="text-align:center"><b>Autoridad académica</b>panel, consulta, reportes</div>
+  <div class="caja" style="text-align:center"><b>Bienestar estudiantil</b>ficha, simulador, seguimiento</div>
+  <div class="caja" style="text-align:center"><b>Administración de TI</b>cuentas, auditoría, procesos</div>
+</div>
+<div class="flecha">▼ navegador web (HTTPS · JSON)</div>
+<div class="capa"><h3>1. Capa de presentación · React 18 + TypeScript + Tailwind</h3>
+  <div class="fila">
+    <div class="caja">Panel ejecutivo · Estudiantes en riesgo · Ficha y simulador · Seguimiento</div>
+    <div class="caja">Consulta conversacional · Carreras · Referentes · Calidad del modelo · Reportes</div>
+  </div>
+</div>
+<div class="flecha">▼ token JWT + institución activa (X-Institucion)</div>
+<div class="capa"><h3>2. Capa de servicios · API REST FastAPI (24 rutas por rol)</h3>
+  <div class="fila">
+    <div class="caja"><b>Predicción</b>probabilidad calibrada, razones SHAP, simulador</div>
+    <div class="caja naranja"><b>Consulta NL2SQL</b>barreras, 40 métricas certificadas, validador sqlglot</div>
+    <div class="caja"><b>Seguridad</b>roles, cédulas enmascaradas, tokens Fernet, auditoría</div>
+    <div class="caja"><b>Reportes</b>Excel y PDF ejecutivos</div>
+  </div>
+</div>
+<div class="flecha">▼ cuentas de mínimo privilegio: chat_reader (solo vistas) · app_seguimiento (2 procedimientos)</div>
+<div class="fila">
+  <div class="capa" style="flex:2;margin-bottom:0"><h3>3. Capa de datos · SQL Server 2022</h3>
+    <div class="fila">
+      <div class="caja"><b>Bases operativas</b>UNEMI_PRUEBAS<br>OULAD_PRUEBAS</div>
+      <div class="caja oscura"><b>ALMACEN_ACADEMICO</b>esquema estrella, vistas VIS_* filtradas por SESSION_CONTEXT, procedimientos de seguimiento</div>
+    </div>
+  </div>
+  <div class="capa" style="flex:1.25;margin-bottom:0"><h3>4. Procesos por lotes (CRISP-DM)</h3>
+    <div class="caja" style="margin-bottom:4px">ETL → entrenar → calificar → segmentar → reportes</div>
+    <div class="caja naranja"><b>Proveedores de IA</b>Gemini → Groq → NVIDIA NIM → DeepSeek (sin filas de datos)</div>
+  </div>
+</div>
+</body></html>

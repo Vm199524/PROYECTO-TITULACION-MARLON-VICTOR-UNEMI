@@ -3,12 +3,14 @@
 skinparam dpi 200
 skinparam shadowing false
 skinparam defaultFontName Arial
-skinparam defaultFontSize 12
 skinparam ArrowColor #0B5C7E
 skinparam ArrowFontSize 11
 skinparam backgroundColor #FFFFFF
 skinparam roundCorner 10
 skinparam padding 4
+skinparam wrapWidth 150
+skinparam maxMessageSize 115
+skinparam defaultFontSize 13
 skinparam NoteBackgroundColor #FFF4EA
 skinparam NoteBorderColor #FF6900
 skinparam sequence {

@@ -1,5 +1,5 @@
 /**
- * src/componentes/marca/Logo.tsx — identidad visual del sistema (RNF-09).
+ * src/componentes/marca/Logo.tsx — identidad visual del sistema (RNF-07).
  *
  * `Logo` es el isotipo y `Marca` el bloque completo (isotipo + nombre + bajada).
  * El isotipo es una ficha con dos caras que gira sobre su propio eje vertical:

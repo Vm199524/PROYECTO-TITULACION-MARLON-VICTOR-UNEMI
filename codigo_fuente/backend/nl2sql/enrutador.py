@@ -51,6 +51,21 @@ def normalizar(texto: str) -> str:
     return re.sub(r'\s+', ' ', t).strip()
 
 
+# Expresiones coloquiales con que una autoridad nombra el abandono; se llevan a
+# una sola forma antes de comparar, tanto en la pregunta como en los ejemplos.
+_SINONIMOS = (
+    (r'\b(dejar|dejen|deje|dejan) (la carrera|los estudios|de estudiar|la universidad)\b', 'abandonar'),
+    (r'\b(desertar|desercion|desertores|retirarse|se retiren|retiro estudiantil)\b', 'abandono'),
+    (r'\bestudiantes?\b', 'alumnos'),
+)
+
+
+def canonizar(texto_norm: str) -> str:
+    for patron, reemplazo in _SINONIMOS:
+        texto_norm = re.sub(patron, reemplazo, texto_norm)
+    return texto_norm
+
+
 @dataclass
 class Entidades:
     carrera: str | None = None
@@ -122,7 +137,7 @@ def extraer_entidades(pregunta: str, carreras: list[str], facultades: list[str])
     if m:
         e.n = max(1, min(int(m.group(1)), 200))
         forma = forma.replace(m.group(1), '<n>', 1)
-    e.forma = re.sub(r'\s+', ' ', forma).strip()
+    e.forma = re.sub(r'\s+', ' ', canonizar(forma)).strip()
     return e
 
 
@@ -137,7 +152,7 @@ def _indice():
     textos, duenos = [], []
     for i, m in enumerate(metricas):
         for p in m['preguntas']:
-            textos.append(normalizar(p))
+            textos.append(canonizar(normalizar(p)))
             duenos.append(i)
     vectorizador = TfidfVectorizer(analyzer='char_wb', ngram_range=(3, 5), sublinear_tf=True)
     matriz = vectorizador.fit_transform(textos)
@@ -164,6 +179,9 @@ _GENERICAS = {
 }
 
 
+_DEL_MODELO = re.compile(r'riesgo|probab|abandon|alerta|prediccion|modelo|desert|segment')
+
+
 def _raiz(palabra: str) -> str:
     """Reducción mínima de plurales para comparar vocabulario («carreras» → «carrera»)."""
     for sufijo in ('es', 's'):
@@ -178,7 +196,7 @@ def _terminos(texto: str) -> set[str]:
 
 @lru_cache(maxsize=1)
 def _vocabularios() -> list[set[str]]:
-    return [set().union(*(_terminos(normalizar(p)) for p in m['preguntas'])) | _terminos(normalizar(m['titulo']))
+    return [set().union(*(_terminos(canonizar(normalizar(p))) for p in m['preguntas'])) | _terminos(canonizar(normalizar(m['titulo'])))
             for m in catalogo()]
 
 
@@ -205,10 +223,22 @@ def buscar(entidades: Entidades, cuantas: int = 5) -> list[Coincidencia]:
         faltantes = [p for p in m['parametros'] if p != 'n' and not entidades.valor(p)]
         no_cubiertos = terminos - _vocabularios()[i]
         sim -= 0.12 * len(no_cubiertos)
-        # Una pregunta que nombra una carrera o facultad no se responde con la métrica de toda la institución.
+        # Una pregunta que nombra una carrera o facultad nunca se responde con una métrica que no
+        # filtra por ella (la cifra sería la de toda la institución).
         for entidad in ('carrera', 'facultad'):
             if entidades.valor(entidad) and entidad not in m['parametros']:
-                sim -= 0.25
+                sim -= 1.0
+        # Las métricas del modelo (probabilidad, nivel de riesgo) exigen que la pregunta hable de
+        # riesgo o abandono: «el promedio de los activos» se refiere a calificaciones.
+        sql_m = m['sql'].lower()
+        if ('probabilidad' in sql_m or 'riesgo_categoria' in sql_m) and not _DEL_MODELO.search(entidades.forma):
+            sim -= 1.0
+        # Un nivel de riesgo concreto («riesgo medio») solo lo responde una métrica que filtre por nivel.
+        if len(entidades.riesgo) == 1 and 'riesgo' not in m['parametros']:
+            sim -= 1.0
+        # «¿Cuántos...?» pide una cifra: se prefieren las métricas que cuentan o suman sobre las que listan.
+        if entidades.forma.startswith('cuant') and 'count(' not in sql_m and 'sum(' not in sql_m:
+            sim -= 0.3
         salida.append(Coincidencia(m, round(sim, 4), faltantes, sorted(no_cubiertos)))
     salida.sort(key=lambda c: -c.similitud)
     return salida[:cuantas]

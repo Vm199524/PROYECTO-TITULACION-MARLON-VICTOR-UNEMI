@@ -1,7 +1,5 @@
 @startuml av2_arquitectura
 !include _estilo.iuml
-title Arquitectura en capas del sistema de alerta temprana
-left to right direction
 
 actor "Autoridad académica" as AUT
 actor "Bienestar estudiantil" as BIE

@@ -187,7 +187,8 @@ def comandos(paso: str, args) -> list[list[str]]:
     if paso == 'segmentar':
         return [py + ['ml.segmentar', '--institucion', i] for i in instituciones]
     if paso == 'reportes':
-        return [py + ['ml.reporte_validacion', '--institucion', i] for i in instituciones]
+        return ([py + ['ml.reporte_validacion', '--institucion', i] for i in instituciones] +
+                [py + ['ml.exploracion', '--institucion', i] for i in instituciones])
     if paso == 'diccionario':
         return [py + ['scripts.generar_diccionario']]
     if paso == 'usuarios':

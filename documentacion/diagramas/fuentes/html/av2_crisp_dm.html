@@ -1,0 +1,18 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><link rel="stylesheet" href="_base.css">
+<style>
+.ciclo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.f{border:1.2px solid #0b5c7e;border-radius:8px;background:#fff;padding:6px 7px;position:relative}
+.f .n{display:inline-block;background:#002e45;color:#fff;border-radius:50%;width:18px;height:18px;text-align:center;line-height:18px;font-weight:bold;margin-right:4px}
+.f h4{font-size:10pt;color:#002e45;margin-bottom:3px}
+.f .e{margin-top:4px;padding-top:4px;border-top:1px dashed #94a8ba;color:#b34700}
+.centro{grid-column:1/4;text-align:center;border:1.2px dashed #e86100;border-radius:8px;padding:4px;background:#fff4ea;color:#002e45}
+</style>
+<body><div class="ciclo">
+<div class="f"><h4><span class="n">1</span>Comprensión del negocio</h4>Detectar a tiempo a quien abandonaría el próximo periodo; quién decide y con qué recursos.<div class="e">Entregable: objetivos, criterios de éxito, historias de usuario</div></div>
+<div class="f"><h4><span class="n">2</span>Comprensión de los datos</h4>Trayectorias UNEMI (sintéticas) y OULAD (reales): calidad, estados y prevalencia.<div class="e">Entregable: perfiles de institución y reglas de calidad</div></div>
+<div class="f"><h4><span class="n">3</span>Preparación de los datos</h4>ETL al esquema estrella y panel estudiante-periodo sin fuga de información futura.<div class="e">Entregable: ALMACEN_ACADEMICO y 25 a 37 variables</div></div>
+<div class="centro">Iteración: los resultados de cada fase retroalimentan a las anteriores (umbrales, variables, reglas)</div>
+<div class="f"><h4><span class="n">6</span>Despliegue</h4>Calificación por lotes, API por roles, interfaz web y reportes.<div class="e">Entregable: prototipo web y monitoreo PSI</div></div>
+<div class="f"><h4><span class="n">5</span>Evaluación</h4>Prueba temporal, prospectiva, calibración, equidad y exactitud de la consulta.<div class="e">Entregable: métricas y ficha del modelo</div></div>
+<div class="f"><h4><span class="n">4</span>Modelado</h4>RF ponderado, RF + SMOTE, regresión logística y LightGBM + Optuna; K-means.<div class="e">Entregable: paquete del modelo calibrado</div></div>
+</div></body></html>

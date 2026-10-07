@@ -13,7 +13,7 @@
  * La secuencia de apertura ocurre una sola vez y se apaga con movimiento reducido.
  * Un solo envío por clic y el error se muestra una vez.
  */
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { IconoChispa, IconoConsulta, IconoLlave, IconoModelo, IconoSeguimiento, IconoSimular, IconoTendencia, type Icono } from '../componentes/iconos'
 import { BAJADA_SISTEMA, Emblema, NOMBRE_SISTEMA } from '../componentes/marca/Logo'
@@ -224,6 +224,30 @@ function Trazas({ movimiento }: { movimiento: boolean }) {
   )
 }
 
+/** true desde `px` de ancho: la tarjeta se monta una sola vez (un solo formulario en el DOM). */
+function useAnchoMinimo(px: number): boolean {
+  const consulta = `(min-width: ${px}px)`
+  const [cumple, setCumple] = useState(() => {
+    try {
+      return window.matchMedia(consulta).matches
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    let mq: MediaQueryList
+    try {
+      mq = window.matchMedia(consulta)
+    } catch {
+      return
+    }
+    const cambio = () => setCumple(mq.matches)
+    mq.addEventListener('change', cambio)
+    return () => mq.removeEventListener('change', cambio)
+  }, [consulta])
+  return cumple
+}
+
 export default function Ingresar() {
   const { ingresar, avisoSalida } = useSesion()
   const navegar = useNavigate()
@@ -232,6 +256,7 @@ export default function Ingresar() {
   const [clave, setClave] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  const escenario = useAnchoMinimo(1320)
   const movimiento = useMemo(() => {
     try {
       return !window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -329,13 +354,13 @@ export default function Ingresar() {
             </div>
           ))}
           <div className="absolute top-1/2 -translate-y-1/2" style={{ left: TARJETA.x, width: TARJETA.ancho }}>
-            {tarjeta}
+            {escenario && tarjeta}
           </div>
         </div>
 
         {/* Pantallas menores: tarjeta y, debajo, los nodos en rejilla. */}
         <div className="flex w-full flex-col items-center min-[1320px]:hidden">
-          {tarjeta}
+          {!escenario && tarjeta}
           <div className="mt-8 grid w-full max-w-3xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[...IZQUIERDA, ...DERECHA].map((n, i) => (
               <TarjetaNodo key={n.titulo} nodo={n} lado="der" indice={i} />

@@ -1,0 +1,29 @@
+@startuml av2_secuencia_consulta_ia
+!include _estilo.iuml
+autonumber
+participant "API\n/consulta" as API
+participant "Enrutador" as R
+participant "Generador\nLLM" as LLM
+participant "Validador\nsqlglot" as V
+database "Almacén\n(chat_reader)" as BD
+
+API -> R : ejemplos certificados más parecidos
+R --> API : 3 pares pregunta-SQL
+API -> LLM : pregunta + esquema VIS_* + ejemplos (sin filas)
+LLM --> API : JSON {sql, título, visualización}
+API -> V : validar árbol SQL
+alt inválido: no es SELECT, sale de VIS_* o tiene varias sentencias
+  V --> API : problemas
+  API -> LLM : corregir una sola vez
+  LLM --> API : SQL corregido
+  API -> V : validar de nuevo
+end
+V --> API : SQL válido con TOP 500
+API -> BD : SESSION_CONTEXT + SELECT
+BD --> API : filas
+opt la autoridad pide «Interpretar con IA»
+  API -> LLM : resultado seudonimizado
+  LLM --> API : interpretación
+  API -> API : verifica que cada cifra exista en el resultado
+end
+@enduml

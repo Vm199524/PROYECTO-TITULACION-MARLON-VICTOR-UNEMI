@@ -1,55 +1,32 @@
 @startuml av2_secuencia_consulta
 !include _estilo.iuml
-title Secuencia de una consulta en lenguaje natural (NL2SQL)
 autonumber
-actor "Autoridad académica" as A
-participant "Interfaz web" as UI
-participant "API\n/api/consulta" as API
-participant "Barreras de\nintención" as G
-participant "Enrutador semántico\n(40 métricas)" as R
-participant "Generador\n(cascada LLM)" as LLM
-participant "Validador\nsqlglot" as V
-database "ALMACEN_ACADEMICO\n(chat_reader)" as BD
+actor "Autoridad\nacadémica" as A
+participant "Interfaz\nweb" as UI
+participant "API\n/consulta" as API
+participant "Barreras" as G
+participant "Enrutador\n(40 métricas)" as R
+database "Almacén\n(chat_reader)" as BD
 participant "Redactor" as RED
 
 A -> UI : escribe la pregunta en español
-UI -> API : POST pregunta + token JWT + X-Institucion
-API -> API : valida token, rol (consultar)\ne institución asignada
+UI -> API : POST pregunta + JWT + X-Institucion
+API -> API : valida rol (consultar) e institución asignada
 API -> G : clasificar(pregunta)
 alt escritura, inyección, otra institución o tablas físicas
   G --> API : BARRERA + motivo
   API --> UI : mensaje de bloqueo (no toca la base)
 else consulta válida
   G --> API : CONSULTA
-  API -> R : extraer entidades (carrera, riesgo, año, n)\ny buscar métrica (TF-IDF)
-  alt métrica certificada con cobertura total
-    R --> API : SQL fijo + parámetros enlazados
-  else pregunta abierta
-    API -> LLM : pregunta + esquema VIS_* + ejemplos\ncertificados similares (sin filas)
-    LLM --> API : JSON {sql, título, visualización}
-    API -> V : validar árbol SQL
-    alt inválido (no SELECT, fuera de VIS_*, varias sentencias)
-      V --> API : problemas
-      API -> LLM : corregir una sola vez
-      LLM --> API : SQL corregido
-      API -> V : validar de nuevo
-    end
-    V --> API : SQL válido con TOP 500
-  end
-  API -> BD : sp_set_session_context(institución, read_only)\n+ SELECT en la misma conexión
-  BD --> API : columnas y filas de la institución activa
-  API -> RED : resumen determinista y visualización
+  API -> R : entidades (carrera, riesgo, año, n) y búsqueda TF-IDF
+  R --> API : métrica certificada: SQL fijo + parámetros
+  note right of R : si no hay métrica con\ncobertura total, sigue la\nruta generada (Figura siguiente)
+  API -> BD : SESSION_CONTEXT(institución, solo lectura) + SELECT
+  BD --> API : filas de la institución activa
+  API -> RED : resumen y visualización
   RED --> API : texto que solo cita cifras del resultado
-  API -> API : enmascarar cédulas · registrar auditoría
-  API --> UI : respuesta {origen, título, filas, gráfico}
+  API -> API : enmascara cédulas y registra auditoría
+  API --> UI : {origen, título, filas, gráfico}
 end
 UI --> A : cifra, gráfico o tabla con su origen
-opt lectura con IA
-  A -> UI : «Interpretar con IA»
-  UI -> API : POST /consulta/{id}/interpretar
-  API -> LLM : resultado seudonimizado
-  LLM --> API : interpretación
-  API -> API : verificar que cada cifra exista en el resultado
-  API --> UI : interpretación «verificada» o aviso
-end
 @enduml

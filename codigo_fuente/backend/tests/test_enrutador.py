@@ -55,3 +55,21 @@ def test_no_certifica_si_quedan_terminos_sin_cubrir():
 
 def test_normalizar_quita_tildes_y_mayusculas():
     assert enrutador.normalizar('¿Cuántos ALUMNOS de Psicología?') == enrutador.normalizar('cuantos alumnos de psicologia')
+
+
+def test_sinonimos_de_abandono_llegan_a_la_metrica():
+    # «dejar la carrera» y «estudiantes» se llevan a la forma del catálogo.
+    c = elegir('cuantos estudiantes estan en riesgo alto de dejar la carrera')
+    assert c is not None and c.metrica['id'] == 'riesgo_nivel_total'
+
+
+def test_carrera_nombrada_no_usa_metrica_institucional():
+    # Con una carrera en la pregunta, la cifra de toda la institución sería incorrecta.
+    c = elegir('¿Cuántos estudiantes de Enfermería tienen riesgo medio?')
+    assert c is None or 'carrera' in c.metrica['parametros']
+
+
+def test_promedio_sin_riesgo_no_va_a_metricas_del_modelo():
+    # «el promedio de los activos» habla de calificaciones, no de probabilidad de abandono.
+    c = elegir('¿cuál es el promedio de los estudiantes activos de Enfermería?')
+    assert c is None or 'probabilidad' not in c.metrica['sql'].lower()

@@ -1,6 +1,5 @@
 @startuml av2_secuencia_ficha
 !include _estilo.iuml
-title Secuencia de la ficha del estudiante, la simulación y el registro de seguimiento
 autonumber
 actor "Bienestar estudiantil" as B
 participant "Interfaz web" as UI
