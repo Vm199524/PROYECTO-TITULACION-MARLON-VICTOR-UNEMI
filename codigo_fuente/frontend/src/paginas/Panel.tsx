@@ -19,7 +19,7 @@ import { Skeleton } from '../componentes/ui/Skeleton'
 import { useToast } from '../componentes/ui/Toast'
 import { descargar } from '../lib/api'
 import { useDatos } from '../lib/consultas'
-import { entero, fechaHora, porcentaje, primerNombre, proporcion, saludo } from '../lib/formato'
+import { capital, entero, fechaHora, porcentaje, primerNombre, proporcion, saludo } from '../lib/formato'
 import { useSesion } from '../lib/sesion'
 import { NOMBRE_MODELO } from '../lib/modelos'
 import type { ResumenPanel } from '../lib/tipos'
@@ -66,7 +66,7 @@ function Confiabilidad({ c }: { c: ResumenPanel['confiabilidad'] }) {
           <div key={f.titulo}>
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-[13px] font-medium text-foreground">{f.titulo}</p>
-              <p className="tabular text-[15px] font-semibold text-foreground">{f.valor}</p>
+              <p className="tabular whitespace-nowrap text-[15px] font-semibold text-foreground">{f.valor}</p>
             </div>
             <Barra valor={f.barra} etiqueta={f.titulo} className="mt-2" />
             {f.lectura && <p className="mt-1.5 text-xs text-muted-foreground">{f.lectura}</p>}
@@ -105,7 +105,7 @@ function Alertas({ datos }: { datos: ResumenPanel }) {
                     <p className="truncate text-[13.5px] font-medium text-foreground">{a.nombre}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {a.carrera}
-                      {a.factor ? ` · ${a.factor}` : ''}
+                      {a.factor ? ` · ${capital(a.factor)}` : ''}
                     </p>
                   </div>
                   <div className="text-right">

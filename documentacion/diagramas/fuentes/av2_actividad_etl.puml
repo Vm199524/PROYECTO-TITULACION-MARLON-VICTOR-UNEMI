@@ -1,0 +1,37 @@
+@startuml av2_actividad_etl
+!include _estilo.iuml
+title Diagrama de actividades del ETL hacia el almacén académico
+|Orquestador|
+start
+:Leer el perfil de la institución\n(etl/perfiles.py);
+|Base operativa|
+:Ejecutar el SELECT del perfil\n(alias al contrato del almacén);
+|ETL|
+:Validar columnas obligatorias y opcionales;
+if (¿Falta una columna del contrato?) then (sí)
+  :Registrar el error y detener;
+  stop
+endif
+:Aplicar reglas de calidad\n(estados, modalidades, rangos 0–10 y 0–100);
+if (¿Hay problemas de calidad?) then (sí)
+  :Informar las filas con problemas;
+  stop
+else (no)
+endif
+|ALMACEN_ACADEMICO|
+:MERGE dim_institucion;
+:Borrar hechos de ESA institución\n(predicciones, segmentos, trayectoria);
+fork
+  :Alta de periodos académicos;
+fork again
+  :Alta de sedes y carreras;
+fork again
+  :Alta de fechas en dim_tiempo;
+end fork
+:MERGE dim_alumno desde tabla temporal\n(conserva la clave del estudiante);
+:Resolver claves sustitutas;
+:Insertar fact_matriculas por lotes de 20 000;
+|Orquestador|
+:Registrar filas cargadas y duración\nen pipeline_estado.json;
+stop
+@enduml

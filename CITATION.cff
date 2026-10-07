@@ -1,14 +1,18 @@
 cff-version: 1.2.0
 message: "Si usas este software o sus resultados, cítalo con estos metadatos."
 type: software
-title: "VicMar Data AI: modelo predictivo de abandono estudiantil mediante inteligencia de negocios y procesamiento de lenguaje natural"
+title: "Prototipo de un sistema web para predecir el abandono en estudiantes universitarios mediante aprendizaje automático y consulta conversacional"
 abstract: >-
-  Prototipo de inteligencia de negocios para Instituciones de Educación Superior
-  que estima, para cada alumno activo, la probabilidad de abandonar en el periodo
-  siguiente (Random Forest sobre un panel alumno-periodo, con validación cruzada
-  agrupada por alumno y prueba temporal), explica cada predicción con SHAP,
-  segmenta las carreras por riesgo y permite consultar los resultados en español
-  mediante NL2SQL de solo lectura con aislamiento por institución.
+  Sistema web de alerta temprana para instituciones de educación superior. Estima,
+  para cada estudiante activo, la probabilidad calibrada de abandonar en el periodo
+  siguiente (cuatro modelos candidatos —Random Forest ponderado, Random Forest con
+  SMOTE, regresión logística y LightGBM ajustado con Optuna— con validación cruzada
+  agrupada por estudiante, prueba temporal y prueba prospectiva), explica cada
+  predicción con SHAP, sugiere acciones de acompañamiento, segmenta las carreras con
+  K-means validado y permite consultar los resultados en español mediante NL2SQL de
+  solo lectura con métricas certificadas, validación del árbol SQL y aislamiento por
+  institución. Validado con datos sintéticos de la UNEMI y con datos reales
+  anonimizados de la Open University (OULAD).
 authors:
   - family-names: "Pérez Almachi"
     given-names: "Marlon David"
@@ -17,14 +21,15 @@ authors:
     given-names: "Víctor Manuel"
     affiliation: "Universidad Estatal de Milagro"
 repository-code: "https://github.com/Vm199524/PROYECTO-TITULACION-MARLON-VICTOR-UNEMI"
-version: "avance-2"
-date-released: 2026-09-25
+version: "3.0.0"
+date-released: 2026-10-07
 keywords:
   - abandono estudiantil
+  - alerta temprana
   - educación superior
   - aprendizaje automático
-  - random forest
+  - LightGBM
   - SHAP
-  - inteligencia de negocios
+  - consulta conversacional
   - NL2SQL
   - CRISP-DM

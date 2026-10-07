@@ -10,7 +10,7 @@ import { lazy, Suspense } from 'react'
 import { IconoCarreras } from '../componentes/iconos'
 import { EncabezadoPagina } from '../componentes/layout/EncabezadoPagina'
 import { Badge, type VarianteBadge } from '../componentes/ui/Badge'
-import { BotonEnlace } from '../componentes/ui/Button'
+import { Link } from 'react-router-dom'
 import { Card, CardBody, CardHeader } from '../componentes/ui/Card'
 import { EmptyState, EstadoError } from '../componentes/ui/Estados'
 import { Skeleton } from '../componentes/ui/Skeleton'
@@ -27,9 +27,9 @@ export const VARIANTE_SEGMENTO: Record<string, VarianteBadge> = {
   'Bajo riesgo': 'success',
 }
 const DESCRIPCION_SEGMENTO: Record<string, string> = {
-  'Atención prioritaria': 'Mayor abandono histórico o más estudiantes en riesgo hoy: conviene reforzar tutorías y apoyo.',
-  Estable: 'Indicadores intermedios: mantener el seguimiento y vigilar su evolución.',
-  'Bajo riesgo': 'Menor abandono y mejor rendimiento: sus prácticas pueden servir de referencia.',
+  'Atención prioritaria': 'El riesgo combinado más alto (abandono histórico y riesgo de sus estudiantes actuales): conviene reforzar tutorías y apoyo.',
+  Estable: 'Riesgo combinado intermedio: mantener el seguimiento y vigilar su evolución.',
+  'Bajo riesgo': 'El riesgo combinado más bajo, sobre todo por el menor riesgo de sus estudiantes actuales.',
 }
 
 function Validacion({ v }: { v: Segmentacion['validacion'] }) {
@@ -112,6 +112,7 @@ export default function Carreras() {
       carreras: del.length,
       enRiesgo: del.reduce((a, c) => a + c.activos_en_riesgo, 0),
       tasa: estudiantes ? del.reduce((a, c) => a + c.tasa_abandono_hist * c.estudiantes, 0) / estudiantes : null,
+      riesgo: estudiantes ? del.reduce((a, c) => a + c.riesgo_promedio * c.estudiantes, 0) / estudiantes : null,
     }
   })
 
@@ -119,7 +120,7 @@ export default function Carreras() {
     <div className="entrada">
       <EncabezadoPagina
         titulo="Carreras"
-        descripcion="Las carreras se agrupan por su perfil de abandono, rendimiento, asistencia y riesgo actual para decidir dónde reforzar el acompañamiento."
+        descripcion="Las carreras se agrupan con K-means por su abandono histórico, rendimiento, asistencia y riesgo actual. Los segmentos se ordenan por el riesgo combinado: el abandono que ya ocurrió y el que el modelo anticipa."
       />
       {error ? (
         <Card>
@@ -138,10 +139,19 @@ export default function Carreras() {
                   <Badge variant={VARIANTE_SEGMENTO[s.nombre]} dot>
                     {s.nombre}
                   </Badge>
-                  <span className="tabular text-[13px] text-muted-foreground">{entero(s.carreras)} carreras</span>
+                  <span className="tabular text-[13px] text-muted-foreground">{entero(s.carreras)} {s.carreras === 1 ? 'carrera' : 'carreras'}</span>
                 </div>
-                <p className="tabular mt-3 text-[26px] font-semibold tracking-tight text-foreground">{proporcion(s.tasa)}</p>
-                <p className="text-xs text-muted-foreground">abandono histórico ponderado · {entero(s.enRiesgo)} activos en riesgo</p>
+                <dl className="mt-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <dd className="tabular text-[22px] font-semibold tracking-tight text-foreground">{proporcion(s.tasa)}</dd>
+                    <dt className="text-xs text-muted-foreground">abandono histórico</dt>
+                  </div>
+                  <div>
+                    <dd className="tabular text-[22px] font-semibold tracking-tight text-foreground">{proporcion(s.riesgo)}</dd>
+                    <dt className="text-xs text-muted-foreground">riesgo actual promedio</dt>
+                  </div>
+                </dl>
+                <p className="mt-2 text-xs text-muted-foreground">{entero(s.enRiesgo)} estudiantes activos en riesgo medio o alto</p>
                 <p className="mt-3 text-[13px] text-muted-foreground">{DESCRIPCION_SEGMENTO[s.nombre]}</p>
               </Card>
             ))}
@@ -160,7 +170,7 @@ export default function Carreras() {
           </div>
 
           <Card className="overflow-hidden">
-            <CardHeader title="Detalle por carrera" description="Ordenado por segmento y abandono histórico." className="pb-4" />
+            <CardHeader title="Detalle por carrera" description="Ordenado por segmento y abandono histórico. Abra una carrera para ver sus estudiantes." className="pb-4" />
             <Table>
               <TableHead>
                 <tr>
@@ -172,14 +182,15 @@ export default function Carreras() {
                   <Th numero>Asistencia</Th>
                   <Th numero>Riesgo promedio</Th>
                   <Th numero>Activos en riesgo</Th>
-                  <Th />
                 </tr>
               </TableHead>
               <TableBody>
                 {carreras.map((c) => (
                   <TableRow key={c.carrera}>
                     <Td>
-                      <p className="font-medium">{c.carrera}</p>
+                      <Link to={`/estudiantes?carrera=${encodeURIComponent(c.carrera)}&riesgo=TODOS`} className="font-medium text-foreground hover:text-accent hover:underline">
+                        {c.carrera}
+                      </Link>
                       <p className="max-w-[300px] truncate text-xs text-muted-foreground">{c.facultad_nombre}</p>
                     </Td>
                     <Td>
@@ -191,11 +202,6 @@ export default function Carreras() {
                     <Td numero>{porcentaje(c.asistencia_hist)}</Td>
                     <Td numero>{proporcion(c.riesgo_promedio)}</Td>
                     <Td numero>{entero(c.activos_en_riesgo)}</Td>
-                    <Td className="text-right">
-                      <BotonEnlace to={`/estudiantes?carrera=${encodeURIComponent(c.carrera)}`} variant="ghost" size="sm">
-                        Ver estudiantes
-                      </BotonEnlace>
-                    </Td>
                   </TableRow>
                 ))}
               </TableBody>

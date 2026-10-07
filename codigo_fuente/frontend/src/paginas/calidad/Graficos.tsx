@@ -21,7 +21,7 @@ import {
 } from 'recharts'
 import { Leyenda, TooltipGrafico } from '../../componentes/graficos/Tooltip'
 import { useColores } from '../../componentes/graficos/colores'
-import { decimal, entero, proporcion } from '../../lib/formato'
+import { capital, decimal, entero, proporcion } from '../../lib/formato'
 import type { CalidadModelo } from '../../lib/tipos'
 import { NOMBRE_MODELO } from '../../lib/modelos'
 
@@ -132,7 +132,7 @@ export function Calibracion({ puntos }: { puntos: NonNullable<CalidadModelo['tem
 
 export function Importancia({ items }: { items: NonNullable<CalidadModelo['importancia']> }) {
   const c = useColores()
-  const datos = items.slice(0, 12).map((i) => ({ ...i, nombre: i.descripcion || i.variable }))
+  const datos = items.slice(0, 12).map((i) => ({ ...i, nombre: capital(i.descripcion || i.variable) }))
   return (
     <div style={{ height: 32 * datos.length + 30 }} role="img" aria-label="Importancia de las variables por permutación">
       <ResponsiveContainer width="100%" height="100%">
@@ -142,11 +142,11 @@ export function Importancia({ items }: { items: NonNullable<CalidadModelo['impor
           <YAxis
             type="category"
             dataKey="nombre"
-            width={250}
+            width={320}
             tickLine={false}
             axisLine={false}
             tick={{ fontSize: 12, fill: c['muted-foreground'] }}
-            tickFormatter={(v: string) => (v.length > 38 ? `${v.slice(0, 37)}…` : v)}
+            tickFormatter={(v: string) => (v.length > 48 ? `${v.slice(0, 47)}…` : v)}
           />
           <Tooltip cursor={{ fill: c.border, opacity: 0.35 }} content={<TooltipGrafico formato={(v) => `${decimal(v, 4)} de ROC-AUC`} />} />
           <Bar dataKey="media" name="Pérdida al permutar" fill={c['chart-1']} radius={[0, 4, 4, 0]} maxBarSize={20}>

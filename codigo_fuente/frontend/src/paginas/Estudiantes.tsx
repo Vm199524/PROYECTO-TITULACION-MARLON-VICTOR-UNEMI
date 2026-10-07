@@ -19,7 +19,7 @@ import { Skeleton } from '../componentes/ui/Skeleton'
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '../componentes/ui/Table'
 import { cn } from '../lib/cn'
 import { useDatos } from '../lib/consultas'
-import { decimal, entero, porcentaje, proporcion } from '../lib/formato'
+import { capital, decimal, entero, porcentaje, proporcion } from '../lib/formato'
 import type { ListaEstudiantes, Riesgo } from '../lib/tipos'
 
 type FiltroRiesgo = 'ALTO,MEDIO' | 'ALTO' | 'MEDIO' | 'BAJO' | 'TODOS'
@@ -164,7 +164,7 @@ export default function Estudiantes() {
                         <BadgeRiesgo riesgo={e.riesgo} corto />
                       </Td>
                       <Td className="max-w-[320px]">
-                        <p className="line-clamp-2 text-[13px] text-muted-foreground">{e.factores.slice(0, 2).join(' · ') || '—'}</p>
+                        <p className="line-clamp-2 text-[13px] text-muted-foreground">{capital(e.factores.slice(0, 2).join(' · ')) || '—'}</p>
                       </Td>
                     </TableRow>
                   ))}
@@ -183,7 +183,7 @@ export default function Estudiantes() {
                       </p>
                       <div className="mt-2 flex items-center gap-2">
                         <BadgeRiesgo riesgo={e.riesgo} corto />
-                        <span className="truncate text-xs text-muted-foreground">{e.factores[0]}</span>
+                        <span className="truncate text-xs text-muted-foreground">{capital(e.factores[0])}</span>
                       </div>
                     </div>
                     <div className="text-right">

@@ -1,0 +1,57 @@
+@startuml av2_arquitectura
+!include _estilo.iuml
+title Arquitectura en capas del sistema de alerta temprana
+left to right direction
+
+actor "Autoridad académica" as AUT
+actor "Bienestar estudiantil" as BIE
+actor "Administración de TI" as ATI
+
+package "Capa de presentación (navegador)" {
+  component "Interfaz web\nReact 18 + TypeScript\nTailwind · Recharts" as UI
+}
+
+package "Capa de servicios (FastAPI · Python 3.13)" {
+  component "API REST por rol\n24 endpoints · JWT\nX-Institucion" as API
+  component "Seguridad y privacidad\nroles y capacidades\ntokens Fernet · cédulas\nenmascaradas · auditoría" as SEG
+  component "Motor de consulta\nconversacional (NL2SQL)\nbarreras · 40 métricas\ncertificadas · validador\nsqlglot · redactor" as NL
+  component "Servicio de predicción\nexplicación SHAP\nsimulador «¿qué pasaría si…?»" as PRED
+  component "Reportes ejecutivos\nExcel (openpyxl)\nPDF (reportlab)" as REP
+}
+
+package "Procesos por lotes (CRISP-DM)" {
+  component "ETL por perfil\nde institución" as ETL
+  component "Entrenamiento\nRF · RF+SMOTE · Logística\nLightGBM + Optuna\ncalibración de Platt" as ENT
+  component "Calificación\ny monitoreo PSI" as CAL
+  component "Segmentación\nK-means validado" as SEGM
+  artifact "Modelos (.joblib)\nmétricas (.json)" as MOD
+}
+
+package "Capa de datos (SQL Server 2022)" {
+  database "Bases operativas\nUNEMI_PRUEBAS\nOULAD_PRUEBAS" as OP
+  database "ALMACEN_ACADEMICO\nesquema estrella\nvistas VIS_* por\nSESSION_CONTEXT" as DW
+}
+
+cloud "Proveedores de IA\n(API compatible OpenAI)\nGemini → Groq →\nNVIDIA NIM → DeepSeek" as LLM
+
+AUT --> UI
+BIE --> UI
+ATI --> UI
+UI --> API : HTTPS / JSON
+API --> SEG
+API --> NL
+API --> PRED
+API --> REP
+NL --> LLM : pregunta + esquema\n(sin filas de datos)
+NL --> DW : SELECT · cuenta chat_reader
+API --> DW : procedimientos ·\ncuenta app_seguimiento
+PRED --> MOD
+OP --> ETL
+ETL --> DW
+DW --> ENT
+ENT --> MOD
+MOD --> CAL
+CAL --> DW
+DW --> SEGM
+SEGM --> DW
+@enduml

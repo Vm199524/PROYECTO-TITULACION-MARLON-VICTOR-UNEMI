@@ -24,7 +24,7 @@ function BarraLateral({ onNavegar }: { onNavegar?: () => void }) {
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="px-5 pb-4 pt-5">
         <Link to="/" onClick={onNavegar} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-foreground/60">
-          <Marca tono="claro" tamano="sm" />
+          <Marca tono="claro" tamano="sm" bajada="Alerta temprana" />
         </Link>
       </div>
       <nav aria-label="Navegación principal" className="flex-1 space-y-5 overflow-y-auto px-3 pb-6">

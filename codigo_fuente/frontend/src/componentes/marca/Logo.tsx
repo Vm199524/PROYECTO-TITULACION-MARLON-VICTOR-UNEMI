@@ -103,8 +103,10 @@ export function Marca({
   tono = 'auto',
   tamano = 'md',
   animado = true,
+  bajada = BAJADA_SISTEMA,
 }: {
   className?: string
+  bajada?: string
   /** `claro` sobre fondos oscuros (barra lateral); `auto` sigue el tema. */
   tono?: 'auto' | 'claro'
   tamano?: keyof typeof TAMANOS
@@ -125,7 +127,7 @@ export function Marca({
             tono === 'claro' ? 'text-sidebar-muted' : 'text-muted-foreground'
           )}
         >
-          {BAJADA_SISTEMA}
+          {bajada}
         </p>
       </div>
     </div>

@@ -72,13 +72,25 @@ def _escalar(df: pd.DataFrame, columnas: list[str]) -> np.ndarray:
     return StandardScaler().fit_transform(df[columnas].fillna(0.0))
 
 
+def indice_riesgo(df: pd.DataFrame) -> pd.Series:
+    """Índice para ordenar los segmentos con los dos resultados de riesgo (puntajes z):
+    el abandono que ya ocurrió (tasa histórica) y el que el modelo anticipa (riesgo
+    promedio de los activos). Promedio y asistencia agrupan, pero no ordenan: son causas
+    posibles, no el resultado que la autoridad quiere vigilar."""
+    z = lambda c: (df[c] - df[c].mean()) / (df[c].std(ddof=0) or 1.0)  # noqa: E731
+    return z('tasa_abandono_hist') + z('riesgo_promedio')
+
+
 def asignar(df: pd.DataFrame, k: int = 3, columnas: list[str] | None = None) -> pd.DataFrame:
-    """K-Means con etiquetas ordenadas por tasa media de abandono (nunca por el número del clúster)."""
+    """K-Means con etiquetas ordenadas por el índice de riesgo compuesto del clúster
+    (nunca por el número del clúster, que es arbitrario)."""
     columnas = columnas or INDICADORES
     k = min(k, len(df))
     df = df.copy()
     df['cluster'] = KMeans(n_clusters=k, random_state=SEMILLA, n_init=20).fit_predict(_escalar(df, columnas))
-    orden = df.groupby('cluster')['tasa_abandono_hist'].mean().sort_values(ascending=False).index.tolist()
+    df['_indice'] = indice_riesgo(df.fillna(0.0)) if 'riesgo_promedio' in df else df['tasa_abandono_hist']
+    orden = df.groupby('cluster')['_indice'].mean().sort_values(ascending=False).index.tolist()
+    df = df.drop(columns='_indice')
     etiquetas = SEGMENTOS if k == 3 else [f'Segmento {i + 1}' for i in range(k)]
     df['orden_segmento'] = df['cluster'].map({c: i + 1 for i, c in enumerate(orden)})
     df['segmento'] = df['orden_segmento'].map(lambda i: etiquetas[i - 1])
@@ -115,7 +127,7 @@ def validar(df: pd.DataFrame, k: int) -> dict:
                                    'silhouette': None if sil is None else round(float(sil), 4)}
     final = asignar(df, k)
     grupos = [g['tasa_abandono_hist'].to_numpy() for _, g in final.groupby('segmento')]
-    kw = kruskal(*grupos) if len(grupos) >= 2 and all(len(g) >= 2 for g in grupos) else None
+    kw = kruskal(*grupos) if len(grupos) >= 2 and sum(len(g) for g in grupos) > len(grupos) else None
     sin_riesgo = asignar(df, k, ['tasa_abandono_hist', 'promedio_hist', 'asistencia_hist'])
     return {
         'unidades': int(len(df)), 'k': k, 'barrido_k': barrido,

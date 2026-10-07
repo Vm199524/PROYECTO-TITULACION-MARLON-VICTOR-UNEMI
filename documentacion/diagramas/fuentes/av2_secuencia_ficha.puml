@@ -1,0 +1,31 @@
+@startuml av2_secuencia_ficha
+!include _estilo.iuml
+title Secuencia de la ficha del estudiante, la simulación y el registro de seguimiento
+autonumber
+actor "Bienestar estudiantil" as B
+participant "Interfaz web" as UI
+participant "API" as API
+participant "Privacidad\n(Fernet)" as P
+database "ALMACEN_ACADEMICO" as BD
+participant "Servicio de\npredicción" as S
+
+B -> UI : abre un estudiante de la lista priorizada
+UI -> API : GET /estudiantes/{token}
+API -> P : descifrar token (vigencia 24 h)
+P --> API : cédula
+API -> BD : VIS_PREDICCION_ABANDONO, VIS_ALUMNO,\nVIS_PREDICCION_DETALLE, VIS_INTERVENCION
+BD --> API : riesgo, trayectoria, explicación, seguimiento
+API -> API : recomendaciones por reglas · auditoría (FICHA)
+API --> UI : ficha con cédula enmascarada
+B -> UI : mueve asistencia y promedio en el simulador
+UI -> API : POST /estudiantes/{token}/simulacion {cambios}
+API -> BD : variables con las que se calificó
+API -> S : recalcular variables dependientes y predecir
+S --> API : probabilidad actual y simulada
+API --> UI : diferencia en puntos + aviso
+B -> UI : registra una tutoría
+UI -> API : POST /seguimiento {token, tipo, descripción}
+API -> BD : EXEC sp_registrar_intervencion\n(cuenta app_seguimiento)
+BD --> API : intervención_id
+API --> UI : intervención registrada
+@enduml

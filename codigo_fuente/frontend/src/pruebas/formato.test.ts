@@ -25,5 +25,6 @@ describe('formato', () => {
   it('arma iniciales y primer nombre', () => {
     expect(iniciales('Victor Manuel Lluilema Pisco')).toBe('VP')
     expect(primerNombre('Marlon David Pérez Almachi')).toBe('Marlon')
+    expect(iniciales('Autoridad académica (demostración)')).toBe('AA')
   })
 })

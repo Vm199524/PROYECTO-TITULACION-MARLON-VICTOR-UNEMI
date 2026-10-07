@@ -16,7 +16,7 @@ nuevas para las cuentas de demostración que ya existan.
 Con --migrar-desde security_config.json se copian, con su mismo hash bcrypt,
 las cuentas del prototipo anterior cuyo rol tiene equivalente en este
 sistema (ADMINISTRADOR -> ADMIN_TI, ACADEMICO -> AUTORIDAD). Las cuentas de
-los roles de inteligencia de negocios (contabilidad, recursos humanos,
+los roles del prototipo anterior sin equivalente académico (contabilidad, recursos humanos,
 logística) no se migran porque no tienen sentido en un sistema académico.
 
 Uso:

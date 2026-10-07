@@ -18,7 +18,7 @@ import { Skeleton } from '../componentes/ui/Skeleton'
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '../componentes/ui/Table'
 import { cn } from '../lib/cn'
 import { useDatos } from '../lib/consultas'
-import { decimal, entero, fechaHora, proporcion } from '../lib/formato'
+import { capital, decimal, entero, fechaHora, proporcion } from '../lib/formato'
 import { useSesion } from '../lib/sesion'
 import type { CalidadModelo as Calidad, EvaluacionUmbral } from '../lib/tipos'
 import { NOMBRE_MODELO } from '../lib/modelos'
@@ -32,7 +32,13 @@ const G = {
 
 type Pestana = 'resumen' | 'validacion' | 'explicacion' | 'consulta' | 'ficha'
 const NOMBRE_GRUPO: Record<string, string> = { financieras: 'Financieras', matricula: 'Matrícula', aula_virtual: 'Aula virtual', evaluaciones: 'Evaluaciones' }
-const NOMBRE_VARIABLE_EQUIDAD: Record<string, string> = { genero: 'Género', modalidad: 'Modalidad', sede: 'Sede' }
+const NOMBRE_VARIABLE_EQUIDAD: Record<string, string> = {
+  genero: 'Género',
+  modalidad: 'Modalidad',
+  modalidad_codigo: 'Modalidad',
+  sede: 'Sede',
+  sede_codigo: 'Sede',
+}
 
 function Diferido({ children, alto = 240 }: { children: ReactNode; alto?: number }) {
   return <Suspense fallback={<Skeleton className="w-full" />}>{<div style={{ minHeight: alto }}>{children}</div>}</Suspense>
@@ -289,7 +295,7 @@ function Explicacion({ d }: { d: Calidad }) {
               {d.equidad.map((e) => (
                 <TableRow key={`${e.variable}-${e.grupo}`}>
                   <Td>
-                    <span className="text-muted-foreground">{NOMBRE_VARIABLE_EQUIDAD[e.variable] ?? e.variable}:</span> {e.grupo}
+                    <span className="text-muted-foreground">{NOMBRE_VARIABLE_EQUIDAD[e.variable] ?? e.variable}:</span> {e.variable === 'genero' ? (e.grupo === 'F' ? 'Femenino' : e.grupo === 'M' ? 'Masculino' : e.grupo) : capital(e.grupo.toLowerCase())}
                   </Td>
                   <Td numero>{entero(e.n)}</Td>
                   <Td numero>{proporcion(e.prevalencia)}</Td>

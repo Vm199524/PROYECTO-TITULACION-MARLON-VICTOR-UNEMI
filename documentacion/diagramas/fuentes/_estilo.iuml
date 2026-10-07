@@ -1,0 +1,74 @@
+' Estilo común de los diagramas del proyecto (paleta institucional UNEMI).
+' Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
+skinparam dpi 200
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #0B5C7E
+skinparam ArrowFontSize 11
+skinparam backgroundColor #FFFFFF
+skinparam roundCorner 10
+skinparam padding 4
+skinparam NoteBackgroundColor #FFF4EA
+skinparam NoteBorderColor #FF6900
+skinparam sequence {
+  ParticipantBackgroundColor #EBF5FA
+  ParticipantBorderColor #0B5C7E
+  ParticipantFontColor #002E45
+  ActorBorderColor #002E45
+  ActorBackgroundColor #EBF5FA
+  LifeLineBorderColor #94A8BA
+  BoxBorderColor #94A8BA
+  GroupBorderColor #94A8BA
+  GroupBackgroundColor #F3F6F9
+  DividerBackgroundColor #F3F6F9
+}
+skinparam activity {
+  BackgroundColor #EBF5FA
+  BorderColor #0B5C7E
+  DiamondBackgroundColor #FFF4EA
+  DiamondBorderColor #FF6900
+  StartColor #002E45
+  EndColor #002E45
+  BarColor #002E45
+}
+skinparam state {
+  BackgroundColor #EBF5FA
+  BorderColor #0B5C7E
+  StartColor #002E45
+  EndColor #002E45
+}
+skinparam component {
+  BackgroundColor #EBF5FA
+  BorderColor #0B5C7E
+}
+skinparam package {
+  BackgroundColor #F8FAFC
+  BorderColor #94A8BA
+}
+skinparam database {
+  BackgroundColor #EBF5FA
+  BorderColor #002E45
+}
+skinparam node {
+  BackgroundColor #F8FAFC
+  BorderColor #002E45
+}
+skinparam usecase {
+  BackgroundColor #EBF5FA
+  BorderColor #0B5C7E
+}
+skinparam actor {
+  BackgroundColor #EBF5FA
+  BorderColor #002E45
+}
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #0B5C7E
+  HeaderBackgroundColor #EBF5FA
+  AttributeFontSize 11
+}
+skinparam swimlane {
+  BorderColor #94A8BA
+  TitleFontColor #002E45
+}

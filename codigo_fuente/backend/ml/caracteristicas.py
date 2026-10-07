@@ -32,6 +32,8 @@ Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -243,36 +245,41 @@ def describir(variable: str) -> str:
     return DESCRIPCION.get(variable, variable.replace('_', ' '))
 
 
+def _coma(texto: str) -> str:
+    """Decimal con coma (es-EC): 4.51 → 4,51. Solo entre dígitos, para no tocar otros puntos."""
+    return re.sub(r'(?<=\d)\.(?=\d)', ',', texto)
+
+
 def formatear_valor(variable: str, valor: float | None) -> str:
     """Valor de una variable en unidades legibles (%, nota sobre 10, días, sí/no)."""
     if valor is None or (isinstance(valor, float) and np.isnan(valor)):
         return 'sin dato'
     v = float(valor)
     if variable.startswith('asistencia') and 'cohorte' not in variable:
-        return f'{v:+.1f} puntos' if variable.endswith(('delta', 'pendiente')) else f'{v:.1f} %'
+        return _coma(f'{v:+.1f} puntos' if variable.endswith(('delta', 'pendiente')) else f'{v:.1f} %')
     if variable.startswith('promedio') and 'cohorte' not in variable:
-        return f'{v:+.2f}' if variable.endswith(('delta', 'pendiente')) else f'{v:.2f} / 10'
+        return _coma(f'{v:+.2f}' if variable.endswith(('delta', 'pendiente')) else f'{v:.2f} / 10')
     if variable.endswith('rel_cohorte'):
-        return f'{v:+.1f} desviaciones' if abs(v) < 50 else 'fuera de rango'
+        return _coma(f'{v:+.1f} desviaciones' if abs(v) < 50 else 'fuera de rango')
     if variable.endswith('pct_cohorte'):
-        return f'percentil {v * 100:.0f}'
+        return _coma(f'percentil {v * 100:.0f}')
     if variable in ('pct_periodos_con_mora', 'pct_entregadas', 'pct_tardias'):
-        return f'{v * 100:.0f} %'
+        return _coma(f'{v * 100:.0f} %')
     if variable == 'en_mora_t':
         return 'sí' if v >= 0.5 else 'no'
     if variable == 'saldo_pendiente_t':
         return f'${v:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
     if variable in ('dias_sin_actividad', 'dias_anticipacion_matricula'):
-        return f'{v:.0f} días'
+        return _coma(f'{v:.0f} días')
     if variable == 'nota_evaluaciones':
-        return f'{v:.2f} / 10'
+        return _coma(f'{v:.2f} / 10')
     if variable == 'avance_relativo':
-        return f'{v * 100:.0f} % de la carrera'
+        return _coma(f'{v * 100:.0f} % de la carrera')
     if variable.startswith('actividad_lms') and variable.endswith('log'):
         return f'{np.expm1(v):,.0f} interacciones'.replace(',', '.')
     if variable == 'beca_porcentaje':
-        return f'{v:.0f} %'
-    return f'{v:.0f}' if float(v).is_integer() else f'{v:.2f}'
+        return _coma(f'{v:.0f} %')
+    return _coma(f'{v:.0f}' if float(v).is_integer() else f'{v:.2f}')
 
 
 def _cuantiles_cohorte(panel: pd.DataFrame, valor: str, claves: list[str], filas: pd.DataFrame) -> dict:

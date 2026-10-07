@@ -21,7 +21,7 @@ import { Table, TableBody, TableHead, TableRow, Td, Th } from '../componentes/ui
 import { enviar } from '../lib/api'
 import { cn } from '../lib/cn'
 import { useDatos } from '../lib/consultas'
-import { decimal, entero, fecha, fechaHora, moneda, porcentaje, proporcion, texto } from '../lib/formato'
+import { capital, decimal, entero, fecha, fechaHora, moneda, porcentaje, proporcion, texto } from '../lib/formato'
 import { useSesion } from '../lib/sesion'
 import type { Contribucion, FichaEstudiante, ResultadoSimulacion, Riesgo, VariableSimulable } from '../lib/tipos'
 
@@ -62,16 +62,20 @@ function EscalaRiesgo({ p, medio, alto }: { p: number; medio: number; alto: numb
           aria-hidden="true"
         />
       </div>
-      <div className="relative mt-2 h-4 text-2xs text-muted-foreground">
-        <span className="absolute left-0">0 %</span>
-        <span className="absolute -translate-x-1/2" style={{ left: pos(medio) }}>
-          medio {proporcion(medio, 0)}
-        </span>
-        <span className="absolute -translate-x-1/2" style={{ left: pos(alto) }}>
-          alto {proporcion(alto, 0)}
-        </span>
-        <span className="absolute right-0">100 %</span>
+      <div className="mt-2 flex justify-between text-2xs text-muted-foreground">
+        <span>0 %</span>
+        <span>100 %</span>
       </div>
+      <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <li className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-warning" aria-hidden="true" />
+          Riesgo medio desde {proporcion(medio)}
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-danger" aria-hidden="true" />
+          Riesgo alto desde {proporcion(alto)}
+        </li>
+      </ul>
     </div>
   )
 }
@@ -85,7 +89,7 @@ function Razones({ items }: { items: Contribucion[] }) {
         return (
           <li key={i.variable}>
             <div className="flex items-baseline justify-between gap-3 text-[13px]">
-              <span className="text-foreground">{i.descripcion}</span>
+              <span className="text-foreground">{capital(i.descripcion)}</span>
               <span className="tabular shrink-0 font-medium text-muted-foreground">{i.valor_texto ?? texto(i.valor)}</span>
             </div>
             <div className="mt-1.5 grid grid-cols-2 gap-0.5" aria-hidden="true">
@@ -269,7 +273,7 @@ export default function Ficha() {
                 <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5 text-[13px]">
                   <div>
                     <dt className="text-muted-foreground">Posición en la institución</dt>
-                    <dd className="mt-0.5 font-medium text-foreground">Más riesgo que el {porcentaje(p.percentil, false, 0)}</dd>
+                    <dd className="mt-0.5 font-medium text-foreground">{p.percentil >= 99 ? 'En el 1 % de mayor riesgo' : `Más riesgo que el ${porcentaje(p.percentil, false, 0)}`}</dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Seguimiento</dt>
@@ -313,7 +317,7 @@ export default function Ficha() {
                         <div className="min-w-0 flex-1">
                           <p className="text-[13.5px] font-semibold text-foreground">{TITULO_RECOMENDACION[r.tipo] ?? r.tipo}</p>
                           <p className="mt-0.5 text-[13px] text-muted-foreground">{r.texto}</p>
-                          {r.motivo && <p className="mt-1.5 text-xs text-subtle-foreground">Motivo: {r.motivo.toLowerCase()}</p>}
+                          {r.motivo && <p className="mt-1.5 text-xs text-subtle-foreground">Motivo: {r.motivo}</p>}
                         </div>
                         {puede('registrar_seguimiento') && TIPO_SUGERIDO[r.tipo] && (
                           <Button variant="ghost" size="sm" onClick={() => setRegistrar({ tipo: TIPO_SUGERIDO[r.tipo] })}>

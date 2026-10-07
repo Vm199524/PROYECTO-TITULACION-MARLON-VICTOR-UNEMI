@@ -4,7 +4,7 @@
  */
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/cn'
-import { porcentaje } from '../../lib/formato'
+import { puntos } from '../../lib/formato'
 import { IconoBajada, IconoSubida, type Icono } from '../iconos'
 import { Card } from './Card'
 import { Skeleton } from './Skeleton'
@@ -67,7 +67,7 @@ export function Kpi({
             )}
           >
             {!neutra && (variacion! > 0 ? <IconoSubida className="h-3 w-3" /> : <IconoBajada className="h-3 w-3" />)}
-            {porcentaje(variacion, true)}
+            {puntos(variacion)}
           </span>
         )}
         {contexto && !cargando && <span className="text-muted-foreground">{contexto}</span>}

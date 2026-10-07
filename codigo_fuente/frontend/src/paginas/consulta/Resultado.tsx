@@ -3,7 +3,7 @@
  * cifra destacada, gráfico de barras o líneas, o tabla, según la forma del resultado.
  */
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { TooltipGrafico } from '../../componentes/graficos/Tooltip'
+import { Leyenda, TooltipGrafico } from '../../componentes/graficos/Tooltip'
 import { useColores } from '../../componentes/graficos/colores'
 import { Table, TableBody, TableHead, TableRow, Td, Th } from '../../componentes/ui/Table'
 import { decimal, entero, texto } from '../../lib/formato'
@@ -62,6 +62,10 @@ function Grafico({ r }: { r: RespuestaConsulta }) {
     </>
   )
   return (
+    <div className="space-y-3">
+      {series.length > 1 && (
+        <Leyenda items={series.map((s, i) => ({ texto: etiquetaColumna(s), color: colores[i], forma: r.visualizacion === 'lineas' ? 'linea' : 'punto' }))} />
+      )}
     <div className="h-[260px]" role="img" aria-label={r.titulo}>
       <ResponsiveContainer width="100%" height="100%">
         {r.visualizacion === 'lineas' ? (
@@ -80,6 +84,7 @@ function Grafico({ r }: { r: RespuestaConsulta }) {
           </BarChart>
         )}
       </ResponsiveContainer>
+    </div>
     </div>
   )
 }

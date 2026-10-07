@@ -33,6 +33,13 @@ export function porcentaje(v: number | null | undefined, conSigno = false, decim
   return `${signo}${texto} %`
 }
 
+/** Diferencia en puntos porcentuales ("+1,2 pts"). */
+export function puntos(v: number | null | undefined): string {
+  if (vacio(v)) return VACIO
+  const n = v as number
+  return `${n > 0 ? '+' : n < 0 ? '−' : ''}${UNO.format(Math.abs(n))} pts`
+}
+
 /** Porcentaje a partir de una proporción 0–1. */
 export function proporcion(v: number | null | undefined, decimales = 1): string {
   return vacio(v) ? VACIO : porcentaje((v as number) * 100, false, decimales)
@@ -75,11 +82,17 @@ export function saludo(ahora = new Date()): string {
 
 export function iniciales(nombre: string | null | undefined): string {
   if (!nombre) return '?'
-  const p = nombre.trim().split(/\s+/)
-  return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase()
+  const p = nombre.trim().split(/\s+/).filter((x) => /^\p{L}/u.test(x))
+  if (!p.length) return '?'
+  return ((p[0][0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase()
 }
 
 /** Primer nombre para el saludo ("Victor Manuel Lluilema" → "Victor"). */
 export function primerNombre(nombre: string | null | undefined): string {
   return nombre?.trim().split(/\s+/)[0] ?? ''
+}
+
+/** Primera letra en mayúscula ("promedio del periodo" → "Promedio del periodo"). */
+export function capital(t: string | null | undefined): string {
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : ''
 }
