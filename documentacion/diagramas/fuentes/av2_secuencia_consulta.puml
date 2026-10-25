@@ -1,0 +1,32 @@
+@startuml av2_secuencia_consulta
+!include _estilo.iuml
+autonumber
+actor "Autoridad\nacadémica" as A
+participant "Interfaz\nweb" as UI
+participant "API\n/consulta" as API
+participant "Barreras" as G
+participant "Enrutador\n(40 métricas)" as R
+database "Almacén\n(chat_reader)" as BD
+participant "Redactor" as RED
+
+A -> UI : escribe la pregunta en español
+UI -> API : POST pregunta + JWT + X-Institucion
+API -> API : valida rol (consultar) e institución asignada
+API -> G : clasificar(pregunta)
+alt escritura, inyección, otra institución o tablas físicas
+  G --> API : BARRERA + motivo
+  API --> UI : mensaje de bloqueo (no toca la base)
+else consulta válida
+  G --> API : CONSULTA
+  API -> R : entidades (carrera, riesgo, año, n) y búsqueda TF-IDF
+  R --> API : métrica certificada: SQL fijo + parámetros
+  note right of R : si no hay métrica con\ncobertura total, sigue la\nruta generada (Figura siguiente)
+  API -> BD : SESSION_CONTEXT(institución, solo lectura) + SELECT
+  BD --> API : filas de la institución activa
+  API -> RED : resumen y visualización
+  RED --> API : texto que solo cita cifras del resultado
+  API -> API : enmascara cédulas y registra auditoría
+  API --> UI : {origen, título, filas, gráfico}
+end
+UI --> A : cifra, gráfico o tabla con su origen
+@enduml

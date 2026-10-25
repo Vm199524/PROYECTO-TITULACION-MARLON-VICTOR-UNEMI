@@ -1,0 +1,157 @@
+{
+  "id": "DT-02",
+  "tipo": "tecnologia",
+  "decision": "Framework del backend",
+  "contexto": "La API debe atender el panel y el chat, llamar de forma concurrente a una cascada de proveedores externos de LLM y ejecutar el SQL de la IA con una cuenta de solo lectura, fijando el contexto de institución en la misma conexión. Lenguaje ya decidido en DT-01 (Python).",
+  "criterios": [
+    {
+      "id": "C1",
+      "nombre": "Asincronía para llamadas a servicios externos",
+      "peso": 25,
+      "origen": "RNF-06 y RNF-10 (cascada de proveedores de LLM)",
+      "descripcion": ""
+    },
+    {
+      "id": "C2",
+      "nombre": "Validación y documentación automática de la API",
+      "peso": 20,
+      "origen": "RF-09 y RNF-08",
+      "descripcion": "Esquemas de entrada y documentación OpenAPI sin código extra."
+    },
+    {
+      "id": "C3",
+      "nombre": "Acceso a SQL Server con contexto en la misma conexión",
+      "peso": 20,
+      "origen": "RF-16 y RNF-01",
+      "descripcion": "No imponer un ORM que gestione las conexiones por su cuenta."
+    },
+    {
+      "id": "C4",
+      "nombre": "Licencia y soporte",
+      "peso": 15,
+      "origen": "RNF-09; costo cero",
+      "descripcion": ""
+    },
+    {
+      "id": "C5",
+      "nombre": "Costo de cambio sobre el prototipo validado",
+      "peso": 20,
+      "origen": "Restricción: plazo del proyecto",
+      "descripcion": ""
+    }
+  ],
+  "candidatas": [
+    {
+      "id": "fastapi",
+      "nombre": "FastAPI",
+      "version": "0.141",
+      "puntajes": {
+        "C1": {
+          "valor": 5,
+          "justificacion": "Soporte nativo de async/await sobre ASGI.",
+          "fuente": "Documentación oficial de FastAPI (fastapi.tiangolo.com), consultada 2026-10-03"
+        },
+        "C2": {
+          "valor": 5,
+          "justificacion": "Validación con Pydantic y documentación OpenAPI interactiva en /docs, generadas automáticamente.",
+          "fuente": "Documentación oficial de FastAPI (fastapi.tiangolo.com), consultada 2026-10-03"
+        },
+        "C3": {
+          "valor": 5,
+          "justificacion": "No impone ORM; el backend usa pyodbc y fija SESSION_CONTEXT y el SELECT en la misma conexión, comprobado por pruebas.",
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+        },
+        "C4": {
+          "valor": 4,
+          "justificacion": "Licencia MIT y publicaciones frecuentes (0.142.2 del 30/09/2026), aunque sigue en la serie 0.x.",
+          "fuente": "Repositorio oficial fastapi/fastapi en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C5": {
+          "valor": 5,
+          "justificacion": "Es el framework implementado y probado.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    },
+    {
+      "id": "django",
+      "nombre": "Django",
+      "version": "5.2 LTS",
+      "puntajes": {
+        "C1": {
+          "valor": 4,
+          "justificacion": "Admite vistas asíncronas con pila ASGI, pero el ORM aún no es totalmente asíncrono y el middleware síncrono anula la ventaja.",
+          "fuente": "Documentación oficial de Django 5.2, «Asynchronous support» (docs.djangoproject.com/en/5.2/topics/async), consultada 2026-10-03"
+        },
+        "C2": {
+          "valor": 3,
+          "justificacion": "El índice de la documentación no incluye API REST ni OpenAPI en el núcleo; se obtienen con paquetes de terceros.",
+          "fuente": "Índice de la documentación oficial de Django 5.2 (docs.djangoproject.com/en/5.2), consultado 2026-10-03"
+        },
+        "C3": {
+          "valor": 2,
+          "justificacion": "SQL Server no es un backend oficial; depende del paquete de terceros mssql-django.",
+          "fuente": "Documentación oficial de Django 5.2, «Databases» (docs.djangoproject.com/en/5.2/ref/databases), consultada 2026-10-03"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "Licencia BSD-3; la 5.2 es LTS con soporte hasta abril de 2028.",
+          "fuente": "Django, «Download» (djangoproject.com/download), consultado 2026-10-03"
+        },
+        "C5": {
+          "valor": 2,
+          "justificacion": "Habría que reescribir rutas, autenticación y streaming.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    },
+    {
+      "id": "flask",
+      "nombre": "Flask",
+      "version": "3.1",
+      "puntajes": {
+        "C1": {
+          "valor": 2,
+          "justificacion": "Es WSGI: cada petición ocupa un worker aun con vistas async, y su soporte async es menos eficiente que el de los frameworks ASGI.",
+          "fuente": "Documentación oficial de Flask 3.1, «Using async and await» (flask.palletsprojects.com), consultada 2026-10-03"
+        },
+        "C2": {
+          "valor": 2,
+          "justificacion": "Por diseño no incluye validación de formularios ni capa de datos en el núcleo; se agregan con extensiones.",
+          "fuente": "Documentación oficial de Flask 3.1, «Design Decisions in Flask» (flask.palletsprojects.com), consultada 2026-10-03"
+        },
+        "C3": {
+          "valor": 5,
+          "justificacion": "No incluye capa de base de datos, así que admite el mismo acceso con pyodbc.",
+          "fuente": "Documentación oficial de Flask 3.1, «Design Decisions in Flask» (flask.palletsprojects.com), consultada 2026-10-03"
+        },
+        "C4": {
+          "valor": 4,
+          "justificacion": "Licencia BSD-3; última versión 3.1.3 (febrero de 2026).",
+          "fuente": "Repositorio oficial pallets/flask en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03"
+        },
+        "C5": {
+          "valor": 3,
+          "justificacion": "Rutas parecidas, pero el streaming y la asincronía cambian de semántica.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    }
+  ],
+  "desempate": "C1",
+  "eleccion": {
+    "estado": "Aceptada",
+    "fecha": "2026-10-03",
+    "razon": "FastAPI es la única de las tres que es asíncrona de origen, valida y documenta la API automáticamente y deja libre el acceso a SQL Server con contexto de sesión, que es la base del aislamiento por institución.",
+    "consecuencias": [
+      "Se gana documentación OpenAPI viva para el frontend y pruebas.",
+      "Se sacrifica el panel de administración y el ORM integrados de Django, que el proyecto no necesita.",
+      "Riesgo: FastAPI sigue en 0.x; se fija la versión exacta y se actualiza con la suite de pruebas."
+    ]
+  },
+  "verificacion_codigo": {
+    "archivo": "codigo_fuente/backend/requirements.txt",
+    "paquete": "fastapi",
+    "version": "0.141"
+  }
+}

@@ -1,0 +1,23 @@
+@startuml av2_despliegue
+!include _estilo.iuml
+node "Equipo de la institución (Windows 10/11)" as PC {
+  node "Navegador web" as NAV {
+    artifact "Interfaz React\n(compilada por Vite)" as UI
+  }
+  node "Python 3.13 · entorno virtual" as PY {
+    artifact "API FastAPI\n(uvicorn :8090)" as API
+    artifact "Procesos por lotes\nscripts.pipeline" as LOTES
+    artifact "Modelos .joblib\ny métricas .json" as MOD
+  }
+  node "Docker Desktop" as DOC {
+    database "SQL Server 2022\ncontenedor vicmar-sqlserver\n(puerto 14330)" as SQL
+  }
+}
+cloud "Proveedores de IA\n(HTTPS)" as IA
+UI --> API : HTTP :3000 → proxy /api
+API --> SQL : ODBC Driver 18\nchat_reader · app_seguimiento
+LOTES --> SQL : cuenta de administración
+LOTES --> MOD
+API --> MOD
+API --> IA : pregunta, esquema y ejemplos\n(filas seudonimizadas solo al interpretar)
+@enduml

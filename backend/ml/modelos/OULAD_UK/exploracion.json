@@ -1,0 +1,181 @@
+{
+  "registros": 189299,
+  "estudiantes": 28785,
+  "periodos": 4,
+  "carreras": 7,
+  "estados_finales": {
+    "GRADUADO": 9928,
+    "RETIRADO": 9105,
+    "ACTIVO": 8485,
+    "REPROBADO": 5075
+  },
+  "faltantes_opcionales": {
+    "monto_matricula": 1.0,
+    "beca_porcentaje": 1.0,
+    "saldo_pendiente": 1.0,
+    "creditos_matriculados": 0.0,
+    "numero_matricula": 0.0,
+    "dias_anticipacion_matricula": 0.0005,
+    "actividad_lms": 0.0,
+    "dias_sin_actividad": 0.0,
+    "evaluaciones_vencidas": 0.0,
+    "evaluaciones_entregadas": 0.0,
+    "evaluaciones_tardias": 0.0,
+    "nota_evaluaciones": 0.1351
+  },
+  "fuera_de_rango": {
+    "promedio fuera de 0-10": 0,
+    "asistencia fuera de 0-100": 0
+  },
+  "etiquetados": 156706,
+  "positivos": 3986,
+  "tasa_por_periodo": [
+    {
+      "periodo": "2013B",
+      "tasa": 0.0269,
+      "n": 29538
+    },
+    {
+      "periodo": "2013J",
+      "tasa": 0.0194,
+      "n": 62866
+    },
+    {
+      "periodo": "2014B",
+      "tasa": 0.0286,
+      "n": 46376
+    },
+    {
+      "periodo": "2014J",
+      "tasa": 0.0361,
+      "n": 17926
+    }
+  ],
+  "tasa_por_grupo": {
+    "promedio_t": {
+      "titulo": "Promedio",
+      "grupos": [
+        {
+          "grupo": "< 5",
+          "tasa": 0.0511,
+          "n": 47806
+        },
+        {
+          "grupo": "5-6",
+          "tasa": 0.0279,
+          "n": 12889
+        },
+        {
+          "grupo": "6-7",
+          "tasa": 0.0199,
+          "n": 20205
+        },
+        {
+          "grupo": "7-8",
+          "tasa": 0.013,
+          "n": 29446
+        },
+        {
+          "grupo": "≥ 8",
+          "tasa": 0.0086,
+          "n": 46360
+        }
+      ]
+    },
+    "asistencia_t": {
+      "titulo": "Asistencia (%)",
+      "grupos": [
+        {
+          "grupo": "< 50",
+          "tasa": 0.0284,
+          "n": 123274
+        },
+        {
+          "grupo": "50-70",
+          "tasa": 0.0154,
+          "n": 16008
+        },
+        {
+          "grupo": "70-85",
+          "tasa": 0.0139,
+          "n": 8148
+        },
+        {
+          "grupo": "≥ 85",
+          "tasa": 0.0139,
+          "n": 9276
+        }
+      ]
+    },
+    "numero_matricula": {
+      "titulo": "N.º de matrícula",
+      "grupos": [
+        {
+          "grupo": "1.ª",
+          "tasa": 0.0247,
+          "n": 136911
+        },
+        {
+          "grupo": "2.ª",
+          "tasa": 0.0299,
+          "n": 15563
+        },
+        {
+          "grupo": "3.ª",
+          "tasa": 0.0319,
+          "n": 4232
+        }
+      ]
+    },
+    "dias_sin_actividad": {
+      "titulo": "Días sin actividad",
+      "grupos": [
+        {
+          "grupo": "0-3",
+          "tasa": 0.0164,
+          "n": 84469
+        },
+        {
+          "grupo": "4-7",
+          "tasa": 0.0284,
+          "n": 18098
+        },
+        {
+          "grupo": "8-14",
+          "tasa": 0.0344,
+          "n": 16704
+        },
+        {
+          "grupo": "> 14",
+          "tasa": 0.0403,
+          "n": 37435
+        }
+      ]
+    },
+    "pct_entregadas": {
+      "titulo": "Entregas (%)",
+      "grupos": [
+        {
+          "grupo": "< 50",
+          "tasa": 0.0572,
+          "n": 26619
+        },
+        {
+          "grupo": "50-80",
+          "tasa": 0.042,
+          "n": 14276
+        },
+        {
+          "grupo": "80-99",
+          "tasa": 0.0146,
+          "n": 6431
+        },
+        {
+          "grupo": "100",
+          "tasa": 0.0162,
+          "n": 109380
+        }
+      ]
+    }
+  }
+}

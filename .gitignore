@@ -1,0 +1,86 @@
+# ══════════════════════════════════════════════════════════════════════════
+# Proyecto de titulación — Marlon Pérez y Víctor Lluilema (UNEMI)
+# Qué NO se sube al repositorio y por qué.
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Secretos y configuración local ────────────────────────────────────────
+# Las credenciales viven solo en .env locales (ver los .env.example).
+.env
+*.env
+.env.*
+!.env.example
+!**/.env.example
+backend/security_config.json
+backend/env.yaml
+
+# ── Carpetas solo locales (no forman parte del repositorio) ───────────────
+_POR_REVISAR_ELIMINAR/
+_MATERIAL_EXTERNO_NO_SUBIR/
+ANEXO_USO_ETICO_IA/
+
+# ── Dependencias y entornos (se reinstalan) ───────────────────────────────
+node_modules/
+venv/
+venv_*/
+.venv/
+
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# ── Builds ────────────────────────────────────────────────────────────────
+dist/
+
+# ── Datos ─────────────────────────────────────────────────────────────────
+# Dataset público OULAD (CC BY 4.0, ~490 MB): se descarga aparte (ver datos/README.md).
+datos/externos/
+*.db
+*.sqlite
+
+# ── Datos de ejecución, cachés y logs del backend ─────────────────────────
+# datos_locales/: cuentas de usuario (hash bcrypt), contraseñas de las cuentas
+# de demostración, bitácora de auditoría y estado de los procesos por lotes.
+backend/datos_locales/
+backend/.cache/
+backend/cache/
+backend/debug/
+backend/security_logs/
+backend/tmp/
+*.log
+# Modelos entrenados y predicciones por estudiante: se regeneran con
+# scripts/pipeline.py. Sí se versionan las métricas (JSON) de cada corrida.
+backend/ml/modelos/*/*.joblib
+backend/ml/modelos/*/*.csv
+
+# ── Material con derechos de autor o datos personales ─────────────────────
+# PDF de artículos científicos (se citan por DOI; no se redistribuyen) y exportaciones
+# crudas de Scopus (los registros seleccionados están en los .ris).
+documentacion/literatura/pdfs/
+documentacion/literatura/*_scopus.csv
+# Evidencias de tutorías con datos personales y documentos de la docente.
+documentacion/evidencias_tutorias/
+documentacion/observaciones_tutoras/Listado_Grupos_Temas_Recomendaciones.docx
+# Contraseñas de los usuarios de prueba (se entregan aparte).
+documentacion/tecnica/USUARIOS_DE_PRUEBA.md
+
+# ── Archivos pesados ──────────────────────────────────────────────────────
+*.mp4
+*.mov
+*.zip
+*.rar
+
+# ── Archivos temporales de Office y del sistema ───────────────────────────
+~$*
+*.tmp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ── IDE ───────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+
+# Archivos locales del prototipo anterior (no se versionan)
+backend/usuarios_prueba.local.json
+backend/usuarios_demo.local.json

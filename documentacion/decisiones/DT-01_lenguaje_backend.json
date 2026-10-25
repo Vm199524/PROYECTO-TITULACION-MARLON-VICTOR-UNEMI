@@ -1,0 +1,157 @@
+{
+  "id": "DT-01",
+  "tipo": "tecnologia",
+  "decision": "Lenguaje de programación del backend",
+  "contexto": "El backend entrena y sirve el modelo de abandono (validación cruzada agrupada, SHAP), ejecuta el ETL, expone la API REST que consume el frontend y llama a proveedores externos de modelos de lenguaje. Equipo de 2 personas, sin presupuesto para licencias. La decisión se documenta sobre un prototipo ya implementado y probado.",
+  "criterios": [
+    {
+      "id": "C1",
+      "nombre": "Bibliotecas para el modelo y su validación",
+      "peso": 35,
+      "origen": "RF-02, RF-03, RF-05",
+      "descripcion": "Validación cruzada agrupada y estratificada, manejo del desbalance y explicaciones SHAP disponibles de forma nativa."
+    },
+    {
+      "id": "C2",
+      "nombre": "Evidencia en trabajos previos",
+      "peso": 20,
+      "origen": "Sección 1.3 (tabla de trabajos previos)",
+      "descripcion": "Cuántos trabajos previos leídos declaran el lenguaje."
+    },
+    {
+      "id": "C3",
+      "nombre": "Soporte de la versión",
+      "peso": 15,
+      "origen": "RNF-09 (reproducibilidad) y mantenibilidad",
+      "descripcion": "Versión con soporte vigente durante el proyecto."
+    },
+    {
+      "id": "C4",
+      "nombre": "Un solo lenguaje para el modelo y la API",
+      "peso": 15,
+      "origen": "RNF-08 (una sola función de características para entrenar y calificar)",
+      "descripcion": "Evitar un puente entre lenguajes para servir el modelo."
+    },
+    {
+      "id": "C5",
+      "nombre": "Costo de cambio sobre el prototipo validado",
+      "peso": 15,
+      "origen": "Restricción: plazo del proyecto y prototipo ya probado",
+      "descripcion": "Esfuerzo de reescribir y volver a validar lo existente."
+    }
+  ],
+  "candidatas": [
+    {
+      "id": "python",
+      "nombre": "Python",
+      "version": "3.14",
+      "puntajes": {
+        "C1": {
+          "valor": 5,
+          "justificacion": "scikit-learn 1.9.1 trae StratifiedGroupKFold; imbalanced-learn y SHAP cubren desbalance y explicaciones; todas fijadas en requirements.txt.",
+          "fuente": "Documentación oficial de scikit-learn 1.9.1, StratifiedGroupKFold (scikit-learn.org), consultada 2026-10-03"
+        },
+        "C2": {
+          "valor": 5,
+          "justificacion": "Es el lenguaje más declarado: 3 de los 11 trabajos (y 1 usa R); ninguno declara Java ni Node.js.",
+          "fuente": "Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        },
+        "C3": {
+          "valor": 5,
+          "justificacion": "La rama 3.14 está en corrección de errores con fin de vida en octubre de 2030.",
+          "fuente": "Python Developer's Guide, «Status of Python versions» (devguide.python.org/versions), consultado 2026-10-03"
+        },
+        "C4": {
+          "valor": 5,
+          "justificacion": "main.py importa directamente ml/ para calificar y explicar; el mismo código entrena y sirve.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "C5": {
+          "valor": 5,
+          "justificacion": "Es el lenguaje del backend implementado y probado.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    },
+    {
+      "id": "java",
+      "nombre": "Java",
+      "version": "25 LTS",
+      "puntajes": {
+        "C1": {
+          "valor": 2,
+          "justificacion": "Las bibliotecas que exigen RF-03 y RF-05 (validación agrupada estratificada de scikit-learn y SHAP) se distribuyen para Python; habría que reimplementarlas o invocar Python.",
+          "fuente": "Documentación oficial de scikit-learn 1.9.1, StratifiedGroupKFold (scikit-learn.org), consultada 2026-10-03"
+        },
+        "C2": {
+          "valor": 1,
+          "justificacion": "Ningún trabajo previo leído declara Java.",
+          "fuente": "Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        },
+        "C3": {
+          "valor": 5,
+          "justificacion": "JDK 25 alcanzó disponibilidad general el 16/09/2025 y es versión de soporte extendido (LTS).",
+          "fuente": "OpenJDK, «JDK 25» (openjdk.org/projects/jdk/25), consultado 2026-10-03"
+        },
+        "C4": {
+          "valor": 2,
+          "justificacion": "Requeriría servir el modelo de Python como servicio aparte o exportarlo, duplicando la función de características.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "C5": {
+          "valor": 1,
+          "justificacion": "Implica reescribir el backend completo y su suite de pruebas.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    },
+    {
+      "id": "node",
+      "nombre": "Node.js (TypeScript)",
+      "version": "24 LTS",
+      "puntajes": {
+        "C1": {
+          "valor": 1,
+          "justificacion": "Mismas bibliotecas ausentes que en Java; el ecosistema no ofrece las equivalentes oficiales de validación agrupada ni SHAP.",
+          "fuente": "Documentación oficial de scikit-learn 1.9.1, StratifiedGroupKFold (scikit-learn.org), consultada 2026-10-03"
+        },
+        "C2": {
+          "valor": 1,
+          "justificacion": "Ningún trabajo previo leído declara Node.js.",
+          "fuente": "Tabla de trabajos previos (documentacion/literatura/trabajos_previos.json, 11 leídos completos)"
+        },
+        "C3": {
+          "valor": 4,
+          "justificacion": "Node.js 24 es versión LTS; las LTS reciben correcciones críticas durante 30 meses.",
+          "fuente": "Node.js, «Previous releases» (nodejs.org/en/about/previous-releases), consultado 2026-10-03"
+        },
+        "C4": {
+          "valor": 2,
+          "justificacion": "Igual que Java: el modelo seguiría en Python, con un puente entre procesos.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        },
+        "C5": {
+          "valor": 2,
+          "justificacion": "Existió un prototipo anterior en Node/Express, pero sin el modelo ni la validación; quedó en la carpeta de revisión.",
+          "fuente": "Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)"
+        }
+      }
+    }
+  ],
+  "desempate": "C1",
+  "eleccion": {
+    "estado": "Aceptada",
+    "fecha": "2026-10-03",
+    "razon": "Python es la única opción que cubre de forma nativa la validación agrupada por alumno, el manejo del desbalance y las explicaciones SHAP que exigen RF-03 y RF-05, y es el lenguaje más declarado en los trabajos previos. Permite que el mismo código entrene y sirva el modelo, como pide RNF-08.",
+    "consecuencias": [
+      "Se gana un único lenguaje para ETL, modelo y API.",
+      "Se sacrifica rendimiento bruto frente a la JVM, que no es el cuello de botella: la latencia del chat la domina el proveedor de LLM (mediana medida de 28,2 s).",
+      "Riesgo: dependencias con versiones exactas; se mitiga con requirements.lock.txt."
+    ]
+  },
+  "verificacion_codigo": {
+    "archivo": "codigo_fuente/backend/requirements.txt",
+    "paquete": "scikit-learn",
+    "version": "1.9.1"
+  }
+}

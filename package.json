@@ -1,0 +1,16 @@
+{
+  "name": "vicmar-sistema",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Arranque del sistema completo (API FastAPI + web React) desde la raíz del repositorio",
+  "author": "Marlon David Pérez Almachi y Víctor Manuel Lluilema Pisco",
+  "scripts": {
+    "start": "node scripts/iniciar.mjs",
+    "dev": "node scripts/iniciar.mjs",
+    "reconstruir": "scripts\\reconstruir_sistema.bat",
+    "test": "cd backend && venv\\Scripts\\python.exe -m pytest -q && cd ../frontend && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es-EC">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>VicMar · Alerta temprana de abandono estudiantil</title>
+    <meta name="description" content="Prototipo de sistema web para predecir el abandono en estudiantes universitarios mediante aprendizaje automático y consulta conversacional." />
+    <meta name="author" content="Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco" />
+    <!-- El tema se aplica antes de pintar: sin destello blanco al abrir en modo oscuro. -->
+    <script>
+      (function () {
+        try {
+          var guardado = localStorage.getItem('vicmar.tema')
+          var oscuro = guardado ? guardado === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches
+          document.documentElement.setAttribute('data-theme', oscuro ? 'dark' : 'light')
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light')
+        }
+      })()
+    </script>
+    <style>
+      html[data-theme='dark'], html[data-theme='dark'] body { background: #070d16 }
+      html[data-theme='light'], html[data-theme='light'] body { background: #f5f7fa }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

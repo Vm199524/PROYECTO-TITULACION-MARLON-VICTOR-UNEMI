@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "Si usas este software o sus resultados, cítalo con estos metadatos."
+type: software
+title: "Prototipo de un sistema web para predecir el abandono en estudiantes universitarios mediante aprendizaje automático y consulta conversacional"
+abstract: >-
+  Sistema web de alerta temprana para instituciones de educación superior. Estima,
+  para cada estudiante activo, la probabilidad calibrada de abandonar en el periodo
+  siguiente (compara regresión logística, Random Forest ponderado, Random Forest con
+  SMOTE y LightGBM ajustado con Optuna mediante validación cruzada agrupada por
+  estudiante, prueba temporal y prueba prospectiva), explica cada
+  predicción con SHAP, sugiere acciones de acompañamiento, segmenta las carreras con
+  K-means validado y permite consultar los resultados en español mediante NL2SQL de
+  solo lectura con métricas certificadas, validación del árbol SQL y aislamiento por
+  institución. Validado con datos sintéticos de la UNEMI y con datos reales
+  anonimizados de la Open University (OULAD).
+authors:
+  - family-names: "Pérez Almachi"
+    given-names: "Marlon David"
+    affiliation: "Universidad Estatal de Milagro"
+  - family-names: "Lluilema Pisco"
+    given-names: "Víctor Manuel"
+    affiliation: "Universidad Estatal de Milagro"
+repository-code: "https://github.com/Vm199524/PROYECTO-TITULACION-MARLON-VICTOR-UNEMI"
+version: "3.0.0"
+date-released: 2026-10-07
+keywords:
+  - abandono estudiantil
+  - alerta temprana
+  - educación superior
+  - aprendizaje automático
+  - LightGBM
+  - SHAP
+  - consulta conversacional
+  - NL2SQL
+  - CRISP-DM

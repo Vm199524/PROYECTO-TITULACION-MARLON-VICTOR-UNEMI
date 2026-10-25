@@ -1,0 +1,558 @@
+{
+ "descripcion": "Métricas certificadas de la consulta conversacional. Su SQL fue escrito y verificado por los autores sobre las vistas gobernadas; cuando una pregunta coincide con una de ellas, la cifra no depende del modelo de lenguaje. Los marcadores <carrera>, <facultad>, <riesgo>, <segmento>, <anio> y <n> de las preguntas de ejemplo se reemplazan por las entidades detectadas en la pregunta real; en el SQL, cada ? recibe un parámetro en el orden de 'parametros'.",
+ "metricas": [
+  {
+   "id": "activos_total",
+   "categoria": "CONTEO",
+   "titulo": "Estudiantes con matrícula vigente",
+   "preguntas": [
+    "cuántos estudiantes tienen matrícula vigente",
+    "cuántos alumnos activos hay",
+    "total de estudiantes matriculados actualmente",
+    "número de alumnos con matrícula activa",
+    "cuántos estudiantes están estudiando ahora"
+   ],
+   "sql": "SELECT COUNT(DISTINCT cedula) AS [Estudiantes activos] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO'",
+   "parametros": [],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "activos_carrera",
+   "categoria": "CONTEO",
+   "titulo": "Estudiantes activos en la carrera",
+   "preguntas": [
+    "cuántos estudiantes activos hay en <carrera>",
+    "cuántos alumnos tiene <carrera> actualmente",
+    "matrícula vigente de <carrera>",
+    "número de estudiantes de <carrera>"
+   ],
+   "sql": "SELECT COUNT(DISTINCT cedula) AS [Estudiantes activos] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO' AND carrera = ?",
+   "parametros": [
+    "carrera"
+   ],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "activos_por_carrera",
+   "categoria": "AGREGACION",
+   "titulo": "Estudiantes activos por carrera",
+   "preguntas": [
+    "cuántos estudiantes activos hay en cada carrera",
+    "alumnos con matrícula vigente por carrera",
+    "distribución de estudiantes por carrera",
+    "estudiantes por carrera"
+   ],
+   "sql": "SELECT carrera AS [Carrera], COUNT(DISTINCT cedula) AS [Estudiantes activos] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO' GROUP BY carrera ORDER BY COUNT(DISTINCT cedula) DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "activos_por_facultad",
+   "categoria": "AGREGACION",
+   "titulo": "Estudiantes activos por facultad",
+   "preguntas": [
+    "cuántos estudiantes activos hay en cada facultad",
+    "alumnos con matrícula vigente por facultad",
+    "distribución de estudiantes por facultad",
+    "alumnos con matrícula vigente en cada facultad"
+   ],
+   "sql": "SELECT facultad_nombre AS [Facultad], COUNT(DISTINCT cedula) AS [Estudiantes activos] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO' GROUP BY facultad_nombre ORDER BY COUNT(DISTINCT cedula) DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "activos_por_modalidad",
+   "categoria": "AGREGACION",
+   "titulo": "Estudiantes activos por modalidad",
+   "preguntas": [
+    "cuántos estudiantes activos hay por modalidad",
+    "alumnos presenciales y en línea",
+    "estudiantes por modalidad de estudio",
+    "alumnos con matrícula vigente por modalidad"
+   ],
+   "sql": "SELECT modalidad AS [Modalidad], COUNT(DISTINCT cedula) AS [Estudiantes activos] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO' GROUP BY modalidad ORDER BY COUNT(DISTINCT cedula) DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "activos_por_sede",
+   "categoria": "AGREGACION",
+   "titulo": "Estudiantes activos por sede",
+   "preguntas": [
+    "cuántos estudiantes activos hay en cada sede",
+    "alumnos por sede o campus",
+    "distribución de estudiantes por sede",
+    "alumnos con matrícula vigente en cada sede"
+   ],
+   "sql": "SELECT sede_nombre AS [Sede], COUNT(DISTINCT cedula) AS [Estudiantes activos] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO' GROUP BY sede_nombre ORDER BY COUNT(DISTINCT cedula) DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "numero_carreras",
+   "categoria": "CONTEO",
+   "titulo": "Número de carreras",
+   "preguntas": [
+    "cuántas carreras tiene la institución",
+    "cuántas carreras hay",
+    "número de carreras ofertadas"
+   ],
+   "sql": "SELECT COUNT(DISTINCT carrera) AS [Carreras] FROM VIS_ALUMNO",
+   "parametros": [],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "retirados_total",
+   "categoria": "CONTEO",
+   "titulo": "Estudiantes que abandonaron",
+   "preguntas": [
+    "cuántos estudiantes han abandonado",
+    "cuántos alumnos se retiraron de la institución",
+    "total de retirados",
+    "número de estudiantes que desertaron"
+   ],
+   "sql": "SELECT COUNT(DISTINCT cedula) AS [Estudiantes retirados] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'RETIRADO'",
+   "parametros": [],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "graduados_total",
+   "categoria": "CONTEO",
+   "titulo": "Estudiantes graduados",
+   "preguntas": [
+    "cuántos estudiantes se han graduado",
+    "cuántos alumnos culminaron la carrera",
+    "total de graduados"
+   ],
+   "sql": "SELECT COUNT(DISTINCT cedula) AS [Graduados] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'GRADUADO'",
+   "parametros": [],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "tasa_abandono",
+   "categoria": "AGREGACION",
+   "titulo": "Tasa histórica de abandono",
+   "preguntas": [
+    "cuál es la tasa de abandono de la institución",
+    "qué porcentaje de estudiantes abandona",
+    "tasa de deserción de la universidad",
+    "porcentaje de abandono estudiantil"
+   ],
+   "sql": "SELECT CAST(100.0 * SUM(CASE WHEN estado_matricula = 'RETIRADO' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(6,2)) AS [Tasa de abandono (%)] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula <> 'ACTIVO'",
+   "parametros": [],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "tasa_abandono_por_carrera",
+   "categoria": "AGREGACION",
+   "titulo": "Tasa de abandono por carrera",
+   "preguntas": [
+    "cuál es la tasa de abandono de cada carrera",
+    "qué carreras tienen más abandono",
+    "porcentaje de deserción por carrera",
+    "ranking de carreras por abandono"
+   ],
+   "sql": "SELECT carrera AS [Carrera], CAST(100.0 * SUM(CASE WHEN estado_matricula = 'RETIRADO' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(6,2)) AS [Tasa de abandono (%)] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula <> 'ACTIVO' GROUP BY carrera ORDER BY 2 DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "tasa_abandono_por_facultad",
+   "categoria": "AGREGACION",
+   "titulo": "Tasa de abandono por facultad",
+   "preguntas": [
+    "cuál es la tasa de abandono de cada facultad",
+    "porcentaje de deserción por facultad",
+    "qué facultad tiene más abandono"
+   ],
+   "sql": "SELECT facultad_nombre AS [Facultad], CAST(100.0 * SUM(CASE WHEN estado_matricula = 'RETIRADO' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(6,2)) AS [Tasa de abandono (%)] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula <> 'ACTIVO' GROUP BY facultad_nombre ORDER BY 2 DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "tasa_abandono_carrera",
+   "categoria": "AGREGACION",
+   "titulo": "Tasa de abandono de la carrera",
+   "preguntas": [
+    "cuál es la tasa de abandono de <carrera>",
+    "qué porcentaje de estudiantes de <carrera> abandona",
+    "deserción en <carrera>"
+   ],
+   "sql": "SELECT CAST(100.0 * SUM(CASE WHEN estado_matricula = 'RETIRADO' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(6,2)) AS [Tasa de abandono (%)] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula <> 'ACTIVO' AND carrera = ?",
+   "parametros": [
+    "carrera"
+   ],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "abandono_por_anio",
+   "categoria": "TEMPORAL",
+   "titulo": "Estudiantes que abandonaron por año",
+   "preguntas": [
+    "cuántos estudiantes abandonaron cada año",
+    "evolución del abandono por año",
+    "retirados por año",
+    "tendencia del abandono en el tiempo"
+   ],
+   "sql": "SELECT anio AS [Año], COUNT(DISTINCT cedula) AS [Retirados] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'RETIRADO' GROUP BY anio ORDER BY anio",
+   "parametros": [],
+   "visualizacion": "lineas"
+  },
+  {
+   "id": "abandono_anio",
+   "categoria": "TEMPORAL",
+   "titulo": "Estudiantes que abandonaron en el año",
+   "preguntas": [
+    "cuántos estudiantes abandonaron en <anio>",
+    "cuántos alumnos se retiraron en el año <anio>",
+    "retirados en <anio>"
+   ],
+   "sql": "SELECT COUNT(DISTINCT cedula) AS [Retirados] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'RETIRADO' AND anio = ?",
+   "parametros": [
+    "anio"
+   ],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "matricula_por_anio",
+   "categoria": "TEMPORAL",
+   "titulo": "Estudiantes matriculados por año",
+   "preguntas": [
+    "cuántos estudiantes se matricularon cada año",
+    "evolución de la matrícula por año",
+    "alumnos distintos por año"
+   ],
+   "sql": "SELECT anio AS [Año], COUNT(DISTINCT cedula) AS [Estudiantes] FROM VIS_ALUMNO GROUP BY anio ORDER BY anio",
+   "parametros": [],
+   "visualizacion": "lineas"
+  },
+  {
+   "id": "promedio_activos",
+   "categoria": "AGREGACION",
+   "titulo": "Promedio de los estudiantes activos",
+   "preguntas": [
+    "cuál es el promedio de calificaciones de los estudiantes activos",
+    "rendimiento promedio actual",
+    "nota media de los alumnos con matrícula vigente"
+   ],
+   "sql": "SELECT CAST(AVG(CAST(promedio AS FLOAT)) AS DECIMAL(6,2)) AS [Promedio] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO'",
+   "parametros": [],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "asistencia_activos",
+   "categoria": "AGREGACION",
+   "titulo": "Asistencia media de los estudiantes activos",
+   "preguntas": [
+    "cuál es la asistencia promedio de los estudiantes activos",
+    "asistencia media actual",
+    "porcentaje de asistencia de los alumnos vigentes"
+   ],
+   "sql": "SELECT CAST(AVG(CAST(asistencia_pct AS FLOAT)) AS DECIMAL(6,2)) AS [Asistencia media (%)] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO'",
+   "parametros": [],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "activos_con_saldo",
+   "categoria": "CONTEO",
+   "titulo": "Estudiantes activos con saldo pendiente",
+   "preguntas": [
+    "cuántos estudiantes activos tienen saldo pendiente",
+    "alumnos con deuda o mora",
+    "cuántos estudiantes deben valores"
+   ],
+   "sql": "SELECT COUNT(DISTINCT cedula) AS [Estudiantes con saldo] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula = 'ACTIVO' AND saldo_pendiente > 0",
+   "parametros": [],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "riesgo_distribucion",
+   "categoria": "RIESGO",
+   "titulo": "Estudiantes por nivel de riesgo",
+   "preguntas": [
+    "cuántos estudiantes hay en cada nivel de riesgo",
+    "distribución del riesgo de abandono",
+    "cuántos alumnos en riesgo alto medio y bajo"
+   ],
+   "sql": "SELECT riesgo_categoria AS [Riesgo], COUNT(*) AS [Estudiantes] FROM VIS_PREDICCION_ABANDONO GROUP BY riesgo_categoria ORDER BY CASE riesgo_categoria WHEN 'ALTO' THEN 1 WHEN 'MEDIO' THEN 2 ELSE 3 END",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "riesgo_nivel_total",
+   "categoria": "RIESGO",
+   "titulo": "Estudiantes en el nivel de riesgo",
+   "preguntas": [
+    "cuántos estudiantes están en riesgo <riesgo> de abandonar",
+    "número de alumnos con riesgo <riesgo>",
+    "cuántos alumnos tienen riesgo <riesgo>"
+   ],
+   "sql": "SELECT COUNT(*) AS [Estudiantes] FROM VIS_PREDICCION_ABANDONO WHERE riesgo_categoria IN (?*)",
+   "parametros": [
+    "riesgo"
+   ],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "riesgo_por_carrera",
+   "categoria": "RIESGO",
+   "titulo": "Estudiantes en riesgo por carrera",
+   "preguntas": [
+    "qué carreras tienen más estudiantes en riesgo",
+    "estudiantes en riesgo por carrera",
+    "en qué carrera hay más alumnos en riesgo de abandono"
+   ],
+   "sql": "SELECT carrera AS [Carrera], SUM(CASE WHEN riesgo_categoria = 'ALTO' THEN 1 ELSE 0 END) AS [Riesgo alto], SUM(CASE WHEN riesgo_categoria = 'MEDIO' THEN 1 ELSE 0 END) AS [Riesgo medio], COUNT(*) AS [Activos] FROM VIS_PREDICCION_ABANDONO GROUP BY carrera ORDER BY 2 DESC, 3 DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "riesgo_top",
+   "categoria": "RIESGO",
+   "titulo": "Estudiantes con mayor probabilidad de abandono",
+   "preguntas": [
+    "muéstrame los <n> estudiantes con mayor riesgo de abandono",
+    "quiénes tienen más probabilidad de abandonar",
+    "lista de alumnos con mayor riesgo",
+    "top <n> de estudiantes en riesgo"
+   ],
+   "sql": "SELECT TOP (?) apellidos AS [Apellidos], nombres AS [Nombres], carrera AS [Carrera], CAST(100 * probabilidad AS DECIMAL(5,1)) AS [Probabilidad (%)], riesgo_categoria AS [Riesgo], factor_1 AS [Razón principal] FROM VIS_PREDICCION_ABANDONO ORDER BY probabilidad DESC, percentil_riesgo DESC",
+   "parametros": [
+    "n"
+   ],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "riesgo_top_carrera",
+   "categoria": "RIESGO",
+   "titulo": "Estudiantes de la carrera con mayor riesgo",
+   "preguntas": [
+    "quiénes son los estudiantes de <carrera> con mayor riesgo",
+    "alumnos en riesgo de <carrera>",
+    "lista de estudiantes en riesgo en <carrera>"
+   ],
+   "sql": "SELECT TOP (?) apellidos AS [Apellidos], nombres AS [Nombres], CAST(100 * probabilidad AS DECIMAL(5,1)) AS [Probabilidad (%)], riesgo_categoria AS [Riesgo], factor_1 AS [Razón principal] FROM VIS_PREDICCION_ABANDONO WHERE carrera = ? ORDER BY probabilidad DESC, percentil_riesgo DESC",
+   "parametros": [
+    "n",
+    "carrera"
+   ],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "riesgo_carrera",
+   "categoria": "RIESGO",
+   "titulo": "Riesgo de abandono en la carrera",
+   "preguntas": [
+    "cuántos estudiantes de <carrera> están en riesgo",
+    "nivel de riesgo de los alumnos de <carrera>",
+    "riesgo de abandono en <carrera>"
+   ],
+   "sql": "SELECT riesgo_categoria AS [Riesgo], COUNT(*) AS [Estudiantes] FROM VIS_PREDICCION_ABANDONO WHERE carrera = ? GROUP BY riesgo_categoria ORDER BY CASE riesgo_categoria WHEN 'ALTO' THEN 1 WHEN 'MEDIO' THEN 2 ELSE 3 END",
+   "parametros": [
+    "carrera"
+   ],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "probabilidad_media_carrera",
+   "categoria": "RIESGO",
+   "titulo": "Probabilidad media de abandono en la carrera",
+   "preguntas": [
+    "cuál es la probabilidad promedio de abandono en <carrera>",
+    "riesgo medio de los alumnos de <carrera>"
+   ],
+   "sql": "SELECT CAST(100 * AVG(CAST(probabilidad AS FLOAT)) AS DECIMAL(5,2)) AS [Probabilidad media (%)] FROM VIS_PREDICCION_ABANDONO WHERE carrera = ?",
+   "parametros": [
+    "carrera"
+   ],
+   "visualizacion": "valor"
+  },
+  {
+   "id": "riesgo_factores",
+   "categoria": "RIESGO",
+   "titulo": "Razones más frecuentes del riesgo",
+   "preguntas": [
+    "cuáles son las razones más frecuentes del riesgo de abandono",
+    "por qué están en riesgo los estudiantes",
+    "qué factores explican el riesgo"
+   ],
+   "sql": "SELECT LEFT(factor_1, CHARINDEX(':', factor_1 + ':') - 1) AS [Razón principal], COUNT(*) AS [Estudiantes] FROM VIS_PREDICCION_ABANDONO WHERE riesgo_categoria IN ('ALTO', 'MEDIO') AND factor_1 IS NOT NULL GROUP BY LEFT(factor_1, CHARINDEX(':', factor_1 + ':') - 1) ORDER BY 2 DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "razon_mayor_riesgo",
+   "categoria": "RIESGO",
+   "titulo": "Razones del estudiante con mayor riesgo",
+   "preguntas": [
+    "por qué el estudiante con mayor probabilidad de abandono está en riesgo",
+    "razones del alumno con más riesgo",
+    "explica el riesgo del estudiante con mayor probabilidad"
+   ],
+   "sql": "SELECT TOP 1 factor_1 AS [Razón 1], factor_2 AS [Razón 2], factor_3 AS [Razón 3] FROM VIS_PREDICCION_ABANDONO ORDER BY probabilidad DESC, percentil_riesgo DESC",
+   "parametros": [],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "segmentos_prioritarios",
+   "categoria": "SEGMENTACION",
+   "titulo": "Carreras que requieren atención prioritaria",
+   "preguntas": [
+    "qué carreras necesitan atención prioritaria",
+    "carreras con mayor riesgo institucional",
+    "qué programas debemos priorizar"
+   ],
+   "sql": "SELECT carrera AS [Carrera], CAST(100 * tasa_abandono_hist AS DECIMAL(5,2)) AS [Abandono histórico (%)], activos_en_riesgo AS [Activos en riesgo] FROM VIS_SEGMENTO_CARRERA WHERE orden_segmento = 1 ORDER BY tasa_abandono_hist DESC",
+   "parametros": [],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "segmentos_resumen",
+   "categoria": "SEGMENTACION",
+   "titulo": "Carreras por segmento de riesgo",
+   "preguntas": [
+    "cuántas carreras hay en cada segmento de riesgo",
+    "resumen de la segmentación de carreras",
+    "segmentos de las carreras"
+   ],
+   "sql": "SELECT segmento AS [Segmento], COUNT(*) AS [Carreras] FROM VIS_SEGMENTO_CARRERA GROUP BY segmento, orden_segmento ORDER BY orden_segmento",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "segmento_carrera",
+   "categoria": "SEGMENTACION",
+   "titulo": "Segmento de la carrera",
+   "preguntas": [
+    "en qué segmento de riesgo está <carrera>",
+    "<carrera> requiere atención prioritaria",
+    "segmento de <carrera>"
+   ],
+   "sql": "SELECT segmento AS [Segmento], CAST(100 * tasa_abandono_hist AS DECIMAL(5,2)) AS [Abandono histórico (%)], activos_en_riesgo AS [Activos en riesgo] FROM VIS_SEGMENTO_CARRERA WHERE carrera = ?",
+   "parametros": [
+    "carrera"
+   ],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "referentes",
+   "categoria": "REFERENTES",
+   "titulo": "Referentes externos de abandono",
+   "preguntas": [
+    "qué tasas de abandono reportan otras instituciones",
+    "referentes externos de abandono",
+    "cómo estamos frente a otras universidades",
+    "compara nuestra tasa de abandono con otras instituciones"
+   ],
+   "sql": "SELECT 'Institución propia' AS [Referente], 'Datos propios' AS [País], CAST(100.0 * SUM(CASE WHEN estado_matricula = 'RETIRADO' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS DECIMAL(6,2)) AS [Abandono (%)], '-' AS [Comparabilidad], '-' AS [Fuente] FROM VIS_ALUMNO WHERE es_ultimo_periodo = 1 AND estado_matricula <> 'ACTIVO' UNION ALL SELECT nombre, pais, CAST(valor AS DECIMAL(6,2)), nivel_comparabilidad, fuente FROM VIS_REFERENTE_EXTERNO WHERE indicador_codigo = 'TASA_ABANDONO'",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "referente_ecuador",
+   "categoria": "REFERENTES",
+   "titulo": "Referente de Ecuador",
+   "preguntas": [
+    "qué tasa de abandono reporta el estudio de Ecuador",
+    "abandono en universidades ecuatorianas según la literatura",
+    "referente ecuatoriano de deserción",
+    "estudio de referencia de Ecuador"
+   ],
+   "sql": "SELECT nombre AS [Referente], CAST(valor AS DECIMAL(6,2)) AS [Abandono (%)], anio AS [Año], fuente AS [Fuente], doi AS [DOI] FROM VIS_REFERENTE_EXTERNO WHERE pais = 'Ecuador' AND indicador_codigo = 'TASA_ABANDONO'",
+   "parametros": [],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "confiabilidad_modelo",
+   "categoria": "EVALUACION",
+   "titulo": "Confiabilidad del modelo predictivo",
+   "preguntas": [
+    "qué tan confiable es el modelo",
+    "cuál es el ROC-AUC del modelo en la validación temporal",
+    "qué porcentaje de los abandonos detecta el modelo",
+    "precisión del modelo de predicción"
+   ],
+   "sql": "SELECT metrica AS [Métrica], CAST(valor AS DECIMAL(8,4)) AS [Valor] FROM VIS_EVALUACION_MODELO WHERE componente = 'PREDICCION' AND esquema_validacion = 'TEMPORAL' AND es_modelo_final = 1 AND metrica IN ('ROC_AUC', 'PR_AUC', 'RECALL_MEDIO', 'PRECISION_MEDIO', 'RECALL_ALTO', 'PRECISION_ALTO', 'CAPTURA_TOP_10') ORDER BY metrica",
+   "parametros": [],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "modelo_final",
+   "categoria": "EVALUACION",
+   "titulo": "Modelo de predicción en uso",
+   "preguntas": [
+    "qué modelo de predicción se eligió",
+    "qué algoritmo usa el sistema",
+    "cuál es el modelo final"
+   ],
+   "sql": "SELECT DISTINCT modelo AS [Modelo], modelo_version AS [Versión] FROM VIS_EVALUACION_MODELO WHERE componente = 'PREDICCION' AND es_modelo_final = 1 AND esquema_validacion = 'TEMPORAL'",
+   "parametros": [],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "comparacion_modelos",
+   "categoria": "EVALUACION",
+   "titulo": "Comparación de algoritmos",
+   "preguntas": [
+    "compara los algoritmos de predicción",
+    "qué modelos se compararon",
+    "ROC-AUC de cada modelo en validación cruzada"
+   ],
+   "sql": "SELECT modelo AS [Modelo], CAST(valor AS DECIMAL(6,4)) AS [ROC-AUC medio], CAST(desviacion AS DECIMAL(6,4)) AS [Desviación] FROM VIS_EVALUACION_MODELO WHERE componente = 'PREDICCION' AND esquema_validacion = 'CV_AGRUPADA_5' AND metrica = 'ROC_AUC' ORDER BY valor DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "calidad_segmentacion",
+   "categoria": "EVALUACION",
+   "titulo": "Validación de la segmentación",
+   "preguntas": [
+    "qué tan buena es la segmentación de carreras",
+    "cuál es el coeficiente silhouette de la segmentación",
+    "es significativa la diferencia entre segmentos"
+   ],
+   "sql": "SELECT metrica AS [Métrica], CAST(valor AS DECIMAL(8,4)) AS [Valor] FROM VIS_EVALUACION_MODELO WHERE componente = 'SEGMENTACION' ORDER BY metrica",
+   "parametros": [],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "intervenciones_abiertas",
+   "categoria": "SEGUIMIENTO",
+   "titulo": "Intervenciones abiertas",
+   "preguntas": [
+    "cuántas intervenciones de seguimiento están abiertas",
+    "seguimientos pendientes de bienestar",
+    "casos abiertos de acompañamiento"
+   ],
+   "sql": "SELECT tipo AS [Tipo], COUNT(*) AS [Abiertas] FROM VIS_INTERVENCION WHERE estado = 'ABIERTA' GROUP BY tipo ORDER BY 2 DESC",
+   "parametros": [],
+   "visualizacion": "barras"
+  },
+  {
+   "id": "cobertura_seguimiento",
+   "categoria": "SEGUIMIENTO",
+   "titulo": "Cobertura del seguimiento en riesgo alto",
+   "preguntas": [
+    "cuántos estudiantes en riesgo alto ya tienen seguimiento",
+    "cobertura de las alertas de riesgo alto",
+    "estudiantes en riesgo alto sin atender"
+   ],
+   "sql": "SELECT COUNT(*) AS [En riesgo alto], SUM(CASE WHEN i.cedula IS NOT NULL THEN 1 ELSE 0 END) AS [Con seguimiento] FROM VIS_PREDICCION_ABANDONO p LEFT JOIN (SELECT DISTINCT cedula FROM VIS_INTERVENCION) i ON i.cedula = p.cedula WHERE p.riesgo_categoria = 'ALTO'",
+   "parametros": [],
+   "visualizacion": "tabla"
+  },
+  {
+   "id": "institucion_activa",
+   "categoria": "INSTITUCION",
+   "titulo": "Institución consultada",
+   "preguntas": [
+    "qué institución estoy consultando",
+    "los datos son reales o de prueba",
+    "de dónde vienen los datos"
+   ],
+   "sql": "SELECT nombre AS [Institución], pais AS [País], tipo_datos AS [Tipo de datos], unidad_periodo AS [Periodo] FROM VIS_INSTITUCION",
+   "parametros": [],
+   "visualizacion": "tabla"
+  }
+ ]
+}

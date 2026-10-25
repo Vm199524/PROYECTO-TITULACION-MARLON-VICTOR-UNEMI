@@ -1,0 +1,25 @@
+@startuml av2_colaboracion
+!include _estilo.iuml
+left to right direction
+skinparam linetype ortho
+object ":Orquestador\n(scripts.pipeline)" as O
+object ":Lector de historial\n(ml.datos)" as L
+object ":Constructor de panel\n(ml.caracteristicas)" as C
+object ":Paquete del modelo\n(.joblib)" as M
+object ":Calibrador de Platt" as K
+object ":Explicador SHAP\n(ml.explicacion)" as E
+object ":Monitor de deriva\n(PSI)" as D
+object ":ALMACEN_ACADEMICO" as BD
+
+O --> L : 1: leer_historial(institución)
+L --> BD : 1.1: SELECT trayectoria
+O --> C : 2: construir_panel(historial)
+O --> M : 3: cargar_paquete()
+O --> M : 4: predict_proba(activos)
+M --> K : 4.1: calibrar(probabilidad)
+O --> E : 5: contribuciones(modelo, X)
+E --> O : 5.1: factor_1..3, explicación
+O --> D : 6: psi(referencia, actual)
+O --> BD : 7: INSERT fact_prediccion_abandono\n(probabilidad, nivel, percentil, factores)
+O --> BD : 8: INSERT fact_evaluacion_modelo (MONITOREO)
+@enduml

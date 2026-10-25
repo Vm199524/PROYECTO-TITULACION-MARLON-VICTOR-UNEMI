@@ -1,0 +1,231 @@
+{
+  "registros": 79268,
+  "estudiantes": 14508,
+  "periodos": 15,
+  "carreras": 18,
+  "estados_finales": {
+    "ACTIVO": 7158,
+    "RETIRADO": 4260,
+    "GRADUADO": 2222,
+    "EGRESADO": 868
+  },
+  "faltantes_opcionales": {
+    "monto_matricula": 0.0,
+    "beca_porcentaje": 0.0,
+    "saldo_pendiente": 0.0,
+    "creditos_matriculados": 0.0,
+    "numero_matricula": 0.0,
+    "dias_anticipacion_matricula": 0.0,
+    "actividad_lms": 0.0,
+    "dias_sin_actividad": 0.0,
+    "evaluaciones_vencidas": 0.0,
+    "evaluaciones_entregadas": 0.0,
+    "evaluaciones_tardias": 0.0,
+    "nota_evaluaciones": 0.0019
+  },
+  "fuera_de_rango": {
+    "promedio fuera de 0-10": 0,
+    "asistencia fuera de 0-100": 0
+  },
+  "etiquetados": 64760,
+  "positivos": 4260,
+  "tasa_por_periodo": [
+    {
+      "periodo": "2019-1",
+      "tasa": 0.0615,
+      "n": 748
+    },
+    {
+      "periodo": "2019-2",
+      "tasa": 0.081,
+      "n": 1494
+    },
+    {
+      "periodo": "2020-1",
+      "tasa": 0.077,
+      "n": 2234
+    },
+    {
+      "periodo": "2020-2",
+      "tasa": 0.0745,
+      "n": 2966
+    },
+    {
+      "periodo": "2021-1",
+      "tasa": 0.0847,
+      "n": 3626
+    },
+    {
+      "periodo": "2021-2",
+      "tasa": 0.0638,
+      "n": 4198
+    },
+    {
+      "periodo": "2022-1",
+      "tasa": 0.0622,
+      "n": 4888
+    },
+    {
+      "periodo": "2022-2",
+      "tasa": 0.0597,
+      "n": 5577
+    },
+    {
+      "periodo": "2023-1",
+      "tasa": 0.0628,
+      "n": 5987
+    },
+    {
+      "periodo": "2023-2",
+      "tasa": 0.0636,
+      "n": 6261
+    },
+    {
+      "periodo": "2024-1",
+      "tasa": 0.0597,
+      "n": 6396
+    },
+    {
+      "periodo": "2024-2",
+      "tasa": 0.0614,
+      "n": 6613
+    },
+    {
+      "periodo": "2025-1",
+      "tasa": 0.0695,
+      "n": 6791
+    },
+    {
+      "periodo": "2025-2",
+      "tasa": 0.065,
+      "n": 6981
+    }
+  ],
+  "tasa_por_grupo": {
+    "promedio_t": {
+      "titulo": "Promedio",
+      "grupos": [
+        {
+          "grupo": "< 5",
+          "tasa": 0.6387,
+          "n": 119
+        },
+        {
+          "grupo": "5-6",
+          "tasa": 0.4129,
+          "n": 1412
+        },
+        {
+          "grupo": "6-7",
+          "tasa": 0.1968,
+          "n": 8339
+        },
+        {
+          "grupo": "7-8",
+          "tasa": 0.0473,
+          "n": 20759
+        },
+        {
+          "grupo": "≥ 8",
+          "tasa": 0.0287,
+          "n": 34131
+        }
+      ]
+    },
+    "asistencia_t": {
+      "titulo": "Asistencia (%)",
+      "grupos": [
+        {
+          "grupo": "< 50",
+          "tasa": 0.3333,
+          "n": 3
+        },
+        {
+          "grupo": "50-70",
+          "tasa": 0.2143,
+          "n": 2804
+        },
+        {
+          "grupo": "70-85",
+          "tasa": 0.0839,
+          "n": 26448
+        },
+        {
+          "grupo": "≥ 85",
+          "tasa": 0.0406,
+          "n": 35505
+        }
+      ]
+    },
+    "numero_matricula": {
+      "titulo": "N.º de matrícula",
+      "grupos": [
+        {
+          "grupo": "1.ª",
+          "tasa": 0.043,
+          "n": 58174
+        },
+        {
+          "grupo": "2.ª",
+          "tasa": 0.2913,
+          "n": 5806
+        },
+        {
+          "grupo": "3.ª",
+          "tasa": 0.0885,
+          "n": 780
+        }
+      ]
+    },
+    "dias_sin_actividad": {
+      "titulo": "Días sin actividad",
+      "grupos": [
+        {
+          "grupo": "0-3",
+          "tasa": 0.0388,
+          "n": 23499
+        },
+        {
+          "grupo": "4-7",
+          "tasa": 0.0571,
+          "n": 16238
+        },
+        {
+          "grupo": "8-14",
+          "tasa": 0.0846,
+          "n": 20013
+        },
+        {
+          "grupo": "> 14",
+          "tasa": 0.1453,
+          "n": 5010
+        }
+      ]
+    },
+    "pct_entregadas": {
+      "titulo": "Entregas (%)",
+      "grupos": [
+        {
+          "grupo": "< 50",
+          "tasa": 0.2567,
+          "n": 4612
+        },
+        {
+          "grupo": "50-80",
+          "tasa": 0.0996,
+          "n": 13073
+        },
+        {
+          "grupo": "80-99",
+          "tasa": 0.0479,
+          "n": 25406
+        },
+        {
+          "grupo": "100",
+          "tasa": 0.0257,
+          "n": 21669
+        }
+      ]
+    }
+  }
+}

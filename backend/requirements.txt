@@ -1,0 +1,42 @@
+# Dependencias del backend (versión 3 del prototipo).
+# Versiones fijadas y probadas con Python 3.13 y 3.14. El listado completo con
+# dependencias transitivas está en requirements.lock.txt; usarlo para
+# reproducir exactamente el entorno con el que se obtuvieron las métricas.
+
+# API web
+fastapi==0.141.1
+uvicorn==0.54.0
+pydantic==2.13.5
+python-multipart==0.0.32
+python-jose[cryptography]==3.5.0
+bcrypt==5.0.0
+cryptography==50.0.2
+
+# Datos y base de datos
+pyodbc==5.3.0
+python-dotenv==1.2.3
+pandas==3.0.6
+numpy==2.5.3
+pyarrow==25.0.1
+
+# Aprendizaje automático (CRISP-DM: modelado, evaluación y explicación)
+scikit-learn==1.9.1
+scipy==1.18.1
+lightgbm==4.7.0
+optuna==5.0.0
+imbalanced-learn==0.14.2
+shap==0.52.0
+joblib==1.6.0
+matplotlib==3.11.2
+
+# Consulta conversacional (NL2SQL)
+openai==3.26.0
+sqlglot==30.21.0
+
+# Reportes ejecutivos
+openpyxl==3.1.5
+reportlab==5.0.1
+
+# Pruebas
+pytest==9.1.1
+httpx==0.28.1

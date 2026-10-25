@@ -1,0 +1,837 @@
+TY  - JOUR
+AU  - Albreiki, B.
+AU  - Zaki, N.
+AU  - Alashwal, H.
+TI  - A systematic literature review of student’ performance prediction using machine learning techniques
+PY  - 2021
+T2  - Education Sciences
+VL  - 11
+IS  - 9
+C7  - 552
+DO  - 10.3390/educsci11090552
+UR  - https://www.scopus.com/pages/publications/85115602733?origin=resultslist
+AB  - Educational Data Mining plays a critical role in advancing the learning environment by contributing state-of-the-art methods, techniques, and applications. The recent development provides valuable tools for understanding the student learning environment by exploring and utilizing educational data using machine learning and data mining techniques. Modern academic institutions operate in a highly competitive and complex environment. Analyzing performance, providing high-quality education, strategies for evaluating the students’ performance, and future actions are among the prevailing challenges universities face. Student intervention plans must be implemented in these universities to overcome problems experienced by the students during their studies. In this systematic review, the relevant EDM literature related to identifying student dropouts and students at risk from 2009 to 2021 is reviewed. The review results indicated that various Machine Learning (ML) techniques are used to understand and overcome the underlying challenges; predicting students at risk and students drop out prediction. Moreover, most studies use two types of datasets: data from student colleges/university databases and online learning platforms. ML methods were confirmed to play essential roles in predicting students at risk and dropout rates, thus improving the students’ performance. © 2021 by the authors. Licensee MDPI, Basel, Switzerland.
+KW  - Classification
+KW  - Education data mining
+KW  - Machine learning
+KW  - MOOC
+KW  - Prediction
+KW  - Student performance
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85115602733
+N1  - Export Date: 11 September 2026; Cited By: 405
+ER  -
+
+TY  - JOUR
+AU  - Alzabidi, E.
+AU  - Yakut, Ö.
+AU  - Saad, S.
+AU  - Fındık, O.
+TI  - SOD-FE: a supervised outlier detection and feature engineering approach for student dropout prediction
+PY  - 2026
+T2  - Scientific Reports
+VL  - 16
+IS  - 1
+C7  - 25906
+DO  - 10.1038/s41598-026-56591-6
+UR  - https://www.scopus.com/pages/publications/105047683174?origin=resultslist
+AB  - Student dropout in higher education creates academic and socio-economic challenges for institutions and students. Effective early prediction models are essential to identify at-risk students and implement timely interventions. This paper proposes SOD-FE, a supervised machine learning approach that combines label-aware outlier detection with feature engineering to enhance dropout prediction. The approach integrates interquartile range (IQR) based outlier detection with mutual information and Pearson correlation to identify and mitigate the impact of outliers before constructing the final model. Then, a feature selection strategy is applied to refine the dataset. The approach is evaluated through experiments on two real-world datasets (Portugal and Slovakia) utilizing five classification algorithms, including Random Forest (RF) and Extreme Gradient Boosting (XGB). Performance improved markedly with the RF classifier, achieving F1 scores of 98.09% and 98.33% on the Portugal and Slovakia benchmark datasets, respectively, under 5-fold cross-validation. Furthermore, the SOD-FE approach outperformed the baseline RF models by 7.46% and 3.37% in F1 score across the two datasets, demonstrating highly competitive results that align with or exceed the highest reported performances in recent literature by up to 7.33%. The proposed approach also incorporates explainable AI techniques (SHAP) to enhance model transparency and support data-driven educational policy. These findings show the significant potential of the SOD-FE method for improving student retention and early intervention systems in educational institutions. © The Author(s) 2026.
+KW  - Feature engineering
+KW  - Machine learning
+KW  - Student dropout prediction
+KW  - Supervised outlier detection
+KW  - XAI
+KW  - article
+KW  - benchmarking
+KW  - classification algorithm
+KW  - classifier
+KW  - controlled study
+KW  - cross validation
+KW  - diagnosis
+KW  - early intervention
+KW  - explainable artificial intelligence
+KW  - feature selection
+KW  - human
+KW  - machine learning
+KW  - outlier detection
+KW  - Portugal
+KW  - prediction
+KW  - predictive model
+KW  - random forest
+KW  - school dropout
+KW  - Slovakia
+KW  - student retention
+KW  - supervised machine learning
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-105047683174
+N1  - Export Date: 11 September 2026; Cited By: 1
+ER  -
+
+TY  - JOUR
+AU  - Alzubi, M.M.S.
+AU  - Alrifae, A.A.M.
+AU  - Mahmoud, M.H.
+AU  - Atieh, A.A.
+TI  - Factors Influencing Business Intelligence Adoption by Jordanian Private Universities
+PY  - 2025
+T2  - Paper Asia
+VL  - 41
+IS  - 1
+SP  - 148
+EP  - 167
+DO  - 10.59953/paperasia.v41i1b.378
+UR  - https://www.scopus.com/pages/publications/86000126999?origin=resultslist
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-86000126999
+N1  - Export Date: 11 September 2026; Cited By: 47
+ER  -
+
+TY  - JOUR
+AU  - Ascoli, B. G.
+AU  - Choi, J. D.
+TI  - Advancing conversational Text-to-SQL: Context strategies and model integration with large language models
+PY  - 2025
+T2  - Future Internet
+VL  - 17
+IS  - 11
+SP  - 527
+DO  - 10.3390/fi17110527
+UR  - https://doi.org/10.3390/fi17110527
+ER  -
+
+TY  - JOUR
+AU  - Carballo-Mendívil, B.
+AU  - Arellano-González, A.
+AU  - Ríos-Vázquez, N.J.
+AU  - Lizardi-Duarte, M.D.P.
+TI  - Predicting Student Dropout from Day One: XGBoost-Based Early Warning System Using Pre-Enrollment Data
+PY  - 2025
+T2  - Applied Sciences (Switzerland)
+VL  - 15
+IS  - 16
+C7  - 9202
+DO  - 10.3390/app15169202
+UR  - https://www.scopus.com/pages/publications/105014476134?origin=resultslist
+AB  - Featured Application: This work introduces a practical and human-centered early warning system that helps universities detect students at higher risk of dropping out before they even attend their first class. By drawing on information shared by students at the time of enrollment, the model enables universities to identify who may require extra support early on, allowing them to reach out with care, guidance, and resources before challenges become barriers. Student dropout remains a critical challenge in higher education, especially within public universities that serve diverse and vulnerable populations. This research presents the design and evaluation of an early warning system based on an XGBoost classifier, trained exclusively on data collected at the time of student enrollment. Using a retrospective dataset of nearly 40,000 first-year students (2014–2024) from a Mexican public university, the model incorporated academic, socioeconomic, demographic, and perceptual variables. The final XGBoost model achieved an AUC-ROC of 0.6902 and an F1-score of 0.6946 for the dropout class, with a sensitivity of 88%. XGBoost was chosen over Random Forest due to its superior ability to detect students at risk, a critical requirement for early intervention. The model flagged 59% of incoming students as high-risk, with considerable variability across academic programs. The most influential predictors included age, high school GPA, conditioned admission, and other family responsibilities and economic constraints. This research demonstrates that early warning systems can transform enrollment data into timely and actionable insights, enabling universities to identify vulnerable students earlier and respond more effectively, allocate support more efficiently, and enhance their efforts to reduce dropout rates and improve student retention. © 2025 by the authors.
+KW  - early warning system
+KW  - educational data mining
+KW  - educational equity
+KW  - machine learning
+KW  - prediction
+KW  - student dropout
+KW  - student retention
+KW  - XGBoost
+KW  - Classification (of information)
+KW  - Data mining
+KW  - Economics
+KW  - Education computing
+KW  - Learning systems
+KW  - Population statistics
+KW  - Students
+KW  - Critical challenges
+KW  - Early Warning System
+KW  - Educational data mining
+KW  - Educational equity
+KW  - Information shared
+KW  - Machine-learning
+KW  - Public universities
+KW  - Student dropout
+KW  - Student retention
+KW  - Xgboost
+KW  - Forecasting
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-105014476134
+N1  - Export Date: 11 September 2026; Cited By: 23
+ER  -
+
+TY  - JOUR
+AU  - Dube, L.
+AU  - Verster, T.
+TI  - Interpretability of the random forest model under class imbalance
+PY  - 2024
+T2  - Data Science in Finance and Economics
+VL  - 4
+IS  - 3
+SP  - 446
+EP  - 468
+DO  - 10.3934/DSFE.2024019
+UR  - https://doi.org/10.3934/DSFE.2024019
+ER  -
+
+TY  - JOUR
+AU  - Duro, B.
+AU  - Gomes, A.
+AU  - Correia, F. B.
+AU  - Borges, A. R.
+AU  - Bernardino, J.
+TI  - Machine learning and deep learning for dropout prediction in higher education: A review
+PY  - 2026
+T2  - Computers
+VL  - 15
+IS  - 3
+SP  - 164
+DO  - 10.3390/computers15030164
+UR  - https://doi.org/10.3390/computers15030164
+ER  -
+
+TY  - JOUR
+AU  - Fida, S.
+AU  - Masood, N.
+AU  - Tariq, N.
+AU  - Qayyum, F.
+TI  - A Novel Hybrid Ensemble Clustering Technique for Student Performance Prediction
+PY  - 2022
+T2  - Journal of Universal Computer Science
+VL  - 28
+IS  - 8
+SP  - 777
+EP  - 798
+DO  - 10.3897/jucs.73427
+UR  - https://www.scopus.com/pages/publications/85138204670?origin=resultslist
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85138204670
+N1  - Export Date: 11 September 2026; Cited By: 9
+ER  -
+
+TY  - JOUR
+AU  - Gutierrez-Pachas, D.A.
+AU  - Garcia-Zanabria, G.
+AU  - Cuadros-Vargas, E.
+AU  - Camara-Chavez, G.
+AU  - Gomez-Nieto, E.
+TI  - Supporting Decision-Making Process on Higher Education Dropout by Analyzing Academic, Socioeconomic, and Equity Factors through Machine Learning and Survival Analysis Methods in the Latin American Context
+PY  - 2023
+T2  - Education Sciences
+VL  - 13
+IS  - 2
+C7  - 154
+DO  - 10.3390/educsci13020154
+UR  - https://www.scopus.com/pages/publications/85148738115?origin=resultslist
+AB  - The prediction of university dropout is a complex problem, given the number and diversity of variables involved. Therefore, different strategies are applied to understand this educational phenomenon, although the most outstanding derive from the joint application of statistical approaches and computational techniques based on machine learning. Student Dropout Prediction (SDP) is a challenging problem that can be addressed following various strategies. On the one hand, machine learning approaches formulate it as a classification task whose objective is to compute the probability of belonging to a class based on a specific feature vector that will help us to predict who will drop out. Alternatively, survival analysis techniques are applied in a time-varying context to predict when abandonment will occur. This work considered analytical mechanisms for supporting the decision-making process on higher education dropout. We evaluated different computational methods from both approaches for predicting who and when the dropout occurs and sought those with the most-consistent results. Moreover, our research employed a longitudinal dataset including demographic, socioeconomic, and academic information from six academic departments of a Latin American university over thirteen years. Finally, this study carried out an in-depth analysis, discusses how such variables influence estimating the level of risk of dropping out, and questions whether it occurs at the same magnitude or not according to the academic department, gender, socioeconomic group, and other variables. © 2023 by the authors.
+KW  - machine learning models
+KW  - student dropout prediction
+KW  - survival analysis
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85148738115
+N1  - Export Date: 11 September 2026; Cited By: 32
+ER  -
+
+TY  - JOUR
+AU  - Khatun, M. R.
+AU  - Mim, M. A.
+AU  - Tasin, M. M.
+AU  - Hossain, M. M.
+TI  - A hybrid framework of statistical, machine learning, and explainable AI methods for school dropout prediction
+PY  - 2025
+T2  - PLOS One
+VL  - 20
+IS  - 9
+SP  - e0331917
+DO  - 10.1371/journal.pone.0331917
+UR  - https://doi.org/10.1371/journal.pone.0331917
+ER  -
+
+TY  - JOUR
+AU  - Kok, C. L.
+AU  - Ho, C. K.
+AU  - Chen, L.
+AU  - Koh, Y. Y.
+AU  - Tian, B.
+TI  - A novel predictive modeling for student attrition utilizing machine learning and sustainable big data analytics
+PY  - 2024
+T2  - Applied Sciences
+VL  - 14
+IS  - 21
+SP  - 9633
+DO  - 10.3390/app14219633
+UR  - https://doi.org/10.3390/app14219633
+ER  -
+
+TY  - JOUR
+AU  - Komljenovic, J.
+AU  - Sellar, S.
+AU  - Birch, K.
+TI  - Turning universities into data-driven organisations: seven dimensions of change
+PY  - 2025
+T2  - Higher Education
+VL  - 89
+IS  - 5
+SP  - 1369
+EP  - 1386
+DO  - 10.1007/s10734-024-01277-z
+UR  - https://www.scopus.com/pages/publications/85200114159?origin=resultslist
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85200114159
+N1  - Export Date: 11 September 2026; Cited By: 26
+ER  -
+
+TY  - JOUR
+AU  - Kovor, D.K.
+AU  - Osei, E.O.
+AU  - Agyemang, E.N.
+TI  - Federated learning for privacy-preserving at-risk student prediction in health professional education: A multi-scenario evaluation of FedAvg and FedProx
+PY  - 2026
+T2  - Computers and Education: Artificial Intelligence
+VL  - 11
+C7  - 100660
+DO  - 10.1016/j.caeai.2026.100660
+UR  - https://www.scopus.com/pages/publications/105046932522?origin=resultslist
+AB  - Student attrition in health professional education (HPE) carries serious implications for institutional performance and healthcare workforce supply, yet cross-institutional prediction is impeded by privacy regulations that prevent raw data sharing. This study presents, to the best of the authors' knowledge, the first simulation-based evaluation of federated learning (FL) for privacy-preserving at-risk prediction in an HPE programme-discipline context, using the Open University Learning Analytics Dataset partitioned to simulate five programme-discipline clients as HPE analogues. A systematic search of Google Scholar, Scopus, and the ACM Digital Library (terms: “federated learning,” “at-risk student prediction,” “health professional education,” “privacy-preserving learning analytics”; May 2026) identified no prior study combining these elements. Grounded in Tinto's Student Integration Model, LMS behavioural features were operationalised as integration proxies. FedAvg and FedProx were evaluated under logistic regression (LR) and MLP architectures across four scenarios: IID baseline, pedagogical heterogeneity, data quality variation, and temporal drift. Federated LR retained 99.3–99.9% of centralised performance across all scenarios (maximum gap: 0.64 pp AUC-PR), confirming a negligible privacy-utility trade-off. FedProx delivered no statistically significant advantage over FedAvg for LR in any scenario (AUC-PR differences of −0.03 to +0.19 pp, overlapping confidence intervals, Wilcoxon p > 0.05), but gained up to 6.40 pp AUC-PR for MLP under data quality heterogeneity, reducing training variance 40-fold — establishing proximal regularisation as a stability mechanism for non-linear architectures rather than a universal performance enhancement. Cross-semester evaluation showed no statistically significant temporal drift (Wilcoxon p = 0.32). SHAP attribution identified Active Days, Assessments Submitted, and Mean Assessment Score as globally dominant predictors; per-programme analysis revealed discipline-level differences in feature salience, informing targeted early intervention. Forum Interactions ranked last across all disciplines — diverging from Tinto's social integration predictions and attributed to HPE's reliance on clinical placements and in-person peer learning rather than asynchronous online forums. © 2026 The Authors.
+KW  - At-risk student prediction
+KW  - Federated learning
+KW  - FedProx
+KW  - Health professional education
+KW  - Privacy-preserving machine learning
+KW  - SHAP
+KW  - Artificial intelligence
+KW  - Behavioral research
+KW  - Data Sharing
+KW  - Digital libraries
+KW  - Education computing
+KW  - Forecasting
+KW  - Health care
+KW  - Health risks
+KW  - Integration
+KW  - Learning systems
+KW  - Logistic regression
+KW  - Privacy-preserving techniques
+KW  - Professional aspects
+KW  - Teaching
+KW  - At-risk student prediction
+KW  - Fedprox
+KW  - Health professional education
+KW  - Health professionals
+KW  - Logistics regressions
+KW  - Machine-learning
+KW  - Privacy preserving
+KW  - Privacy-preserving machine learning
+KW  - Professional education
+KW  - SHAP
+KW  - Economic and social effects
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-105046932522
+N1  - Export Date: 11 September 2026; Cited By: 0
+ER  -
+
+TY  - JOUR
+AU  - Lepori, B.
+AU  - Bornmann, L.
+TI  - Comparing peers with peers in Higher Education Institutions' evaluations: developing good practices to identify similar institutions by subject profile
+PY  - 2026
+T2  - Research Evaluation
+VL  - 35
+DO  - 10.1093/reseval/rvag012
+UR  - https://doi.org/10.1093/reseval/rvag012
+ER  -
+
+TY  - JOUR
+AU  - Marcolino, M. R.
+AU  - Porto, T. R.
+AU  - Primo, T. T.
+AU  - Targino, R.
+AU  - Ramos, V.
+AU  - Queiroga, E. M.
+AU  - Munoz, R.
+AU  - Cechinel, C.
+TI  - Student dropout prediction through machine learning optimization: Insights from Moodle log data
+PY  - 2025
+T2  - Scientific Reports
+VL  - 15
+IS  - 1
+SP  - 9840
+DO  - 10.1038/s41598-025-93918-1
+UR  - https://doi.org/10.1038/s41598-025-93918-1
+ER  -
+
+TY  - JOUR
+AU  - Mejía-Peñafiel, E. F.
+AU  - Aguilar-Reyes, J. E.
+AU  - Morocho-Barrionuevo, T. P.
+AU  - García-Veloz, M. J.
+TI  - Metodología de implementación de un dashboard en Power BI para el aprendizaje sistémico de estudiantes universitarios
+PY  - 2026
+T2  - Revista de Ciencias Sociales
+VL  - 32
+IS  - 1
+SP  - 208
+EP  - 219
+UR  - https://produccioncientificaluz.org/index.php/rcs/index
+ER  -
+
+TY  - JOUR
+AU  - Melchor, F.
+AU  - Conejero, J.M.
+AU  - Fernández-García, A.J.
+AU  - Sánchez-Figueroa, F.
+AU  - Rodríguez-Echeverría, R.
+TI  - An empirical evaluation of clustering processes for early detection of university dropout
+PY  - 2026
+T2  - International Journal of Data Science and Analytics
+VL  - 22
+IS  - 1
+C7  - 25
+DO  - 10.1007/s41060-025-00965-y
+UR  - https://www.scopus.com/pages/publications/105027640513?origin=resultslist
+AB  - The elevated rates of dropout within academic institutions have prompted the use of Artificial Intelligence (AI) to tackle this issue. These efforts often rely mainly on administrative and academic data, lacking personal information about students. In a previous study, we explored machine learning models to leverage this data and harness their knowledge-extraction capabilities. However, a critical factor, the availability of labeled data, was not addressed. Obtaining these data may be challenging due to their distribution across different systems or the considerable time required to collect them, especially when new degrees are being implemented. The lack of labeled data is a major obstacle for institutions that do not possess them so that they are unable to take advantage of the full potential of AI for their purposes. Clustering algorithms have conventionally been employed to uncover latent patterns within unlabeled data. These unsupervised algorithms may reduce the need for data labeling; nonetheless, it necessitates rigorous validation of the resulting clusters, particularly when dealing with datasets encompassing numerical and categorical attributes. This paper introduces a comparison of various clustering algorithms to discern the most appropriate technique for uncovering the underlying factors contributing to university student attrition, employing unlabeled data. The novelty lies not only in the algorithmic comparison but also in their integration with diverse data preprocessing methodologies, streamlining the selection of the optimal combination including advanced data transformations for the harmonization of numerical and categorical information. It is illustrated through a real-world case utilizing academic data from a Spanish university, providing empirical validation for the proposed methodology. We also conducted an exploratory analysis to identify the factors behind cluster formation. The insights gained can be extrapolated to analogous experiments where social or economic data are scarce, and most of the available attributes are academic in nature. © The Author(s) 2025.
+KW  - Clustering models
+KW  - Feature engineering
+KW  - Machine learning
+KW  - Not supervised models
+KW  - Real experiences
+KW  - Student dropout
+KW  - Cluster analysis
+KW  - Clustering algorithms
+KW  - Engineering education
+KW  - Knowledge management
+KW  - Labeled data
+KW  - Metadata
+KW  - Students
+KW  - Clustering model
+KW  - Clusterings
+KW  - Empirical evaluations
+KW  - Feature engineerings
+KW  - Labeled data
+KW  - Machine-learning
+KW  - Not supervised model
+KW  - Real experience
+KW  - Student dropout
+KW  - Unlabeled data
+KW  - Learning systems
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-105027640513
+N1  - Export Date: 11 September 2026; Cited By: 1
+ER  -
+
+TY  - JOUR
+AU  - Mohd Talib, N. I.
+AU  - Abd Majid, N. A.
+AU  - Sahran, S.
+TI  - Identification of student behavioral patterns in higher education using K-Means clustering and support vector machine
+PY  - 2023
+T2  - Applied Sciences
+VL  - 13
+IS  - 5
+SP  - 3267
+DO  - 10.3390/app13053267
+UR  - https://doi.org/10.3390/app13053267
+ER  -
+
+TY  - JOUR
+AU  - Mustofa, S.
+AU  - Emon, Y. R.
+AU  - Mamun, S. B.
+AU  - Akhy, S. A.
+AU  - Ahad, M. T.
+TI  - A novel AI-driven model for student dropout risk analysis with explainable AI insights
+PY  - 2025
+T2  - Computers and Education: Artificial Intelligence
+VL  - 8
+SP  - 100352
+DO  - 10.1016/j.caeai.2024.100352
+UR  - https://doi.org/10.1016/j.caeai.2024.100352
+ER  -
+
+TY  - JOUR
+AU  - Niyogisubizo, J.
+AU  - Liao, L.
+AU  - Nziyumva, E.
+AU  - Murwanashyaka, E.
+AU  - Nshimyumukiza, P.C.
+TI  - Predicting student's dropout in university classes using two-layer ensemble machine learning approach: A novel stacked generalization
+PY  - 2022
+T2  - Computers and Education: Artificial Intelligence
+VL  - 3
+C7  - 100066
+DO  - 10.1016/j.caeai.2022.100066
+UR  - https://www.scopus.com/pages/publications/85127330828?origin=resultslist
+AB  - Student dropout is a serious problem globally. It affects not only the individual who drops out but also the former school, family, and society in general. With the current development of science and technology, big data is emphasized as the most significant technology in data analysis. From the recorded educational data, efficient prediction of students' dropout is currently a hot topic of research. Previous studies have focused only on the students' dropout based on specific levels such as individual, middle school, and university level. However, ensemble learning approaches have not received much research attention so far to predict students' dropout in university classes based on rare datasets. In this paper, we propose a novel stacking ensemble based on a hybrid of Random Forest (RF), Extreme Gradient Boosting (XGBoost), Gradient Boosting (GB), and Feed-forward Neural Networks (FNN) to predict student's dropout in university classes. On the dataset collected from 2016 to 2020 at Constantine the Philosopher University in Nitra, the proposed method has demonstrated greater performance when compared with the base models using testing accuracy and the area under the curve (AUC) evaluation metrics under the same conditions. Based on the findings of this study, students at the risk of dropping out the school can be identified based on influential factors and different agents of education can refer to this information for early intervention in the uncontrolled behavior that can lead to the risk of dropping out and take proactive precautionary measures before the issue arise. © 2022 The Authors
+KW  - Agents of education
+KW  - Artificial intelligence
+KW  - Educational data mining
+KW  - Learning analytics
+KW  - Student dropout prediction
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85127330828
+N1  - Export Date: 11 September 2026; Cited By: 181
+ER  -
+
+TY  - JOUR
+AU  - Núñez-Naranjo, A. F.
+TI  - Analysis of the determinant factors in university dropout: a case study of Ecuador
+PY  - 2024
+T2  - Frontiers in Education
+VL  - 9
+SP  - 1444534
+DO  - 10.3389/feduc.2024.1444534
+UR  - https://doi.org/10.3389/feduc.2024.1444534
+ER  -
+
+TY  - JOUR
+AU  - Orrego Granados, D.
+AU  - Ugalde, J.
+AU  - Salas, R.
+AU  - Torres, R.
+AU  - López-Gonzales, J.L.
+TI  - Visual-Predictive Data Analysis Approach for the Academic Performance of Students from a Peruvian University
+PY  - 2022
+T2  - Applied Sciences (Switzerland)
+VL  - 12
+IS  - 21
+C7  - 11251
+DO  - 10.3390/app122111251
+UR  - https://www.scopus.com/pages/publications/85141827473?origin=resultslist
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85141827473
+N1  - Export Date: 11 September 2026; Cited By: 23
+ER  -
+
+TY  - JOUR
+AU  - Ovtšarenko, O.
+TI  - Using AI to forecast student dropout risk in technical education using a learning analytics approach
+PY  - 2026
+T2  - Scientific Reports
+VL  - 16
+IS  - 1
+C7  - 14616
+DO  - 10.1038/s41598-026-44919-1
+UR  - https://www.scopus.com/pages/publications/105038381517?origin=resultslist
+AB  - The integration of artificial intelligence and learning analytics in higher education creates new opportunities for adaptive curriculum design and evidence-based decision-making. This study investigates how predictive analytics can improve e-course development, detect early signs of students at risk of dropping out, and support timely pedagogical interventions. Using data from six CAD course logs delivered via Moodle at TTK University of Applied Sciences (Estonia) during the 2024–2025 academic year (99,104 activity records from 154 students), a machine learning model was developed to identify students at risk of academic failure. The proposed weighted attribute method combines key metrics—engagement, learning difficulty, and time allocation—to standardise behavioural and cognitive factors for outcome prediction. Logistic regression and decision tree classifiers were trained and assessed. The findings show that predictive models can identify at-risk students, allowing early alerts and adaptive support through ongoing monitoring. The framework turns learning analytics into actionable insights for educators, enabling proactive measures. The study concludes that AI-driven analytics, developed within ethical and pedagogically sound frameworks, can enhance transparency and foster equitable learning in higher education. © The Author(s) 2026.
+KW  - Artificial intelligence
+KW  - Higher education
+KW  - Learning analytics
+KW  - Machine learning
+KW  - Predictive modelling
+KW  - article
+KW  - artificial intelligence
+KW  - education
+KW  - human
+KW  - learning
+KW  - machine learning
+KW  - predictive model
+KW  - school dropout
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-105038381517
+N1  - Export Date: 11 September 2026; Cited By: 1
+ER  -
+
+TY  - JOUR
+AU  - Rabelo, A.M.
+AU  - Zárate, L.E.
+TI  - A model for predicting dropout of higher education students
+PY  - 2025
+T2  - Data Science and Management
+VL  - 8
+IS  - 1
+SP  - 72
+EP  - 85
+DO  - 10.1016/j.dsm.2024.07.001
+UR  - https://www.scopus.com/pages/publications/85215768622?origin=resultslist
+AB  - Higher education institutions are becoming increasingly concerned with the retention of their students. This work is motivated by the interest in predicting and reducing student dropout, and consequently in reducing the financial losses of said institutions. Based on the characterization of the dropout problem and the application of a knowledge discovery process, an ensemble model is proposed to improve dropout prediction. The ensemble model combines the results of three models: Logistic Regression, Neural Networks, and Decision Tree. As a result, the model can correctly classify 89% of the students as enrolled or dropped and accurately identify 98.1% of dropouts. When compared with the Random Forest ensemble method, the proposed model demonstrates desirable characteristics to assist management in proposing actions to retain students. © 2024 Xi'an Jiaotong University
+KW  - Decision tree
+KW  - Dropout prediction
+KW  - Educational data mining
+KW  - Neural networks
+KW  - Regression logistic
+KW  - Logistic regression
+KW  - Dropout prediction
+KW  - Educational data mining
+KW  - Ensemble models
+KW  - Financial loss
+KW  - Higher education institutions
+KW  - Higher education students
+KW  - Knowledge discovery process
+KW  - Logistics regressions
+KW  - Neural-networks
+KW  - Three models
+KW  - Prediction models
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85215768622
+N1  - Export Date: 11 September 2026; Cited By: 60
+ER  -
+
+TY  - JOUR
+AU  - Realinho, V.
+AU  - Machado, J.
+AU  - Baptista, L.
+AU  - Martins, M.V.
+TI  - Predicting Student Dropout and Academic Success
+PY  - 2022
+T2  - Data
+VL  - 7
+IS  - 11
+C7  - 146
+DO  - 10.3390/data7110146
+UR  - https://www.scopus.com/pages/publications/85141885478?origin=resultslist
+AB  - Higher education institutions record a significant amount of data about their students, representing a considerable potential to generate information, knowledge, and monitoring. Both school dropout and educational failure in higher education are an obstacle to economic growth, employment, competitiveness, and productivity, directly impacting the lives of students and their families, higher education institutions, and society as a whole. The dataset described here results from the aggregation of information from different disjointed data sources and includes demographic, socioeconomic, macroeconomic, and academic data on enrollment and academic performance at the end of the first and second semesters. The dataset is used to build machine learning models for predicting academic performance and dropout, which is part of a Learning Analytic tool developed at the Polytechnic Institute of Portalegre that provides information to the tutoring team with an estimate of the risk of dropout and failure. The dataset is useful for researchers who want to conduct comparative studies on student academic performance and also for training in the machine learning area. © 2022 by the authors.
+KW  - academic performance
+KW  - educational data mining
+KW  - imbalanced classes
+KW  - learning management system
+KW  - machine learning in education
+KW  - multi-class classification
+KW  - prediction
+KW  - Data mining
+KW  - Economics
+KW  - Education computing
+KW  - Forecasting
+KW  - Information management
+KW  - Learning systems
+KW  - Machine learning
+KW  - Risk perception
+KW  - Academic performance
+KW  - Educational data mining
+KW  - High educations
+KW  - Higher education institutions
+KW  - Imbalanced class
+KW  - Information monitoring
+KW  - Learning management system
+KW  - Machine learning in education
+KW  - Machine-learning
+KW  - Multi-class classification
+KW  - Students
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85141885478
+N1  - Export Date: 11 September 2026; Cited By: 110
+ER  -
+
+TY  - JOUR
+AU  - Romero, S.
+AU  - Liao, X.
+TI  - Statistical and machine learning models for predicting university dropout and scholarship impact
+PY  - 2025
+T2  - PLOS ONE
+VL  - 20
+IS  - 6 June
+C7  - e0325047
+DO  - 10.1371/journal.pone.0325047
+UR  - https://www.scopus.com/pages/publications/105008936226?origin=resultslist
+AB  - Although student dropout is an inevitable aspect of university enrollment, when analyzed, universities can gather information which enables them to take preventative actions that mitigate dropout risk. We study a data set consisting of 4,424 records from a Portuguese higher institution. In this study, dropout is defined from a micro-perspective, where field and institution changes are considered as dropouts independently of the timing these occur. The purpose of this analysis is twofold. First, we aim to build predictive models to learn of the significant socioeconomic and academic features associated with students’ dropout risk. Another goal is to understand the relationship between financial status and dropout, especially the causal effect of being a scholarship holder. Propensity score matching is conducted first with the training set to better estimate the causal effect of being a scholarship holder on dropout status while controlling confounding variables. The predictive classifiers evaluated are Lasso regression, generalized additive model, random forest, XGBoost and single-layer neural network. The XGBoost model has the highest F1-score 0.904. According to this model, the most important features predicting dropout status are the student’s second semester grades and the number of units they are credited. Whether a student’s tuition fee is up to date, whether they owe money to a debtor, whether they are scholarship holders, and students’ age at enrollment are also found to be important features. The Generalized Additive Model (GAM) performs competitively and offers clear interpretability, revealing how changes in actionable variables influence dropout risk. It shows that receiving a scholarship leads to the reduction in the odds of dropping out by nearly 40%, or by 22.2% in terms of probability when holding other factors fixed. As the study is based on data from a single institution and time period, and unobserved confounders cannot be fully ruled out, results should be interpreted with caution. © 2025 Romero, Liao. This is an open access article distributed under the terms of the Creative Commons Attribution License, which permits unrestricted use, distribution, and reproduction in any medium, provided the original author and source are credited.
+KW  - Adult
+KW  - Fellowships and Scholarships
+KW  - Female
+KW  - Humans
+KW  - Machine Learning
+KW  - Male
+KW  - Models, Statistical
+KW  - Portugal
+KW  - Student Dropouts
+KW  - Students
+KW  - Universities
+KW  - Young Adult
+KW  - article
+KW  - classifier
+KW  - diagnosis
+KW  - female
+KW  - human
+KW  - least absolute shrinkage and selection operator
+KW  - machine learning
+KW  - male
+KW  - money
+KW  - nerve cell network
+KW  - predictive model
+KW  - probability
+KW  - propensity score
+KW  - random forest
+KW  - school dropout
+KW  - adult
+KW  - medical education
+KW  - Portugal
+KW  - school dropout
+KW  - statistical model
+KW  - student
+KW  - university
+KW  - young adult
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-105008936226
+N1  - Export Date: 11 September 2026; Cited By: 8
+ER  -
+
+TY  - JOUR
+AU  - Sequeira, R.
+AU  - Reis, A.
+AU  - Alves, P.
+AU  - Branco, F.
+TI  - Roadmap for implementing business intelligence systems in higher education institutions: Systematic literature review
+PY  - 2024
+T2  - Information
+VL  - 15
+IS  - 4
+SP  - 208
+DO  - 10.3390/info15040208
+UR  - https://doi.org/10.3390/info15040208
+ER  -
+
+TY  - JOUR
+AU  - Sequeira, R.
+AU  - Reis, A.
+AU  - Branco, F.
+AU  - Alves, P.
+TI  - From Roadmap to Ecosystem: A Comprehensive Framework for Implementing Business Intelligence in Higher Education Institutions
+PY  - 2025
+T2  - Systems
+VL  - 13
+IS  - 11
+C7  - 1032
+DO  - 10.3390/systems13111032
+UR  - https://www.scopus.com/pages/publications/105023105663?origin=resultslist
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-105023105663
+N1  - Export Date: 11 September 2026; Cited By: 3
+ER  -
+
+TY  - JOUR
+AU  - Vaarma, M.
+AU  - Li, H.
+TI  - Predicting student dropouts with machine learning: An empirical study in Finnish higher education
+PY  - 2024
+T2  - Technology in Society
+VL  - 76
+C7  - 102474
+DO  - 10.1016/j.techsoc.2024.102474
+UR  - https://www.scopus.com/pages/publications/85185391046?origin=resultslist
+AB  - This study uses three machine learning models to predict student dropouts based on students' transcript, demographic, and learning management system (LMS) data from a Finnish university. The contribution of this research lies in 1) comparing the relative importance of LMS (Moodle) data with transcript and demographic data in degree program dropout prediction, 2) examining the predictive importance of different data features monthly as a function of time from enrollment, hence extending the prior end-of-semester research to a midsemester analysis, and 3) measuring the prediction performance of the models monthly. The results identify “accumulated credits” (transcript) the “number of failed courses” (transcript), and “Moodle activity count” (LMS) as the most important features, suggesting LMS has significant predictive power and should be considered alongside transcript and demographic data when predicting degree program dropouts. Moreover, we visualize how these factors' importance and prediction performance vary over time, revealing general longitudinal trends and fluctuations within semesters. Finally, we elaborate upon this study's contributions before highlighting its limitations. © 2024 The Authors
+KW  - Data analysis
+KW  - Higher education
+KW  - Learning management systems
+KW  - Machine learning
+KW  - Student dropout prediction
+KW  - Finland
+KW  - Education computing
+KW  - Information management
+KW  - Machine learning
+KW  - Population statistics
+KW  - Students
+KW  - Degree program
+KW  - Demographic data
+KW  - Empirical studies
+KW  - Finnish
+KW  - High educations
+KW  - Learning management system
+KW  - Machine learning models
+KW  - Machine-learning
+KW  - Prediction performance
+KW  - Student dropout prediction
+KW  - educational development
+KW  - higher education
+KW  - machine learning
+KW  - student
+KW  - Forecasting
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85185391046
+N1  - Export Date: 11 September 2026; Cited By: 87
+ER  -
+
+TY  - JOUR
+AU  - Valles-Coral, M.A.
+AU  - Salazar-Ramírez, L.
+AU  - Injante, R.
+AU  - Hernandez-Torres, E.A.
+AU  - Juárez-Díaz, J.
+AU  - Navarro-Cabrera, J.R.
+AU  - Pinedo, L.
+AU  - Vidaurre-Rojas, P.
+TI  - Density-Based Unsupervised Learning Algorithm to Categorize College Students into Dropout Risk Levels
+PY  - 2022
+T2  - Data
+VL  - 7
+IS  - 11
+C7  - 165
+DO  - 10.3390/data7110165
+UR  - https://www.scopus.com/pages/publications/85147449507?origin=resultslist
+AB  - Compliance with the basic conditions of quality in higher education implies the design of strategies to reduce student dropout, and Information and Communication Technologies (ICT) in the educational field have allowed directing, reinforcing, and consolidating the process of professional academic training. We propose an academic and emotional tracking model that uses data mining and machine learning to group university students according to their level of dropout risk. We worked with 670 students from a Peruvian public university, applied 5 valid and reliable psychological assessment questionnaires to them using a chatbot-based system, and then classified them using 3 density-based unsupervised learning algorithms, DBSCAN, K-Means, and HDBSCAN. The results showed that HDBSCAN was the most robust option, obtaining better validity levels in two of the three internal indices evaluated, where the performance of the Silhouette index was 0.6823, the performance of the Davies–Bouldin index was 0.6563, and the performance of the Calinski–Harabasz index was 369.6459. The best number of clusters produced by the internal indices was five. For the validation of external indices, with answers from mental health professionals, we obtained a high level of precision in the F-measure: 90.9%, purity: 94.5%, V-measure: 86.9%, and ARI: 86.5%, and this indicates the robustness of the proposed model that allows us to categorize university students into five levels according to the risk of dropping out. © 2022 by the authors.
+KW  - clustering
+KW  - data mining
+KW  - DBSCAN
+KW  - HDBSCAN
+KW  - K-Means
+KW  - Data mining
+KW  - Education computing
+KW  - K-means clustering
+KW  - Learning algorithms
+KW  - Risk assessment
+KW  - Unsupervised learning
+KW  - Clusterings
+KW  - College students
+KW  - DBSCAN
+KW  - Density-based
+KW  - HDBSCAN
+KW  - K-means
+KW  - Performance
+KW  - Risk levels
+KW  - University students
+KW  - Unsupervised learning algorithms
+KW  - Students
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85147449507
+N1  - Export Date: 11 September 2026; Cited By: 26
+ER  -
+
+TY  - JOUR
+AU  - Villar, A.
+AU  - de Andrade, C.R.V.
+TI  - Supervised machine learning algorithms for predicting student dropout and academic success: a comparative study
+PY  - 2024
+T2  - Discover Artificial Intelligence
+VL  - 4
+IS  - 1
+C7  - 2
+DO  - 10.1007/s44163-023-00079-z
+UR  - https://www.scopus.com/pages/publications/85190686606?origin=resultslist
+AB  - Utilizing a dataset sourced from a higher education institution, this study aims to assess the efficacy of diverse machine learning algorithms in predicting student dropout and academic success. Our focus was on algorithms capable of effectively handling imbalanced data. To tackle class imbalance, we employed the SMOTE resampling technique. We applied a range of algorithms, including Decision Tree (DT), Support Vector Machine (SVM), Random Forest (RF), as well as boosting algorithms such as Gradient Boosting (GB), Extreme Gradient Boosting (XGBoost), CatBoost (CB), and Light Gradient Boosting Machine (LB). To enhance the models' performance, we conducted hyperparameter tuning using Optuna. Additionally, we employed the Isolation Forest (IF) method to identify outliers or anomalies within the dataset. Notably, our findings indicate that boosting algorithms, particularly LightGBM and CatBoost with Optuna, outperformed traditional classification methods. Our study's generalizability to other contexts is constrained due to its reliance on a single dataset, with inherent limitations. Nevertheless, this research provides valuable insights into the effectiveness of various machine learning algorithms for predicting student dropout and academic success. By benchmarking these algorithms, our project offers guidance to both researchers and practitioners in their choice of suitable approaches for similar predictive tasks. © The Author(s) 2024.
+KW  - Boosting algorithms
+KW  - Class imbalance
+KW  - Dropout prediction
+KW  - Hyperparameters
+KW  - Learning analytics
+KW  - Supervised classification algorithms
+KW  - Unsupervised classification algorithms
+KW  - Adaptive boosting
+KW  - Data handling
+KW  - Decision trees
+KW  - Education computing
+KW  - Students
+KW  - Support vector machines
+KW  - Boosting algorithm
+KW  - Class imbalance
+KW  - Classification algorithm
+KW  - Dropout prediction
+KW  - Hyper-parameter
+KW  - Learning analytic
+KW  - Supervised classification
+KW  - Supervised classification algorithm
+KW  - Unsupervised classification
+KW  - Unsupervised classification algorithm
+KW  - Forecasting
+M3  - Article
+DB  - Scopus
+N1  - EID: 2-s2.0-85190686606
+N1  - Export Date: 11 September 2026; Cited By: 106
+ER  -
+
+TY  - CPAPER
+AU  - Wirth, R.
+AU  - Hipp, J.
+TI  - CRISP-DM: Towards a standard process model for data mining
+PY  - 2000
+T2  - Proceedings of the 4th International Conference on the Practical Application of Knowledge Discovery and Data Mining
+SP  - 29
+EP  - 39
+ER  -

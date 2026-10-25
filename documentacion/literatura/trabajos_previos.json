@@ -1,0 +1,553 @@
+{
+  "_ayuda": "Tabla de trabajos previos de la comparación crítica (sección 1.3). Un objeto por artículo. Cada fila sale de la lectura del texto completo; las páginas son las de la revista. Los dos artículos cuyo texto completo no pudo recuperarse se registran con su resumen verificado por DOI y se marcan como tales. La lee _build_avance2.py para la tabla comparativa del documento.",
+  "fecha_lectura": "2026-10-03",
+  "preguntas": {
+    "Q1": "¿Qué problema resolvió y con qué técnica o modelo?",
+    "Q2": "¿Con qué datos (fuente, país, tamaño, corte único o longitudinal)?",
+    "Q3": "¿Cómo validó los resultados y con qué métricas?",
+    "Q4": "¿Qué tecnologías (lenguaje, bibliotecas, base de datos, BI) usó?",
+    "Q5": "¿Qué arquitectura tiene la solución: modelo aislado o integrado en un sistema?",
+    "Q6": "¿Qué limitación declara o se le puede señalar?",
+    "Q7": "¿Qué deja abierto que el presente trabajo cubre, y en qué este es más débil?"
+  },
+  "trabajos": [
+    {
+      "id": "TP01",
+      "cita": "Carballo-Mendívil et al. (2025)",
+      "referencia_apa": "Carballo-Mendívil, B., Arellano-González, A., Ríos-Vázquez, N. J., & Lizardi-Duarte, M. del P. (2025). Predicting student dropout from day one: XGBoost-based early warning system using pre-enrollment data. Applied Sciences, 15(16), 9202. https://doi.org/10.3390/app15169202",
+      "doi": "10.3390/app15169202",
+      "anio": 2025,
+      "pais": "México",
+      "problema": "Alerta temprana de abandono desde la matrícula",
+      "tecnica": "Regresión logística, Random Forest, LightGBM y XGBoost; eligen XGBoost por recall, aunque RF tuvo mayor AUC",
+      "datos_muestra": "Encuesta de admisión y registros de una universidad pública; 38.932 estudiantes de primer año, cohortes 2014–2024; corte único al ingreso",
+      "validacion_metricas": "Hold-out estratificado 80/20 y validación cruzada de 5 pliegues para el ajuste",
+      "resultado": "XGBoost: AUC 0,69; recall 0,88 y precisión 0,57 con umbral 0,338",
+      "tecnologias": {
+        "lenguaje": "Python",
+        "frameworks": "pandas, NumPy, scikit-learn, XGBoost, LightGBM, SHAP",
+        "base_datos": "no reporta",
+        "otras": "código en GitHub"
+      },
+      "arquitectura": "Modelo aislado aplicado por lotes; integración al sistema institucional solo prevista",
+      "limitacion": "Una sola universidad, sin validación externa; partición aleatoria, no temporal; cifras inconsistentes entre secciones",
+      "relacion_con_este_trabajo": "Aquí: prueba temporal con desenlace, predicción por periodo e integración en almacén, API, panel y NL2SQL. Más débil: datos UNEMI sintéticos frente a 38.932 reales",
+      "evidencia": [
+        {
+          "texto": "the model is expected to be integrated directly into the university’s Student Trajectory Information System (SITE)",
+          "pagina": "p. 10"
+        },
+        {
+          "texto": "When applied, the model achieved a recall of 88%, a precision of 57%, and an F1-score of 0.69 for the dropout class",
+          "pagina": "p. 9"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 2,
+        "Q3": 2,
+        "Q4": 1,
+        "Q5": 1,
+        "Q6": 2,
+        "Q7": 2
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP02",
+      "cita": "Marcolino et al. (2025)",
+      "referencia_apa": "Marcolino, M. R., Porto, T. R., Primo, T. T., Targino, R., Ramos, V., Queiroga, E. M., Munoz, R., & Cechinel, C. (2025). Student dropout prediction through machine learning optimization: Insights from Moodle log data. Scientific Reports, 15, Article 9840. https://doi.org/10.1038/s41598-025-93918-1",
+      "doi": "10.1038/s41598-025-93918-1",
+      "anio": 2025,
+      "pais": "Brasil",
+      "problema": "Reprobación o abandono por curso a partir de registros de Moodle",
+      "tecnica": "NSGA-II elige entre RF, XGBoost, CatBoost, k-NN, regresión logística y Naive Bayes; gana CatBoost con ADASYN; SHAP",
+      "datos_muestra": "567 instancias alumno-curso de 23 cursos, 25 variables semanales; sin datos longitudinales",
+      "validacion_metricas": "Validación cruzada de 5 pliegues; prueba con cursos no vistos y prueba aleatoria del 30 %",
+      "resultado": "Semana 7: F1 0,86, recall 0,85, AUC 0,95 (prueba aleatoria); en cursos nuevos el F1 no supera 0,50",
+      "tecnologias": {
+        "lenguaje": "no reporta",
+        "frameworks": "CatBoost, ADASYN, SHAP, scikit-learn",
+        "base_datos": "no reporta",
+        "otras": "Moodle"
+      },
+      "arquitectura": "Modelo evaluado de forma aislada; solo «puede integrarse» en una plataforma en la nube",
+      "limitacion": "Muestra pequeña; la prueba aleatoria comparte alumnos con el entrenamiento (posible fuga)",
+      "relacion_con_este_trabajo": "Aquí: validación agrupada por alumno y prueba temporal, integración completa. Más débil: no predice semana a semana dentro del curso",
+      "evidencia": [
+        {
+          "texto": "the single model achieved higher scores in key metrics, including on week 7 an F1-score of 0.86, recall of 0.85, and an AUC of 0.95",
+          "pagina": "p. 14"
+        },
+        {
+          "texto": "For practical use, the model can be integrated into a system that visualizes student engagement and predictions",
+          "pagina": "p. 8"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 2,
+        "Q3": 2,
+        "Q4": 1,
+        "Q5": 1,
+        "Q6": 2,
+        "Q7": 2
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP03",
+      "cita": "Ovtsarenko (2026)",
+      "referencia_apa": "Ovtšarenko, O. (2026). Using AI to forecast student dropout risk in technical education using a learning analytics approach. Scientific Reports, 16, Article 14616. https://doi.org/10.1038/s41598-026-44919-1",
+      "doi": "10.1038/s41598-026-44919-1",
+      "anio": 2026,
+      "pais": "Estonia",
+      "problema": "Riesgo de abandono en cursos CAD con analítica del aprendizaje",
+      "tecnica": "Método de atributos ponderados (WAM) con regresión logística y Random Forest",
+      "datos_muestra": "Moodle: 12.941 registros de 80 estudiantes agregados en 49 recursos; un año, corte único",
+      "validacion_metricas": "Validación cruzada estratificada de 5 pliegues y hold-out",
+      "resultado": "RF en validación cruzada: exactitud 0,876, F1 0,827; en prueba, RL 0,80 frente a RF 0,70",
+      "tecnologias": {
+        "lenguaje": "no reporta",
+        "frameworks": "pandas",
+        "base_datos": "no reporta",
+        "otras": "Moodle; cuaderno en Zenodo"
+      },
+      "arquitectura": "Cuaderno aislado; el sistema de alerta en el LMS solo se propone",
+      "limitacion": "La unidad de análisis es el recurso, no el estudiante, y la clase sale de las mismas variables (circular); 80 estudiantes",
+      "relacion_con_este_trabajo": "Aquí: predicción por alumno-periodo con validación agrupada y temporal, e integración real. Más débil: el estudio usa registros reales con aprobación ética",
+      "evidencia": [
+        {
+          "texto": "The Random Forest model achieved the highest cross-validated performance (accuracy = 0.8756; F1 = 0.8267)",
+          "pagina": "p. 6"
+        },
+        {
+          "texto": "Plan: identify target courses, train faculty, configure the analytics dashboard.",
+          "pagina": "p. 9"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 1,
+        "Q2": 2,
+        "Q3": 1,
+        "Q4": 1,
+        "Q5": 1,
+        "Q6": 2,
+        "Q7": 2
+      },
+      "decision": "Incluido",
+      "nota_nombre": "El artículo escribe la autora como «Ovtšarenko»; la cita y la referencia del documento usan «Ovtsarenko»."
+    },
+    {
+      "id": "TP04",
+      "cita": "Romero y Liao (2025)",
+      "referencia_apa": "Romero, S., & Liao, X. (2025). Statistical and machine learning models for predicting university dropout and scholarship impact. PLOS ONE, 20(6), Article e0325047. https://doi.org/10.1371/journal.pone.0325047",
+      "doi": "10.1371/journal.pone.0325047",
+      "anio": 2025,
+      "pais": "Portugal (datos)",
+      "problema": "Abandono frente a graduación y efecto causal de la beca",
+      "tecnica": "Lasso, GAM, Random Forest, XGBoost y red neuronal; emparejamiento por puntaje de propensión",
+      "datos_muestra": "Repositorio UCI (Instituto Politécnico de Portalegre): 4.424 → 3.400 registros, 17 carreras; un registro por estudiante",
+      "validacion_metricas": "Partición aleatoria 80/20; validación cruzada de 5 pliegues para hiperparámetros",
+      "resultado": "RF: mejor AUC (0,935), F1 0,904 en 4 s; XGBoost: F1 0,907 en 349 s",
+      "tecnologias": {
+        "lenguaje": "R",
+        "frameworks": "caret, randomForest, xgboost, mgcv, glmnet, MatchIt",
+        "base_datos": "no reporta",
+        "otras": ""
+      },
+      "arquitectura": "Análisis aislado en R",
+      "limitacion": "Una institución, datos de hace cinco años; predictores del segundo semestre (no es alerta temprana); sin prueba temporal",
+      "relacion_con_este_trabajo": "Aquí: panel con validación temporal, umbral por recall, SHAP (allí trabajo futuro) e integración. Más débil: sin inferencia causal",
+      "evidencia": [
+        {
+          "texto": "the random forest model has the highest AUC value 0.935",
+          "pagina": "p. 11"
+        },
+        {
+          "texto": "The data set is randomly split into a training set (80%) and a test set (20%).",
+          "pagina": "p. 10"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 2,
+        "Q3": 2,
+        "Q4": 1,
+        "Q5": 1,
+        "Q6": 2,
+        "Q7": 1
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP05",
+      "cita": "Kok et al. (2024)",
+      "referencia_apa": "Kok, C. L., Ho, C. K., Chen, L., Koh, Y. Y., & Tian, B. (2024). A novel predictive modeling for student attrition utilizing machine learning and sustainable big data analytics. Applied Sciences, 14(21), 9633. https://doi.org/10.3390/app14219633",
+      "doi": "10.3390/app14219633",
+      "anio": 2024,
+      "pais": "Malasia",
+      "problema": "Deserción y sus factores en Ingeniería Mecánica",
+      "tecnica": "Random Forest con ajuste manual del número de árboles",
+      "datos_muestra": "197 estudiantes de una universidad privada, cohortes 2006–2011; notas por asignatura",
+      "validacion_metricas": "Hold-out con prueba de 10 % a 50 %",
+      "resultado": "Exactitud 1,000 en todas las configuraciones; las conclusiones dan otra cifra (85 %)",
+      "tecnologias": {
+        "lenguaje": "Python",
+        "frameworks": "scikit-learn, pandas",
+        "base_datos": "no reporta (Excel/CSV)",
+        "otras": ""
+      },
+      "arquitectura": "Script aislado; el sistema de alerta temprana es solo una propuesta",
+      "limitacion": "Exactitud del 100 % compatible con fuga de información; resultados internamente contradictorios; 197 estudiantes",
+      "relacion_con_este_trabajo": "Aquí: validación agrupada y temporal, umbral por recall, SHAP e integración. Más débil: datos UNEMI sintéticos frente a notas reales",
+      "evidencia": [
+        {
+          "texto": "while the model reached 100% accuracy, it is important to question whether this performance would hold up in real-world applications",
+          "pagina": "p. 21"
+        },
+        {
+          "texto": "utilizing a random forest model for this simulation",
+          "pagina": "p. 7"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 1,
+        "Q2": 2,
+        "Q3": 1,
+        "Q4": 1,
+        "Q5": 1,
+        "Q6": 2,
+        "Q7": 1
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP06",
+      "cita": "Rabelo y Zárate (2025)",
+      "referencia_apa": "Rabelo, A. M., & Zárate, L. E. (2025). A model for predicting dropout of higher education students. Data Science and Management, 8, 72–85. https://doi.org/10.1016/j.dsm.2024.07.001",
+      "doi": "10.1016/j.dsm.2024.07.001",
+      "anio": 2025,
+      "pais": "Brasil",
+      "problema": "Deserción institucional al rematricular",
+      "tecnica": "CART, regresión logística y MLP en un ensemble por voto, contrastado con Random Forest",
+      "datos_muestra": "Universidad privada (~40.000 estudiantes), 2018–2019; 762 casos balanceados y 2.241 de prueba; resumen de fin de semestre",
+      "validacion_metricas": "Validación cruzada de 10 pliegues (2018) y prueba temporal (2019)",
+      "resultado": "Ensemble detecta 92,6 % de los desertores frente a 91,8 % de RF; la regresión logística es la mejor individual",
+      "tecnologias": {
+        "lenguaje": "no reporta",
+        "frameworks": "no reporta",
+        "base_datos": "no reporta",
+        "otras": ""
+      },
+      "arquitectura": "Modelo aislado; propone un data lake y una base temporal como trabajo futuro",
+      "limitacion": "Datos resumidos sin dimensión temporal; una sola universidad; sin AUC",
+      "relacion_con_este_trabajo": "Aquí: panel alumno-periodo y monitoreo continuo integrados. Más débil: el estudio usa datos institucionales reales y reglas interpretables",
+      "evidencia": [
+        {
+          "texto": "For all experiments, the technique of cross-validation with 10 folds was used. For the testing stage, the year 2019 was considered.",
+          "pagina": "p. 79"
+        },
+        {
+          "texto": "it is not possible to predict with the model the students who are prone to drop out during the current semester.",
+          "pagina": "p. 84"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 2,
+        "Q3": 2,
+        "Q4": 0,
+        "Q5": 1,
+        "Q6": 2,
+        "Q7": 2
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP07",
+      "cita": "Khatun et al. (2025)",
+      "referencia_apa": "Khatun, M. R., Mim, M. A., Tasin, M. M., & Hossain, M. M. (2025). A hybrid framework of statistical, machine learning, and explainable AI methods for school dropout prediction. PLOS ONE, 20(9), Article e0331917. https://doi.org/10.1371/journal.pone.0331917",
+      "doi": "10.1371/journal.pone.0331917",
+      "anio": 2025,
+      "pais": "Bangladesh",
+      "problema": "Deserción escolar y sus factores",
+      "tecnica": "Random Forest y XGBoost con selección híbrida de variables; explicación con SHAP y LIME",
+      "datos_muestra": "Encuesta MICS 2019: 38.213 registros de 6 a 24 años; corte transversal",
+      "validacion_metricas": "Validación cruzada de 10 pliegues",
+      "resultado": "XGBoost: exactitud 0,944, AUC 0,877; RF: AUC 0,857",
+      "tecnologias": {
+        "lenguaje": "no reporta",
+        "frameworks": "SHAP, LIME (bibliotecas no declaradas)",
+        "base_datos": "no reporta",
+        "otras": ""
+      },
+      "arquitectura": "Análisis fuera de línea; solo un marco conceptual de intervención",
+      "limitacion": "Corte transversal: clasifica la no asistencia del mismo año, no la del siguiente; codificación de la clase contradictoria",
+      "relacion_con_este_trabajo": "Aquí: predicción del periodo siguiente sobre un panel y validación temporal. Más débil: debe justificar RF frente a XGBoost",
+      "evidencia": [
+        {
+          "texto": "First, it used data from a single cross-sectional survey (MICS 2019 Bangladesh).",
+          "pagina": "p. 20"
+        },
+        {
+          "texto": "The framework emphasizes a cycle of informed action starting from data collection to AI-driven prediction",
+          "pagina": "p. 19"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 2,
+        "Q3": 2,
+        "Q4": 0,
+        "Q5": 1,
+        "Q6": 2,
+        "Q7": 2
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP08",
+      "cita": "Mohd Talib et al. (2023)",
+      "referencia_apa": "Mohd Talib, N. I., Abd Majid, N. A., & Sahran, S. (2023). Identification of student behavioral patterns in higher education using K-means clustering and support vector machine. Applied Sciences, 13(5), Article 3267. https://doi.org/10.3390/app13053267",
+      "doi": "10.3390/app13053267",
+      "anio": 2023,
+      "pais": "Malasia",
+      "problema": "Patrones de comportamiento y rendimiento académico (no abandono)",
+      "tecnica": "K-Means con k = 3 elegido por la regla del codo, seguido de SVM",
+      "datos_muestra": "140 estudiantes de primer semestre de una facultad; encuestas semanales en un semestre",
+      "validacion_metricas": "Codo de la inercia y ANOVA entre clústeres; exactitud del SVM",
+      "resultado": "Clústeres sin diferencia significativa (p = 0,454); exactitud del SVM 0,88–0,93",
+      "tecnologias": {
+        "lenguaje": "Python",
+        "frameworks": "SciPy, scikit-learn",
+        "base_datos": "no reporta",
+        "otras": ""
+      },
+      "arquitectura": "Análisis aislado",
+      "limitacion": "k elegido con un codo ambiguo y sin índices internos; muestra pequeña de una sola facultad",
+      "relacion_con_este_trabajo": "Aquí: k validado con silhouette, estabilidad, Ward y Kruskal-Wallis, e integración. Más débil: segmenta carreras, no estudiantes",
+      "evidencia": [
+        {
+          "texto": "Therefore, there is no statistically significant difference between the three clusters.",
+          "pagina": "p. 10"
+        },
+        {
+          "texto": "The decision of the cluster number is based on the inertia and the “elbow rule”.",
+          "pagina": "p. 8"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 2,
+        "Q3": 2,
+        "Q4": 1,
+        "Q5": 0,
+        "Q6": 2,
+        "Q7": 1
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP09",
+      "cita": "Sequeira et al. (2024)",
+      "referencia_apa": "Sequeira, R., Reis, A., Alves, P., & Branco, F. (2024). Roadmap for implementing business intelligence systems in higher education institutions: Systematic literature review. Information, 15(4), Article 208. https://doi.org/10.3390/info15040208",
+      "doi": "10.3390/info15040208",
+      "anio": 2024,
+      "pais": "Portugal",
+      "problema": "Ausencia de una hoja de ruta para implantar BI en universidades",
+      "tecnica": "Revisión sistemática (Kitchenham y Charters)",
+      "datos_muestra": "705 registros de Scopus y WoS → 10 estudios primarios (2017–2021)",
+      "validacion_metricas": "Reglas de evaluación de calidad; síntesis narrativa",
+      "resultado": "Solo 4 de 10 estudios implementan BI y 3 usan arquitectura de referencia; ninguna hoja de ruta",
+      "tecnologias": {
+        "lenguaje": "no aplica",
+        "frameworks": "en los estudios revisados: Pentaho, Qlik Sense, Power BI",
+        "base_datos": "en los estudios revisados: PostgreSQL, SQL Server",
+        "otras": "metodología Kimball"
+      },
+      "arquitectura": "BI de tres capas (fuentes, ETL y almacén, tableros), sintetizada de otros autores",
+      "limitacion": "Diez estudios, solo en inglés; el flujo PRISMA no cuadra; la hoja de ruta no se construye",
+      "relacion_con_este_trabajo": "Aquí: BI predictivo con modelo, segmentación y NL2SQL sobre almacén gobernado. Más débil: KPI no validados con directivos",
+      "evidencia": [
+        {
+          "texto": "we were unable to find any reference to the use of a roadmap for implementing BI systems in HEIs",
+          "pagina": "p. 15"
+        },
+        {
+          "texto": "only four of the studies implement a BI solution in HEIs, and only three use a reference architecture",
+          "pagina": "p. 16"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 1,
+        "Q3": 1,
+        "Q4": 1,
+        "Q5": 1,
+        "Q6": 1,
+        "Q7": 2
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP10",
+      "cita": "Ascoli y Choi (2025)",
+      "referencia_apa": "Ascoli, B. G., & Choi, J. D. (2025). Advancing conversational text-to-SQL: Context strategies and model integration with large language models. Future Internet, 17(11), 527. https://doi.org/10.3390/fi17110527",
+      "doi": "10.3390/fi17110527",
+      "anio": 2025,
+      "pais": "Estados Unidos",
+      "problema": "Text-to-SQL conversacional de varios turnos",
+      "tecnica": "Ajuste de CodeS-7b con historial completo o pregunta reescrita, y fusión de pesos; líneas base sin ajuste",
+      "datos_muestra": "Benchmarks públicos CoSQL y SParC (200 bases de datos cada uno)",
+      "validacion_metricas": "Conjunto de desarrollo; exactitud de ejecución, coincidencia exacta de conjuntos y ETM",
+      "resultado": "CoSQL: coincidencia exacta 60,9 y exactitud de ejecución 70,2 (por pregunta)",
+      "tecnologias": {
+        "lenguaje": "no reporta",
+        "frameworks": "CodeS-7b, GPT-4 Turbo",
+        "base_datos": "no reporta",
+        "otras": "GPU H100"
+      },
+      "arquitectura": "Experimento de laboratorio; sin sistema desplegado ni controles de seguridad",
+      "limitacion": "Evaluación en el conjunto de desarrollo, una sola semilla, sin significancia",
+      "relacion_con_este_trabajo": "Aquí: NL2SQL en un sistema real con solo lectura, aislamiento por institución y métricas certificadas. Más débil: 40 preguntas propias y sin diálogo de varios turnos",
+      "evidencia": [
+        {
+          "texto": "we report results on the development sets as a proxy for final performance",
+          "pagina": "p. 5"
+        },
+        {
+          "texto": "Our best model (birdM) outperforms all leaderboard entries for CoSQL on ESM and ETM",
+          "pagina": "p. 7"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 2,
+        "Q3": 2,
+        "Q4": 2,
+        "Q5": 2,
+        "Q6": 2,
+        "Q7": 2
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP11",
+      "cita": "Duro et al. (2026)",
+      "referencia_apa": "Duro, B., Gomes, A., Correia, F. B., Borges, A. R., & Bernardino, J. (2026). Machine learning and deep learning for dropout prediction in higher education: A review. Computers, 15(3), Article 164. https://doi.org/10.3390/computers15030164",
+      "doi": "10.3390/computers15030164",
+      "anio": 2026,
+      "pais": "Portugal",
+      "problema": "Predicción del abandono universitario con aprendizaje automático y profundo",
+      "tecnica": "Revisión estructurada (Kitchenham); domina el ML tradicional: RF en 33 estudios, regresión logística 27, SVM 23, XGBoost 12",
+      "datos_muestra": "61 estudios (2018–2025) de Scopus, WoS y Google Scholar; la mayoría con datos de una sola institución y clasificación estática",
+      "validacion_metricas": "Síntesis descriptiva; la exactitud domina (48 estudios) y solo 1 informa PR-AUC",
+      "resultado": "Pesa más el tipo de dato que el algoritmo; piden validación temporal y umbrales justificados",
+      "tecnologias": {
+        "lenguaje": "no reporta",
+        "frameworks": "no reporta",
+        "base_datos": "no reporta",
+        "otras": ""
+      },
+      "arquitectura": "Los modelos revisados quedan mayormente aislados; pocos evalúan despliegue de extremo a extremo",
+      "limitacion": "No evalúa la calidad ni el sesgo de los estudios; conteos de tablas que no cuadran",
+      "relacion_con_este_trabajo": "Aquí: panel con prueba temporal, umbral por recall, SHAP y despliegue integrado. Más débil: datos UNEMI sintéticos; sin auditoría de equidad ni monitoreo de deriva",
+      "evidencia": [
+        {
+          "texto": "most studies still frame dropout prediction as a static classification task over tabular summaries",
+          "pagina": "p. 21"
+        },
+        {
+          "texto": "relatively few papers evaluate end-to-end deployment",
+          "pagina": "p. 22"
+        }
+      ],
+      "texto_completo_leido": true,
+      "puntajes": {
+        "Q1": 2,
+        "Q2": 2,
+        "Q3": 1,
+        "Q4": 0,
+        "Q5": 2,
+        "Q6": 2,
+        "Q7": 2
+      },
+      "decision": "Incluido"
+    },
+    {
+      "id": "TP12",
+      "cita": "Mustofa et al. (2025)",
+      "referencia_apa": "Mustofa, S., Emon, Y. R., Mamun, S. B., Akhy, S. A., & Ahad, M. T. (2025). A novel AI-driven model for student dropout risk analysis with explainable AI insights. Computers and Education: Artificial Intelligence, 8, 100352. https://doi.org/10.1016/j.caeai.2024.100352",
+      "doi": "10.1016/j.caeai.2024.100352",
+      "anio": 2025,
+      "pais": "no reporta en el resumen",
+      "problema": "Riesgo de abandono y sus factores",
+      "tecnica": "Modelo híbrido de regresión logística y red neuronal (HLRNN), sobremuestreo y RFE-CV; explicación con SHAP y LIME",
+      "datos_muestra": "no reporta en el resumen",
+      "validacion_metricas": "Validación cruzada en la selección de variables; exactitud",
+      "resultado": "Exactitud del 96 %, de 2 a 3 puntos sobre los modelos que combina",
+      "tecnologias": {
+        "lenguaje": "no verificable",
+        "frameworks": "SHAP, LIME",
+        "base_datos": "no verificable",
+        "otras": ""
+      },
+      "arquitectura": "no verificable (texto completo no recuperado)",
+      "limitacion": "El resumen solo informa exactitud, poco informativa con clases desbalanceadas",
+      "relacion_con_este_trabajo": "Aquí: métricas para clases desbalanceadas (ROC-AUC, PR-AUC, recall) e integración en un sistema",
+      "evidencia": [
+        {
+          "texto": "predicts student dropout with 96% accuracy",
+          "pagina": "resumen"
+        }
+      ],
+      "texto_completo_leido": false,
+      "nota_recuperacion": "Texto completo no recuperado el 03/10/2026: el sitio del editor exige una verificación humana (CAPTCHA). Fila construida con el resumen verificado por DOI (OpenAlex).",
+      "puntajes": {},
+      "decision": "Resumen verificado (texto completo no recuperado)"
+    },
+    {
+      "id": "TP13",
+      "cita": "Lepori y Bornmann (2026)",
+      "referencia_apa": "Lepori, B., & Bornmann, L. (2026). Comparing peers with peers in Higher Education Institutions’ evaluations: Developing good practices to identify similar institutions by subject profile. Research Evaluation. https://doi.org/10.1093/reseval/rvag012",
+      "doi": "10.1093/reseval/rvag012",
+      "anio": 2026,
+      "pais": "Europa",
+      "problema": "Elegir instituciones pares para comparar en lugar de usar rankings",
+      "tecnica": "Índice combinado de perfil temático (estudiantes por campo y publicaciones por área)",
+      "datos_muestra": "Instituciones europeas del registro ETER enriquecidas con SCImago",
+      "validacion_metricas": "Análisis comparativo de las dos distribuciones y estudio en profundidad de instituciones de ejemplo",
+      "resultado": "Las dos distribuciones son complementarias; el índice combinado identifica pares potenciales que luego deben revisar expertos",
+      "tecnologias": {
+        "lenguaje": "no verificable",
+        "frameworks": "no verificable",
+        "base_datos": "no verificable",
+        "otras": ""
+      },
+      "arquitectura": "no aplica (método de benchmarking)",
+      "limitacion": "Los métodos cuantitativos solo sugieren pares; la selección final requiere expertos",
+      "relacion_con_este_trabajo": "Aquí: referentes con DOI, definición exacta y nivel de comparabilidad. Más débil: no calcula la similitud por perfil temático",
+      "evidencia": [
+        {
+          "texto": "quantitative methods can only suggest potential peers in a first step that should be checked by experts",
+          "pagina": "resumen"
+        }
+      ],
+      "texto_completo_leido": false,
+      "nota_recuperacion": "Texto completo no recuperado el 03/10/2026: el sitio del editor exige una verificación humana (CAPTCHA). Fila construida con el resumen verificado por DOI (OpenAlex).",
+      "puntajes": {},
+      "decision": "Resumen verificado (texto completo no recuperado)"
+    }
+  ]
+}

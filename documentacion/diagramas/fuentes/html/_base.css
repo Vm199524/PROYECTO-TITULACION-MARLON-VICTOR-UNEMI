@@ -1,0 +1,15 @@
+/* Figuras del documento: 16 cm de ancho y texto a 10 pt reales (Avance 2).
+   Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco */
+@page { size: 16cm auto; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { width: 16cm; font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #0f172a; background: #fff; padding: 2px; line-height: 1.25; }
+.capa { border: 1.2px solid #94a8ba; border-radius: 8px; padding: 6px 8px 8px; margin-bottom: 7px; background: #f8fafc; }
+.capa > h3 { font-size: 10pt; color: #002e45; margin-bottom: 5px; }
+.fila { display: flex; gap: 6px; align-items: stretch; }
+.caja { flex: 1; border: 1.2px solid #0b5c7e; border-radius: 6px; background: #ebf5fa; padding: 5px 6px; }
+.caja b { display: block; color: #002e45; margin-bottom: 2px; }
+.caja.naranja { border-color: #e86100; background: #fff4ea; }
+.caja.oscura { background: #002e45; border-color: #002e45; color: #fff; }
+.caja.oscura b { color: #ffd2b0; }
+.flecha { text-align: center; color: #0b5c7e; font-size: 10pt; margin: -3px 0 4px; }
+.peq { font-size: 10pt; color: #334155; }

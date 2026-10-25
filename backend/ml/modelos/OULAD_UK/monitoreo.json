@@ -1,0 +1,60 @@
+{
+  "calificados": 8485,
+  "distribucion": {
+    "MEDIO": 3457,
+    "BAJO": 3319,
+    "ALTO": 1709
+  },
+  "psi": [
+    {
+      "variable": "promedio_rel_cohorte",
+      "psi": 0.036,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "creditos_matriculados",
+      "psi": 0.0027,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "dias_sin_actividad",
+      "psi": 0.4417,
+      "estado": "DERIVA"
+    },
+    {
+      "variable": "promedio_pct_cohorte",
+      "psi": 0.0312,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "asistencia_media_acum",
+      "psi": 0.0507,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "dias_anticipacion_matricula",
+      "psi": 0.0345,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "pct_tardias",
+      "psi": 0.2982,
+      "estado": "DERIVA"
+    },
+    {
+      "variable": "pct_entregadas",
+      "psi": 0.0922,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "corte",
+      "psi": 8.3554,
+      "estado": "DERIVA"
+    },
+    {
+      "variable": "asistencia_pendiente",
+      "psi": 1.1293,
+      "estado": "DERIVA"
+    }
+  ]
+}

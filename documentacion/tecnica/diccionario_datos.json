@@ -1,0 +1,1001 @@
+{
+  "fact_matriculas": {
+    "descripcion": "Hecho central. Grano: un estudiante en una carrera, periodo académico y corte.",
+    "columnas": [
+      {
+        "columna": "matricula_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Identificador sustituto de la fila"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "alumno_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → dim_alumno",
+        "descripcion": "Estudiante (clave sustituta)"
+      },
+      {
+        "columna": "carrera_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → dim_carrera",
+        "descripcion": "Carrera o módulo"
+      },
+      {
+        "columna": "sede_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → dim_sede",
+        "descripcion": "Sede o campus"
+      },
+      {
+        "columna": "modalidad_codigo",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "FK → dim_modalidad",
+        "descripcion": "Modalidad (PRESENCIAL, EN LINEA, HIBRIDA)"
+      },
+      {
+        "columna": "periodo_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → dim_periodo_academico",
+        "descripcion": "Periodo académico"
+      },
+      {
+        "columna": "tiempo_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → dim_tiempo",
+        "descripcion": "Fecha del corte"
+      },
+      {
+        "columna": "estado_codigo",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "FK → dim_estado_matricula",
+        "descripcion": "Estado al cierre del periodo"
+      },
+      {
+        "columna": "nivel",
+        "tipo": "TINYINT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Nivel o semestre cursado"
+      },
+      {
+        "columna": "corte",
+        "tipo": "TINYINT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Corte de seguimiento dentro del periodo (1 si no hay cortes)"
+      },
+      {
+        "columna": "promedio",
+        "tipo": "DECIMAL(4,2)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Promedio del periodo (0 a 10)"
+      },
+      {
+        "columna": "asistencia_pct",
+        "tipo": "DECIMAL(5,2)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Asistencia del periodo (%); en OULAD, días con actividad en el aula virtual"
+      },
+      {
+        "columna": "monto_matricula",
+        "tipo": "DECIMAL(10,2)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Valor de la matrícula (opcional)"
+      },
+      {
+        "columna": "beca_porcentaje",
+        "tipo": "TINYINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Porcentaje de beca, 0 a 100 (opcional)"
+      },
+      {
+        "columna": "saldo_pendiente",
+        "tipo": "DECIMAL(10,2)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Saldo adeudado al cierre del periodo (opcional)"
+      },
+      {
+        "columna": "creditos_matriculados",
+        "tipo": "SMALLINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Créditos del periodo (opcional)"
+      },
+      {
+        "columna": "numero_matricula",
+        "tipo": "TINYINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "1 = primera vez; 2 o más = repetición (opcional)"
+      },
+      {
+        "columna": "dias_anticipacion_matricula",
+        "tipo": "SMALLINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Días de anticipación de la matrícula respecto al inicio (opcional)"
+      },
+      {
+        "columna": "actividad_lms",
+        "tipo": "INT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Interacciones en el aula virtual durante el corte (opcional)"
+      },
+      {
+        "columna": "dias_sin_actividad",
+        "tipo": "SMALLINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Días sin actividad en el aula virtual al cierre del corte (opcional)"
+      },
+      {
+        "columna": "evaluaciones_vencidas",
+        "tipo": "SMALLINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Evaluaciones con plazo vencido al cierre del corte (opcional)"
+      },
+      {
+        "columna": "evaluaciones_entregadas",
+        "tipo": "SMALLINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Evaluaciones entregadas hasta el cierre del corte (opcional)"
+      },
+      {
+        "columna": "evaluaciones_tardias",
+        "tipo": "SMALLINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Entregas fuera de plazo (opcional)"
+      },
+      {
+        "columna": "nota_evaluaciones",
+        "tipo": "DECIMAL(4,2)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Nota media de lo entregado, 0 a 10 (opcional)"
+      },
+      {
+        "columna": "es_ultimo_periodo",
+        "tipo": "BIT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "1 = periodo vigente o de cierre de la trayectoria"
+      }
+    ]
+  },
+  "dim_alumno": {
+    "descripcion": "Estudiante, identificado por (institución, cédula).",
+    "columnas": [
+      {
+        "columna": "alumno_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Estudiante (clave sustituta)"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "cedula",
+        "tipo": "VARCHAR(15)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Identificador del estudiante (ficticio en los datos de prueba)"
+      },
+      {
+        "columna": "apellidos",
+        "tipo": "NVARCHAR(100)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Apellidos (ficticios en los datos de prueba)"
+      },
+      {
+        "columna": "nombres",
+        "tipo": "NVARCHAR(100)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Nombres (ficticios en los datos de prueba)"
+      },
+      {
+        "columna": "genero",
+        "tipo": "CHAR(1)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Género (M/F)"
+      },
+      {
+        "columna": "ciudad_residencia",
+        "tipo": "NVARCHAR(50)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Ciudad o región de residencia"
+      }
+    ]
+  },
+  "dim_institucion": {
+    "descripcion": "Institución conectada y tipo de sus datos.",
+    "columnas": [
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "nombre",
+        "tipo": "NVARCHAR(200)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Nombre"
+      },
+      {
+        "columna": "pais",
+        "tipo": "NVARCHAR(60)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "País"
+      },
+      {
+        "columna": "tipo_datos",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "SINTETICO o REAL_ANONIMIZADO"
+      },
+      {
+        "columna": "unidad_periodo",
+        "tipo": "NVARCHAR(60)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Qué es un periodo en la institución"
+      },
+      {
+        "columna": "fecha_carga",
+        "tipo": "DATETIME2",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Momento de la carga (UTC)"
+      }
+    ]
+  },
+  "dim_periodo_academico": {
+    "descripcion": "Periodo académico de cada institución (semestre, presentación del módulo).",
+    "columnas": [
+      {
+        "columna": "periodo_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Periodo académico"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "periodo_codigo",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Código del periodo (p. ej., 2024-1 o 2014B)"
+      },
+      {
+        "columna": "fecha_inicio",
+        "tipo": "DATE",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Fecha de inicio del periodo"
+      }
+    ]
+  },
+  "dim_carrera": {
+    "descripcion": "Carrera o módulo con su facultad (dimensión desnormalizada).",
+    "columnas": [
+      {
+        "columna": "carrera_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Carrera o módulo"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "carrera",
+        "tipo": "NVARCHAR(150)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Carrera o módulo"
+      },
+      {
+        "columna": "facultad_codigo",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Código de la facultad"
+      },
+      {
+        "columna": "facultad_nombre",
+        "tipo": "NVARCHAR(200)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Nombre de la facultad"
+      }
+    ]
+  },
+  "dim_sede": {
+    "descripcion": "Sede o campus de cada institución.",
+    "columnas": [
+      {
+        "columna": "sede_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Sede o campus"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "sede_codigo",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Código de la sede"
+      },
+      {
+        "columna": "sede_nombre",
+        "tipo": "NVARCHAR(100)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Nombre de la sede"
+      }
+    ]
+  },
+  "dim_modalidad": {
+    "descripcion": "Modalidad de estudio.",
+    "columnas": [
+      {
+        "columna": "modalidad_codigo",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Modalidad (PRESENCIAL, EN LINEA, HIBRIDA)"
+      },
+      {
+        "columna": "descripcion",
+        "tipo": "NVARCHAR(80)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Descripción"
+      }
+    ]
+  },
+  "dim_estado_matricula": {
+    "descripcion": "Estado de la matrícula al cierre del periodo.",
+    "columnas": [
+      {
+        "columna": "estado_codigo",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Estado al cierre del periodo"
+      },
+      {
+        "columna": "descripcion",
+        "tipo": "NVARCHAR(120)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Descripción"
+      },
+      {
+        "columna": "es_terminal",
+        "tipo": "BIT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "1 = el estado cierra la trayectoria"
+      }
+    ]
+  },
+  "dim_tiempo": {
+    "descripcion": "Calendario de las fechas de corte.",
+    "columnas": [
+      {
+        "columna": "tiempo_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Fecha del corte"
+      },
+      {
+        "columna": "fecha",
+        "tipo": "DATE",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Fecha calendario"
+      },
+      {
+        "columna": "anio",
+        "tipo": "SMALLINT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Año"
+      },
+      {
+        "columna": "mes",
+        "tipo": "TINYINT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Mes"
+      },
+      {
+        "columna": "trimestre",
+        "tipo": "TINYINT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Trimestre"
+      }
+    ]
+  },
+  "fact_prediccion_abandono": {
+    "descripcion": "Resultado del modelo: un estudiante activo con su riesgo para el próximo periodo.",
+    "columnas": [
+      {
+        "columna": "prediccion_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Identificador de la predicción"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "alumno_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → dim_alumno",
+        "descripcion": "Estudiante (clave sustituta)"
+      },
+      {
+        "columna": "matricula_id_base",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → fact_matriculas",
+        "descripcion": "Fila de la trayectoria con cuyos datos se predijo"
+      },
+      {
+        "columna": "horizonte",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Qué se predice: abandono en el PRÓXIMO periodo"
+      },
+      {
+        "columna": "probabilidad",
+        "tipo": "DECIMAL(6,4)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Probabilidad calibrada de abandono (0 a 1)"
+      },
+      {
+        "columna": "riesgo_categoria",
+        "tipo": "VARCHAR(10)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "ALTO, MEDIO o BAJO según los umbrales del entrenamiento"
+      },
+      {
+        "columna": "umbral_alto",
+        "tipo": "DECIMAL(6,4)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Umbral de la categoría ALTO (recall objetivo 0,50)"
+      },
+      {
+        "columna": "umbral_medio",
+        "tipo": "DECIMAL(6,4)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Umbral de la categoría MEDIO (recall objetivo 0,80)"
+      },
+      {
+        "columna": "percentil_riesgo",
+        "tipo": "DECIMAL(5,2)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Posición del estudiante en la institución (0 a 100)"
+      },
+      {
+        "columna": "factor_1",
+        "tipo": "NVARCHAR(200)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Razón que más eleva el riesgo (SHAP), en lenguaje natural"
+      },
+      {
+        "columna": "factor_2",
+        "tipo": "NVARCHAR(200)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Segunda razón"
+      },
+      {
+        "columna": "factor_3",
+        "tipo": "NVARCHAR(200)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Tercera razón"
+      },
+      {
+        "columna": "explicacion_json",
+        "tipo": "NVARCHAR(MAX)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Contribuciones SHAP más relevantes (JSON)"
+      },
+      {
+        "columna": "caracteristicas_json",
+        "tipo": "NVARCHAR(MAX)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Variables usadas y estado para el simulador (JSON)"
+      },
+      {
+        "columna": "fecha_calculo",
+        "tipo": "DATETIME2",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Momento del cálculo (UTC)"
+      },
+      {
+        "columna": "modelo_version",
+        "tipo": "VARCHAR(40)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Versión del modelo que produjo la fila"
+      }
+    ]
+  },
+  "fact_segmento_carrera": {
+    "descripcion": "Resultado de la segmentación: una carrera con su segmento de riesgo.",
+    "columnas": [
+      {
+        "columna": "segmento_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Identificador de la fila"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "carrera_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → dim_carrera",
+        "descripcion": "Carrera o módulo"
+      },
+      {
+        "columna": "segmento",
+        "tipo": "NVARCHAR(60)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Atención prioritaria, Estable o Bajo riesgo"
+      },
+      {
+        "columna": "orden_segmento",
+        "tipo": "TINYINT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "1 = mayor riesgo"
+      },
+      {
+        "columna": "estudiantes",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Estudiantes distintos de la carrera"
+      },
+      {
+        "columna": "tasa_abandono_hist",
+        "tipo": "DECIMAL(6,4)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Proporción de trayectorias cerradas como RETIRADO"
+      },
+      {
+        "columna": "promedio_hist",
+        "tipo": "DECIMAL(4,2)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Promedio histórico"
+      },
+      {
+        "columna": "asistencia_hist",
+        "tipo": "DECIMAL(5,2)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Asistencia histórica (%)"
+      },
+      {
+        "columna": "riesgo_promedio",
+        "tipo": "DECIMAL(6,4)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Probabilidad media de los activos"
+      },
+      {
+        "columna": "activos_en_riesgo",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Activos en riesgo ALTO o MEDIO"
+      },
+      {
+        "columna": "fecha_calculo",
+        "tipo": "DATETIME2",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Momento del cálculo (UTC)"
+      },
+      {
+        "columna": "modelo_version",
+        "tipo": "VARCHAR(40)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Versión del modelo que produjo la fila"
+      }
+    ]
+  },
+  "fact_evaluacion_modelo": {
+    "descripcion": "Métricas de validación de la predicción, la segmentación y la consulta conversacional.",
+    "columnas": [
+      {
+        "columna": "evaluacion_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Identificador de la métrica"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "componente",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "PREDICCION, SEGMENTACION o CONSULTA"
+      },
+      {
+        "columna": "modelo",
+        "tipo": "VARCHAR(60)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Modelo evaluado"
+      },
+      {
+        "columna": "esquema_validacion",
+        "tipo": "VARCHAR(40)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Tipo de validación"
+      },
+      {
+        "columna": "metrica",
+        "tipo": "VARCHAR(60)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Nombre de la métrica"
+      },
+      {
+        "columna": "valor",
+        "tipo": "DECIMAL(12,4)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Valor"
+      },
+      {
+        "columna": "desviacion",
+        "tipo": "DECIMAL(12,4)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Desviación entre pliegues"
+      },
+      {
+        "columna": "grupo",
+        "tipo": "NVARCHAR(60)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Subgrupo o variable"
+      },
+      {
+        "columna": "es_modelo_final",
+        "tipo": "BIT",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "1 = métrica del modelo en uso"
+      },
+      {
+        "columna": "fecha_calculo",
+        "tipo": "DATETIME2",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Momento del cálculo (UTC)"
+      },
+      {
+        "columna": "modelo_version",
+        "tipo": "VARCHAR(40)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Versión del modelo que produjo la fila"
+      }
+    ]
+  },
+  "fact_intervencion": {
+    "descripcion": "Registro de seguimiento de bienestar estudiantil.",
+    "columnas": [
+      {
+        "columna": "intervencion_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Identificador de la intervención"
+      },
+      {
+        "columna": "institucion_codigo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "FK → dim_institucion",
+        "descripcion": "Institución dueña del dato (aislamiento por SESSION_CONTEXT)"
+      },
+      {
+        "columna": "alumno_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "FK → dim_alumno",
+        "descripcion": "Estudiante (clave sustituta)"
+      },
+      {
+        "columna": "tipo",
+        "tipo": "VARCHAR(30)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Tipo"
+      },
+      {
+        "columna": "descripcion",
+        "tipo": "NVARCHAR(400)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Descripción"
+      },
+      {
+        "columna": "estado",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "ABIERTA o CERRADA"
+      },
+      {
+        "columna": "resultado",
+        "tipo": "NVARCHAR(200)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Resultado al cerrar"
+      },
+      {
+        "columna": "riesgo_al_registrar",
+        "tipo": "VARCHAR(10)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Riesgo del estudiante al registrar"
+      },
+      {
+        "columna": "registrado_por",
+        "tipo": "NVARCHAR(60)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Usuario que registró"
+      },
+      {
+        "columna": "fecha_registro",
+        "tipo": "DATETIME2",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Fecha de registro (UTC)"
+      },
+      {
+        "columna": "fecha_cierre",
+        "tipo": "DATETIME2",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Fecha de cierre (UTC)"
+      }
+    ]
+  },
+  "dim_referente": {
+    "descripcion": "Institución de referencia externa.",
+    "columnas": [
+      {
+        "columna": "referente_codigo",
+        "tipo": "VARCHAR(40)",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Código del referente"
+      },
+      {
+        "columna": "nombre",
+        "tipo": "NVARCHAR(200)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Nombre"
+      },
+      {
+        "columna": "tipo",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Tipo"
+      }
+    ]
+  },
+  "fact_referente_externo": {
+    "descripcion": "Indicador publicado por un referente externo, con su fuente y DOI.",
+    "columnas": [
+      {
+        "columna": "referente_id",
+        "tipo": "INT",
+        "nulo": false,
+        "clave": "PK",
+        "descripcion": "Identificador de la fila"
+      },
+      {
+        "columna": "referente_codigo",
+        "tipo": "VARCHAR(40)",
+        "nulo": false,
+        "clave": "FK → dim_referente",
+        "descripcion": "Código del referente"
+      },
+      {
+        "columna": "indicador_codigo",
+        "tipo": "VARCHAR(50)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Indicador (TASA_ABANDONO)"
+      },
+      {
+        "columna": "valor",
+        "tipo": "DECIMAL(10,4)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Valor"
+      },
+      {
+        "columna": "unidad",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Unidad del valor"
+      },
+      {
+        "columna": "anio",
+        "tipo": "SMALLINT",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Año"
+      },
+      {
+        "columna": "definicion_indicador",
+        "tipo": "NVARCHAR(300)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Qué mide exactamente la cifra y dónde aparece en la fuente"
+      },
+      {
+        "columna": "pais",
+        "tipo": "NVARCHAR(60)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "País"
+      },
+      {
+        "columna": "modalidad",
+        "tipo": "VARCHAR(20)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Modalidad"
+      },
+      {
+        "columna": "nivel_comparabilidad",
+        "tipo": "VARCHAR(10)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "ALTA, MEDIA o BAJA"
+      },
+      {
+        "columna": "fuente",
+        "tipo": "NVARCHAR(300)",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Cita APA corta"
+      },
+      {
+        "columna": "doi",
+        "tipo": "VARCHAR(100)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "DOI"
+      },
+      {
+        "columna": "url_fuente",
+        "tipo": "NVARCHAR(400)",
+        "nulo": true,
+        "clave": "",
+        "descripcion": "Enlace"
+      },
+      {
+        "columna": "fecha_carga",
+        "tipo": "DATETIME2",
+        "nulo": false,
+        "clave": "",
+        "descripcion": "Momento de la carga (UTC)"
+      }
+    ]
+  }
+}
