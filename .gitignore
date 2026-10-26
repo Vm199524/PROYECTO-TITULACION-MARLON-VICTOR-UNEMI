@@ -84,3 +84,6 @@ desktop.ini
 # Archivos locales del prototipo anterior (no se versionan)
 backend/usuarios_prueba.local.json
 backend/usuarios_demo.local.json
+
+# Informe interactivo de Evidently (se regenera en cada monitoreo; pesa varios MB)
+backend/ml/modelos/*/deriva_evidently.html

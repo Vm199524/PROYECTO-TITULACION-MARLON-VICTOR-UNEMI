@@ -1,33 +1,38 @@
-# Pendientes para la siguiente sesión (7 de octubre de 2026)
+# Pendientes para la siguiente sesión (26 de octubre de 2026)
 
-Estado general: Avance 2 generado (85 páginas, sin errores en `_verificar_coherencia.py`), prototipo versión 3 con
-153 pruebas del backend y 11 de la interfaz en verde, README en español e inglés con el isotipo, la apertura y el
-recorrido animados y las capturas nuevas, manuales en Markdown y Word actualizados. El detalle está en
-[`documentacion/PLAN_Y_ESTADO_DEL_PROYECTO.md`](documentacion/PLAN_Y_ESTADO_DEL_PROYECTO.md).
+Estado general: trabajo final generado (101 páginas, sin errores en `_verificar_coherencia.py`), prototipo versión 3.1
+con validación de origen móvil, métricas por periodo y por carrera, operación del modelo (Great Expectations,
+Evidently, MLflow), Metabase como alternativa de consulta y documento de gobierno de datos (LOPDP). Pruebas: 178 del
+backend (8 de integración con SQL Server) y 11 de la interfaz.
 
 ## En el equipo con SQL Server (Windows)
 
-1. La copia local ya está en la rama `main`, igual que GitHub. Para traer cambios futuros: `git pull`.
-2. La exactitud de la consulta con IA ya se midió en SQL Server (7 de octubre de 2026) y el Avance 2 la incluye.
-   Para repetirla: `scripts\reconstruir_sistema.bat --solo consulta --con-consulta`.
-3. Si se cambia el contenido, regenerar el Avance 2:
+1. Traer los cambios: `git pull` en la rama `main`.
+2. Instalar las dependencias nuevas del backend (MLflow, Great Expectations y Evidently):
+   `cd backend && venv\Scripts\pip install -r requirements.txt`.
+3. Reentrenar y monitorear sobre SQL Server para que la base tenga las métricas por periodo y por carrera:
+   `npm run reconstruir -- --desde entrenar` (el paso `mlops` corre después de `reportes`).
+4. Crear las vistas de Metabase (opcional): `backend\venv\Scripts\python backend\scripts\ejecutar_sql.py
+   base_de_datos\crear_vistas_metabase.sql` con `METABASE_DB_PASSWORD` en el `.env`, y luego
+   `docker compose -f despliegue\metabase\docker-compose.yml up -d` (http://localhost:3001).
+5. Ver los experimentos (la interfaz web necesita el paquete completo: `venv\Scripts\pip install mlflow`):
+   `cd backend && venv\Scripts\mlflow ui --backend-store-uri sqlite:///datos_locales/mlflow/mlflow.db`.
+6. Si se cambia el contenido, regenerar el documento, la presentación y los guiones:
    ```bat
    cd documentacion\generador_documentos
-   python construir_avance2.py --base ..\avances\AVANCE1_MARLON_VICTOR.docx --salida ..\avances\AVANCE2_MARLON_VICTOR.docx
-   powershell -ExecutionPolicy Bypass -File _docx_a_pdf.ps1 -Docx ..\avances\AVANCE2_MARLON_VICTOR.docx
+   python construir_trabajo_final.py --base ..\avances\AVANCE1_MARLON_VICTOR.docx --salida ..\avances\TRABAJO_FINAL_MARLON_VICTOR.docx
+   powershell -ExecutionPolicy Bypass -File _docx_a_pdf.ps1 -Docx ..\avances\TRABAJO_FINAL_MARLON_VICTOR.docx
    python _verificar_coherencia.py
+   python construir_guiones.py
    ```
-4. Exportar el PDF de los tres manuales con `_docx_a_pdf.ps1`.
 
 ## Lo que solo pueden hacer los autores
 
-- Enlaces de los videos en el Anexo C del Avance 2.
-- Completar en la tabla de la Declaración de autoría las fechas y los enlaces marcados «[completar]» (las filas ya están redactadas).
+- Grabar el video de 15 minutos con `documentacion/presentacion/Presentacion_Trabajo_Final_Marlon_Victor.pptx` y
+  `GUION_VIDEO.md`, subirlo a la carpeta digital y reemplazar en el Anexo E el enlace de la carpeta por el del video.
+- Ensayar la sustentación con `documentacion/presentacion/GUIA_SUSTENTACION.md`.
+- Validación con una carrera real de la UNEMI: autorización, evaluación de impacto y extracción según
+  `documentacion/gobierno_datos/GOBIERNO_DE_DATOS.md` (`backend/scripts/anonimizar_carrera.py`).
+- Prueba de usabilidad con 3 a 5 usuarios (instrumento en el Anexo D).
 - Porcentaje real de Compilatio.
-- Borrar en GitHub las ramas antiguas `AAA`, `MARLON`, `fix/dev-backend-windows` y `v3-sistema-academico` (desde la web: Branches → icono de papelera); `main` ya tiene la versión vigente.
 - Cambiar las credenciales de `sa`, `chat_reader`, `app_seguimiento` y las claves de IA antes de usar datos reales.
-
-## Para el Avance 3
-
-- Prueba de usabilidad con 3 a 5 usuarios (protocolo en la sección 3.1.8 y en la guía de pruebas de aceptación).
-- Video de la demostración completa.

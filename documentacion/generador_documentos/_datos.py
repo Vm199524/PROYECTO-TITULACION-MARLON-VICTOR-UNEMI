@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Cifras del Avance 2 leídas de los resultados reales del sistema.
+Cifras del trabajo de titulación leídas de los resultados reales del sistema.
 
 El documento no copia números a mano: todo valor de desempeño sale de
 ml/modelos/<institución>/*.json y de la evaluación de la consulta
@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
-BACKEND = RAIZ / 'codigo_fuente' / 'backend'
+BACKEND = RAIZ / 'backend'
 MODELOS = BACKEND / 'ml' / 'modelos'
 DIAGRAMAS = RAIZ / 'documentacion' / 'diagramas'
 FIGURAS = RAIZ / 'documentacion' / 'figuras'
@@ -32,7 +32,9 @@ def _json(ruta: Path) -> dict:
 def cargar(institucion: str) -> dict:
     base = MODELOS / institucion
     return {'m': _json(base / 'metricas.json'), 's': _json(base / 'segmentacion.json'),
-            'mon': _json(base / 'monitoreo.json'), 'p': _json(base / 'prospectiva.json')}
+            'mon': _json(base / 'monitoreo.json'), 'p': _json(base / 'prospectiva.json'),
+            'cal': _json(base / 'calidad_datos.json'), 'der': _json(base / 'deriva.json'),
+            'mlf': _json(base / 'mlflow_registro.json')}
 
 
 def consulta() -> tuple[dict, str]:
@@ -96,3 +98,9 @@ def bonito(texto: str) -> str:
 LAT = _json(RAIZ / 'documentacion' / 'evidencias' / 'latencia_replica.json')
 EXP_U = _json(MODELOS / 'UNEMI_PRUEBAS' / 'exploracion.json')
 EXP_O = _json(MODELOS / 'OULAD_UK' / 'exploracion.json')
+
+
+# Conteo de pruebas automatizadas de la última corrida completa (documentacion/evidencias/pruebas.json).
+PRUEBAS = _json(RAIZ / 'documentacion' / 'evidencias' / 'pruebas.json')
+N_PRUEBAS_BACKEND = PRUEBAS.get('backend', 'n. d.')
+N_PRUEBAS_FRONTEND = PRUEBAS.get('frontend', 'n. d.')

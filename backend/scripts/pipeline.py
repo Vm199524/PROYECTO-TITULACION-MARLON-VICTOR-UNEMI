@@ -21,10 +21,12 @@ Ejecuta, en orden y deteniéndose en el primer error:
                     cada estudiante activo; monitoreo de deriva (PSI).
   10. segmentar     Segmentación de carreras (K-means validado).
   11. reportes      Figuras de validación y evaluación prospectiva (OULAD).
-  12. diccionario   Diccionario de datos del almacén.
-  13. usuarios      Cuentas de demostración por rol.
-  14. pruebas       Pruebas automáticas (pytest).
-  15. consulta      Evaluación de la consulta conversacional (opcional; usa
+  12. mlops         Calidad de los datos (Great Expectations), deriva de las
+                    variables (Evidently) y registro del monitoreo en MLflow.
+  13. diccionario   Diccionario de datos del almacén.
+  14. usuarios      Cuentas de demostración por rol.
+  15. pruebas       Pruebas automáticas (pytest).
+  16. consulta      Evaluación de la consulta conversacional (opcional; usa
                     los proveedores de IA del .env).
 
 El resultado de cada paso se guarda en backend/datos_locales/pipeline_estado.json
@@ -64,14 +66,15 @@ INSTITUCIONES = ['UNEMI_PRUEBAS', 'OULAD_UK']
 DIR_OULAD = RAIZ_CODIGO / 'datos' / 'externos' / 'oulad'
 
 PASOS = ['entorno', 'conexion', 'unemi', 'oulad', 'esquema', 'etl', 'referentes', 'entrenar', 'calificar',
-         'segmentar', 'reportes', 'diccionario', 'usuarios', 'pruebas', 'consulta']
+         'segmentar', 'reportes', 'mlops', 'diccionario', 'usuarios', 'pruebas', 'consulta']
 DESCRIPCION = {
     'entorno': 'Variables de configuración', 'conexion': 'Conexión con SQL Server',
     'unemi': 'Base operativa UNEMI (sintética)', 'oulad': 'Base operativa OULAD (real anonimizada)',
     'esquema': 'Almacén académico y cuentas de mínimo privilegio', 'etl': 'ETL hacia el almacén',
     'referentes': 'Referentes externos', 'entrenar': 'Entrenamiento y validación del modelo',
     'calificar': 'Calificación de estudiantes activos', 'segmentar': 'Segmentación de carreras',
-    'reportes': 'Figuras y evaluación prospectiva', 'diccionario': 'Diccionario de datos',
+    'reportes': 'Figuras y evaluación prospectiva',
+    'mlops': 'Calidad de datos, deriva y registro (GX, Evidently, MLflow)', 'diccionario': 'Diccionario de datos',
     'usuarios': 'Cuentas de demostración', 'pruebas': 'Pruebas automáticas',
     'consulta': 'Evaluación de la consulta conversacional',
 }
@@ -189,6 +192,8 @@ def comandos(paso: str, args) -> list[list[str]]:
     if paso == 'reportes':
         return ([py + ['ml.reporte_validacion', '--institucion', i] for i in instituciones] +
                 [py + ['ml.exploracion', '--institucion', i] for i in instituciones])
+    if paso == 'mlops':
+        return [py + ['mlops.validar', '--institucion', i] for i in instituciones]
     if paso == 'diccionario':
         return [py + ['scripts.generar_diccionario']]
     if paso == 'usuarios':

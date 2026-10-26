@@ -30,7 +30,10 @@ decidir nada:
   7. Prueba temporal, una sola vez: ROC-AUC, PR-AUC, Brier, recall y
      precisión en cada umbral, captura del 10 % de mayor riesgo, curva de
      calibración, equidad por género y modalidad, e importancia por
-     permutación.
+     permutación. Las mismas métricas se desagregan por periodo y por
+     carrera, y se repite la validación con origen móvil (backtesting):
+     cada periodo reciente se predice entrenando solo con los anteriores
+     (ml/evaluacion_grupos.py).
   8. Modelo final reentrenado con todas las filas etiquetadas, guardado junto
      con su calibrador, umbrales y la distribución de referencia para vigilar
      la deriva de los datos.
@@ -70,6 +73,7 @@ from sklearn.preprocessing import StandardScaler
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from ml.calibracion import CalibradorPlatt  # noqa: E402
+from ml.evaluacion_grupos import metricas_por_grupo, resumen_origen_movil, validacion_origen_movil  # noqa: E402
 from ml.caracteristicas import construir_panel, grupos_disponibles, matriz, variables_modelo  # noqa: E402
 
 RAIZ_MODELOS = Path(__file__).resolve().parent / 'modelos'
@@ -307,7 +311,7 @@ def referencia_psi(X: pd.DataFrame, columnas: list[str]) -> dict:
 
 # ── Orquestación (pura: recibe el panel, no toca la base) ───────────────
 def entrenar_panel(panel: pd.DataFrame, institucion: str, grupos: list[str], intentos_rf: int = 10,
-                   pruebas_optuna: int = 15, registrar=print) -> tuple[dict, dict, pd.DataFrame, pd.DataFrame]:
+                   pruebas_optuna: int = 15, registrar=print, origenes: int = 4) -> tuple[dict, dict, pd.DataFrame, pd.DataFrame]:
     """Entrena, valida y empaqueta el modelo de una institución a partir de su panel.
 
     Returns:
@@ -357,6 +361,18 @@ def entrenar_panel(panel: pd.DataFrame, institucion: str, grupos: list[str], int
     registrar(f"  Prueba temporal: ROC-AUC {temporal['roc_auc']} | PR-AUC {temporal['pr_auc']} | "
               f"recall MEDIO {temporal['umbral_medio']['recall']} | captura top 10 % {temporal['captura_top_10']}")
 
+    p_prueba = prueba.assign(probabilidad=p_cal)
+    por_periodo = metricas_por_grupo(p_prueba, 'periodo_codigo', umbral_medio, umbral_alto, orden=periodos_prueba)
+    por_carrera = metricas_por_grupo(p_prueba, 'carrera', umbral_medio, umbral_alto)
+    registrar('  Desempeño por periodo: ' + '; '.join(f"{f['grupo']} ROC-AUC {f['roc_auc']} recall {f['recall_medio']}"
+                                                      for f in por_periodo))
+    origen_movil = []
+    if origenes > 0:
+        registrar(f'  Validación con origen móvil ({origenes} periodos más recientes) ...')
+        origen_movil = validacion_origen_movil(etiquetado, columnas, candidatos(params_rf, params_lgbm)[final], matriz,
+                                               RECALL_MEDIO, RECALL_ALTO, origenes=origenes, semilla=SEMILLA,
+                                               registrar=registrar)
+
     muestra = np.random.default_rng(SEMILLA).choice(len(X_te), size=min(len(X_te), 15000), replace=False)
     perm = permutation_importance(modelo_temporal, X_te.iloc[muestra], y_te.iloc[muestra],
                                   scoring='average_precision', n_repeats=3, random_state=SEMILLA, n_jobs=1)
@@ -388,10 +404,15 @@ def entrenar_panel(panel: pd.DataFrame, institucion: str, grupos: list[str], int
         'umbrales': {'alto': _r(umbral_alto), 'medio': _r(umbral_medio),
                      'recall_objetivo_alto': RECALL_ALTO, 'recall_objetivo_medio': RECALL_MEDIO},
         'validacion_temporal': temporal, 'equidad': equidad(prueba, p_cal, umbral_medio),
+        'por_periodo': por_periodo, 'por_carrera': por_carrera,
+        'origen_movil': {'periodos': origen_movil, 'resumen': resumen_origen_movil(origen_movil),
+                         'metodo': 'Para cada periodo se entrena solo con los anteriores; calibración y umbrales '
+                                   'con predicciones fuera de pliegue del pasado.'},
         'importancia_permutacion': importancia, 'segundos': round(time.time() - inicio, 1),
     }
     predicciones = pd.DataFrame({'y': y_te.to_numpy(), 'probabilidad': p_cal, 'puntaje': p_raw,
-                                 'periodo': prueba['periodo_codigo'].to_numpy(), 'corte': prueba['corte'].to_numpy()})
+                                 'periodo': prueba['periodo_codigo'].to_numpy(), 'corte': prueba['corte'].to_numpy(),
+                                 'carrera': prueba['carrera'].to_numpy() if 'carrera' in prueba else None})
     oof = pd.DataFrame({'y': y_tr.to_numpy(), 'puntaje': oofs[final], 'probabilidad': oof_cal})
     return paquete, metricas, predicciones, oof
 
@@ -414,6 +435,17 @@ def filas_evaluacion(institucion: str, metricas: dict) -> list[tuple]:
         for clave in ('recall', 'precision', 'umbral', 'tasa_alerta'):
             filas.append((institucion, 'PREDICCION', final, 'TEMPORAL', f'{clave.upper()}_{nivel.upper()}',
                           m[clave], None, None, 1, version))
+    for esquema, clave_grupo in (('POR_PERIODO', 'por_periodo'), ('POR_CARRERA', 'por_carrera')):
+        for g in metricas.get(clave_grupo, []):
+            for clave in ('roc_auc', 'pr_auc', 'recall_medio', 'recall_alto', 'precision_medio'):
+                if g.get(clave) is not None:
+                    filas.append((institucion, 'PREDICCION', final, esquema, clave.upper(), g[clave], None,
+                                  str(g['grupo'])[:60], 1, version))
+    for g in metricas.get('origen_movil', {}).get('periodos', []):
+        for clave in ('roc_auc', 'pr_auc', 'recall_medio', 'recall_alto'):
+            if g.get(clave) is not None:
+                filas.append((institucion, 'PREDICCION', final, 'ORIGEN_MOVIL', clave.upper(), g[clave], None,
+                              g['periodo'], 1, version))
     for e in metricas['equidad']:
         for clave in ('roc_auc', 'recall', 'precision', 'fpr'):
             if e[clave] is not None:
@@ -436,7 +468,8 @@ def guardar(conn, institucion: str, paquete: dict, metricas: dict, predicciones:
     if conn is not None:
         cur = conn.cursor()
         cur.execute("DELETE FROM dbo.fact_evaluacion_modelo WHERE institucion_codigo = ? AND componente = 'PREDICCION' "
-                    "AND esquema_validacion IN ('CV_AGRUPADA_5', 'TEMPORAL', 'EQUIDAD')", institucion)
+                    "AND esquema_validacion IN ('CV_AGRUPADA_5', 'TEMPORAL', 'EQUIDAD', 'POR_PERIODO', "
+                    "'POR_CARRERA', 'ORIGEN_MOVIL')", institucion)
         cur.fast_executemany = True
         cur.executemany("""INSERT INTO dbo.fact_evaluacion_modelo
             (institucion_codigo, componente, modelo, esquema_validacion, metrica, valor, desviacion, grupo,
@@ -451,6 +484,8 @@ def main() -> int:
     parser.add_argument('--institucion', required=True)
     parser.add_argument('--intentos-rf', type=int, default=10)
     parser.add_argument('--pruebas-optuna', type=int, default=15)
+    parser.add_argument('--origenes', type=int, default=4,
+                        help='Periodos recientes para la validación con origen móvil (0 la omite)')
     args = parser.parse_args()
     institucion = args.institucion.strip().upper()
 
@@ -463,9 +498,11 @@ def main() -> int:
     print(f'  {len(hist)} filas; grupos opcionales con datos: {grupos or "ninguno"}')
     panel = construir_panel(hist)
     paquete, metricas, predicciones, oof = entrenar_panel(panel, institucion, grupos, args.intentos_rf,
-                                                          args.pruebas_optuna)
+                                                          args.pruebas_optuna, origenes=args.origenes)
     destino = guardar(conn, institucion, paquete, metricas, predicciones, oof)
     conn.close()
+    from mlops.registro_mlflow import registrar_entrenamiento
+    registrar_entrenamiento(institucion, destino, metricas)
     print(f'Modelo y métricas guardados en {destino} ({metricas["segundos"]} s).')
     return 0
 

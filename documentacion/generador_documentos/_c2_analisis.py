@@ -143,7 +143,9 @@ def bloques() -> list[tuple]:
 
     a(('h3', '2.1.5 Requerimientos funcionales'))
     a(('p', 'Los requerimientos funcionales se agrupan según la pieza de la solución de la que derivan ({T:rf}). Las '
-            'piezas transversales (datos, seguridad y administración) sostienen a las cuatro principales.'))
+            'piezas transversales (datos, seguridad, administración y operación) sostienen a las cuatro principales. '
+            'Los requerimientos RF-19 a RF-23 se agregaron en la etapa final para atender la recomendación de la '
+            'tutoría de reportar el desempeño por periodo y de vigilar la calidad de los datos.'))
     rf = [
         ['Datos', 'RF-02', 'Cargar y transformar la trayectoria de cada institución mediante un perfil de mapeo, sin '
                            'cambiar el código del modelo.', 'Alta'],
@@ -175,6 +177,14 @@ def bloques() -> list[tuple]:
                                     'administrador.', 'Media'],
         ['Administración', 'RF-16', 'Registrar la auditoría de accesos y consultas y mostrar el estado del '
                                     'sistema.', 'Media'],
+        ['Operación', 'RF-19', 'Validar la calidad de la trayectoria antes de entrenar y detener el proceso ante una '
+                               'falla crítica.', 'Alta'],
+        ['Operación', 'RF-20', 'Reportar ROC-AUC, PR-AUC y recall por periodo y por carrera, con validación de '
+                               'origen móvil.', 'Alta'],
+        ['Operación', 'RF-21', 'Registrar cada entrenamiento (datos, parámetros, métricas y modelo) en un registro '
+                               'de experimentos.', 'Media'],
+        ['Operación', 'RF-22', 'Medir la deriva de las variables de entrada en cada calificación.', 'Media'],
+        ['Consulta', 'RF-23', 'Ofrecer una vía de consulta agregada para analistas, sin datos personales.', 'Baja'],
     ]
     a(('tab', 'rf', 'Requerimientos Funcionales por Pieza de la Solución', ['Pieza', 'ID', 'Requerimiento', 'Prioridad'],
        rf, 'Elaboración propia. La numeración coincide con los comentarios del código fuente.', [3.0, 1.5, 9.5, 2.0]))
@@ -207,6 +217,8 @@ def bloques() -> list[tuple]:
          'Tres factores por predicción'],
         ['RNF-10', 'Portabilidad', 'Ejecución local con Docker y un instalador para Windows.', 'Instalación con '
                                                                                              'un script'],
+        ['RNF-11', 'Estabilidad temporal', 'El desempeño no debe depender de un periodo favorable.',
+         'ROC-AUC ≥ 0,70 en cada periodo evaluado con origen móvil'],
     ]
     a(('tab', 'rnf', 'Requerimientos No Funcionales y su Métrica de Verificación', ['ID', 'Atributo', 'Requerimiento',
                                                                            'Métrica o meta'],
@@ -215,7 +227,9 @@ def bloques() -> list[tuple]:
     a(('h3', '2.1.7 Requisitos de protección de datos estudiantiles'))
     a(('p', 'Como el sistema trata datos personales de estudiantes, los requisitos de la LOPDP se convirtieron en '
             'controles técnicos concretos ({T:lopdp}). El objetivo es que la protección no dependa de la buena '
-            'voluntad del usuario, sino de la arquitectura.'))
+            'voluntad del usuario, sino de la arquitectura. Estos requisitos se consolidaron en un documento de '
+            'gobierno de datos (Anexo C), que fija roles, clasificación de los datos, ciclo de vida, matriz de acceso, '
+            'gobierno del modelo y el procedimiento para validar con datos reales anonimizados de una carrera.'))
     a(('tab', 'lopdp', 'Principios de la LOPDP y Controles Implementados',
        ['Principio', 'Control técnico', 'Evidencia en el prototipo'],
        [['Finalidad', 'Los datos se usan solo para la alerta y el acompañamiento; no hay perfiles comerciales ni '
@@ -267,6 +281,16 @@ def bloques() -> list[tuple]:
                                                           f"{LAT.get('p95_ms', 'n. d.')} ms) en la réplica",
          'Sí' if LAT else 'Pendiente'],
         ['Preguntas maliciosas', '8/8 contenidas', advers, 'Sí' if advers == '8/8' else 'No'],
+        *([['ROC-AUC por periodo (origen móvil, OULAD)', '≥ 0,70 en cada periodo',
+            f"{f((om.get('origen_movil') or {}).get('resumen', {}).get('roc_auc_min'))} a "
+            f"{f((om.get('origen_movil') or {}).get('resumen', {}).get('roc_auc_max'))}",
+            'Sí' if ((om.get('origen_movil') or {}).get('resumen', {}).get('roc_auc_min') or 0) >= 0.70 else 'No']]
+          if (om.get('origen_movil') or {}).get('resumen') else []),
+        *([['Calidad de los datos', '0 fallas críticas', f"{U['cal'].get('cumplidas')}/{U['cal'].get('evaluadas')} y "
+                                                         f"{O['cal'].get('cumplidas')}/{O['cal'].get('evaluadas')} "
+                                                         'expectativas', 'Sí' if U['cal'].get('apto_para_entrenar')
+                                                         and O['cal'].get('apto_para_entrenar') else 'No']]
+          if U.get('cal') and O.get('cal') else []),
         ['Fugas entre instituciones', '0', fugas + (' en SQL Server' if C_ORIGEN == 'SQL_SERVER' else ' en la réplica'),
          ('Sí' if C_ORIGEN == 'SQL_SERVER' else 'Sí (réplica)') if fugas == '0' else 'No'],
     ]

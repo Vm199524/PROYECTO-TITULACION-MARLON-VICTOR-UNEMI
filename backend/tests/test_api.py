@@ -145,3 +145,21 @@ def test_auditoria_registra_los_ingresos(cliente):
     assert r.status_code == 200
     eventos = r.json()['eventos'] if isinstance(r.json(), dict) else r.json()
     assert any(e.get('accion') == 'INGRESO' and e.get('usuario') == 'bienestar.prueba' for e in eventos)
+
+
+def test_interpretacion_con_ia_se_puede_deshabilitar(cliente, monkeypatch):
+    """Política de gobierno de datos, sección 7: CONSULTA_INTERPRETAR=0 impide enviar filas al proveedor."""
+    import dataclasses
+    from core import config
+    monkeypatch.setattr(config, 'CONFIG', dataclasses.replace(config.CONFIG, interpretar_con_ia=False))
+    r = cliente.post('/api/consulta/cualquiera/interpretar', headers=_token(cliente, 'autoridad.prueba'))
+    assert r.status_code == 403
+    assert 'deshabilitada' in r.json()['detail']
+
+
+def test_calidad_del_modelo_expone_validacion_por_periodo(cliente):
+    r = cliente.get('/api/modelo/calidad', headers=_token(cliente, 'autoridad.prueba'))
+    assert r.status_code == 200
+    datos = r.json()
+    for clave in ('por_periodo', 'por_carrera', 'origen_movil', 'calidad_datos', 'deriva', 'mlflow'):
+        assert clave in datos or not datos.get('disponible')

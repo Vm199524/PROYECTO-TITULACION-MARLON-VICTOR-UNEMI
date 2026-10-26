@@ -1,0 +1,8 @@
+{
+  "fecha": "2026-10-26",
+  "backend": 178,
+  "backend_aprobadas": 170,
+  "backend_omitidas_sin_sqlserver": 8,
+  "frontend": 11,
+  "nota": "pytest -q en backend/ (las 8 pruebas de integración se omiten si no hay conexión con SQL Server); vitest run en frontend/"
+}

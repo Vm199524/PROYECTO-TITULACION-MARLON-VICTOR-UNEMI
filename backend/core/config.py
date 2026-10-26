@@ -85,6 +85,9 @@ class Configuracion:
         _texto('RUTA_AUDITORIA', str(RAIZ_BACKEND / 'datos_locales' / 'auditoria.jsonl'))))
 
     # Modelos de lenguaje (cascada: el primero disponible responde)
+    # CONSULTA_INTERPRETAR=0 deshabilita la lectura con IA de los resultados (las filas, aunque
+    # seudonimizadas, no salen del país). Política de gobierno de datos, sección 7.
+    interpretar_con_ia: bool = field(default_factory=lambda: _texto('CONSULTA_INTERPRETAR', '1') != '0')
     temperatura: float = field(default_factory=lambda: _decimal('LLM_TEMPERATURE', 0.0))
     max_tokens: int = field(default_factory=lambda: _entero('LLM_MAX_TOKENS', 1600))
     tiempo_maximo_llm_s: int = field(default_factory=lambda: _entero('TIEMPO_MAXIMO_LLM_S', 45))

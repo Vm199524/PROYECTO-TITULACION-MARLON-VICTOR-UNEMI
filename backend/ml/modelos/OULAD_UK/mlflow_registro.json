@@ -1,0 +1,9 @@
+{
+  "experimento": "abandono-OULAD_UK",
+  "experiment_id": "1",
+  "run_id": "11fd09b997d1488aaebd17bb42dad832",
+  "tracking_uri": "sqlite:////home/claude/vicmar/backend/datos_locales/mlflow/mlflow.db",
+  "parametros": 27,
+  "metricas": 31,
+  "fecha": "2026-10-26T18:23:35"
+}

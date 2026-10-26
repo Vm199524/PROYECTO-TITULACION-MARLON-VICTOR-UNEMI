@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Contenido del Avance 2: reúne los capítulos y numera figuras y tablas.
+Contenido del trabajo final: reúne los capítulos y numera figuras y tablas.
 
 Los capítulos se escriben con referencias por clave ({F:clave} y {T:clave}) y
 con figuras y tablas identificadas por esa misma clave; aquí se asignan los
@@ -17,14 +17,16 @@ import re
 import _c1_introduccion
 import _c2_analisis
 import _c3_diseno
+import _c3c_desarrollo
 import _c4_cierre
-from _c4_cierre import resumen_abstract  # noqa: F401  (lo usa construir_avance2.py)
+from _c4_cierre import resumen_abstract  # noqa: F401  (lo usa construir_trabajo_final.py)
 
 _REF = re.compile(r'\{([FT]):([a-z0-9_]+)\}')
 
 
 def bloques() -> list[tuple]:
-    crudos = _c1_introduccion.bloques() + _c2_analisis.bloques() + _c3_diseno.bloques() + _c4_cierre.bloques()
+    crudos = (_c1_introduccion.bloques() + _c2_analisis.bloques() + _c3_diseno.bloques() + _c3c_desarrollo.bloques()
+              + _c4_cierre.bloques())
     numeros = {'F': {}, 'T': {}}
     for b in crudos:
         if b[0] in ('fig', 'tab'):

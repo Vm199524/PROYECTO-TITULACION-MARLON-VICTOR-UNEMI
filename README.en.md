@@ -75,7 +75,7 @@ Version 3 consolidates the academic focus: the whole system, from the database t
 | Querying | 40 certified metrics, a cascade of four AI providers and syntax-tree validation; the AI never writes nor reads another institution |
 | Users | Three roles (academic authority, student support, IT administration), role capabilities, audit log and lockout after failed attempts |
 | Interface | Own visual identity (animated mark in UNEMI orange), opening screen with six capabilities, executive dashboard, student profile with a what-if simulator, follow-up, PDF and Excel reports, light and dark themes, mobile layout |
-| Operations | `reconstruir_sistema.bat` rebuilds everything end to end; 153 backend tests and 11 front-end tests |
+| Operations | `reconstruir_sistema.bat` rebuilds everything end to end; 178 backend tests (8 need SQL Server) and 11 front-end tests |
 
 ## Screenshots
 
@@ -111,7 +111,7 @@ Version 3 consolidates the academic focus: the whole system, from the database t
 
 ## Method
 
-CRISP-DM on a **student-term panel**: each row holds what was known at the end of term *t*; the label is whether the student withdrew in *t + 1*. Logistic regression, class-weighted Random Forest, Random Forest with SMOTE and Optuna-tuned LightGBM are compared through **student-grouped 5-fold cross-validation**, a **temporal test** on the most recent terms and a **prospective evaluation** (OULAD 2014J). The selected model is Platt-calibrated and explained with SHAP; drift is monitored with PSI.
+CRISP-DM on a **student-term panel**: each row holds what was known at the end of term *t*; the label is whether the student withdrew in *t + 1*. Logistic regression, class-weighted Random Forest, Random Forest with SMOTE and Optuna-tuned LightGBM are compared through **student-grouped 5-fold cross-validation**, a **temporal test** on the most recent terms and a **prospective evaluation** (OULAD 2014J). The selected model is Platt-calibrated and explained with SHAP; each run validates data quality with Great Expectations, measures drift with Evidently (plus PSI) and is logged in MLflow; Metabase offers an aggregated, personal-data-free query path.
 
 ## Results
 
@@ -119,12 +119,13 @@ CRISP-DM on a **student-term panel**: each row holds what was known at the end o
 
 | Temporal test | UNEMI_PRUEBAS | OULAD (real) |
 |---|---|---|
-| Selected model (cross-validated ROC-AUC) | LightGBM (0.828 ± 0.003) | LightGBM (0.803 ± 0.010) |
-| ROC-AUC | **0.829** | **0.766** |
-| PR-AUC (prevalence) | 0.466 (0.065) | 0.103 (0.031) |
-| Recall at the medium threshold | 0.781 | 0.786 |
-| Dropouts within the top 20 % risk | 67.9 % | 55.2 % |
-| Prospective evaluation (2014J) | | **ROC-AUC 0.762 · recall 0.913** |
+| Selected model (cross-validated ROC-AUC) | LightGBM (0.828 ± 0.003) | LightGBM (0.804 ± 0.012) |
+| ROC-AUC | **0.829** | **0.768** |
+| PR-AUC (prevalence) | 0.466 (0.065) | 0.104 (0.031) |
+| Recall at the medium threshold | 0.781 | 0.787 |
+| Dropouts within the top 20 % risk | 67.9 % | 55.4 % |
+| Rolling-origin backtest (each term predicted from past terms only) | 0.827 to 0.836 (4 terms) | 0.742 to 0.779 (2 terms) |
+| Prospective evaluation (2014J) | | **ROC-AUC 0.764 · recall 0.913** |
 
 Conversational querying (SQL Server 2022 with AI providers, 52 golden-set questions): 100% execution accuracy (65% of the base questions with an exact column match); 33 answered by certified metrics and 19 by validated generated SQL; 8/8 malicious prompts contained; zero cross-institution reads; median response time 77 ms.
 
@@ -146,11 +147,11 @@ The first run creates `backend\.env` from `.env.example`; fill in passwords, `JW
 
 The API runs on http://localhost:8090 (`/docs`) and the web app on http://localhost:3000. Demo accounts (`autoridad.demo`, `bienestar.demo`, `admin.ti`) get random passwords stored only in `backend/datos_locales/usuarios_demo.local.json`.
 
-Tests: `python -m pytest -q` (backend, 153 tests plus 8 SQL Server integration tests) and `npm test` (front end, 11 tests).
+Tests: `python -m pytest -q` (backend, 170 tests plus 8 SQL Server integration tests) and `npm test` (front end, 11 tests).
 
 ## Documentation
 
-[Avance 2 report (Spanish, PDF)](documentacion/avances/AVANCE2_MARLON_VICTOR.pdf) · [User manual](documentacion/manuales/MANUAL_DE_USUARIO.md) · [Installation manual](documentacion/manuales/MANUAL_TECNICO_DE_INSTALACION.md) · [Acceptance tests](documentacion/manuales/GUIA_DE_PRUEBAS_DE_ACEPTACION.md)
+[Final report (Spanish, PDF)](documentacion/avances/TRABAJO_FINAL_MARLON_VICTOR.pdf) · [Data governance (Spanish)](documentacion/gobierno_datos/GOBIERNO_DE_DATOS.md) · [User manual](documentacion/manuales/MANUAL_DE_USUARIO.md) · [Installation manual](documentacion/manuales/MANUAL_TECNICO_DE_INSTALACION.md) · [Acceptance tests](documentacion/manuales/GUIA_DE_PRUEBAS_DE_ACEPTACION.md)
 
 ## Citation
 

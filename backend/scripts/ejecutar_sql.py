@@ -2,8 +2,8 @@
 """
 Ejecuta un archivo .sql por lotes (separados por GO) sin depender de sqlcmd.
 
-Sustituye las variables $(chat_reader_password) y $(app_seguimiento_password)
-con los valores de backend/.env, para que ninguna contraseña quede escrita en
+Sustituye las variables $(chat_reader_password), $(app_seguimiento_password) y
+$(metabase_password) con los valores de backend/.env, para que ninguna contraseña quede escrita en
 el script ni en el historial de la terminal.
 
 Uso:
@@ -44,7 +44,9 @@ def main() -> int:
     parser.add_argument('archivo')
     args = parser.parse_args()
     texto = Path(args.archivo).read_text(encoding='utf-8')
-    variables = {'chat_reader_password': CONFIG.lector_clave, 'app_seguimiento_password': CONFIG.seguimiento_clave}
+    import os
+    variables = {'chat_reader_password': CONFIG.lector_clave, 'app_seguimiento_password': CONFIG.seguimiento_clave,
+                 'metabase_password': os.environ.get('METABASE_DB_PASSWORD', '')}
     for nombre, valor in variables.items():
         if f'$({nombre})' in texto:
             if not valor:

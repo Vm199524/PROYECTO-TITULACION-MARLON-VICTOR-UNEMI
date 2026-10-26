@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Capítulo 3 del Avance 2: metodología CRISP-DM, resultados de validación y diseño.
+"""Capítulo 3: metodología CRISP-DM, resultados de validación, diseño y desarrollo.
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
 from __future__ import annotations
 
-from _datos import C, C_ORIGEN, CAPTURAS, DIAGRAMAS, EXP_O, EXP_U, FIGURAS, LAT, NOMBRE_MODELO, O, U, bonito, cv, ent, f, pct
+from _c3_operacion import _desempeno_por_periodo, _operacion_modelo
+from _datos import N_PRUEBAS_BACKEND, C, C_ORIGEN, CAPTURAS, DIAGRAMAS, EXP_O, EXP_U, FIGURAS, LAT, NOMBRE_MODELO, O, U, bonito, cv, ent, f, pct
 
 
 def _filas_cv(m: dict) -> list[list[str]]:
@@ -128,7 +129,7 @@ def bloques() -> list[tuple]:
         ['Evaluaciones no entregadas', '+0,16 por evaluación', 'Incumplimiento'],
         ['Matrícula tardía; menos de 18 créditos', '+0,30; +0,25', 'Compromiso y carga'],
         ['Componente no observado', 'Normal (0; 0,55) fijo + (0; 0,45) por periodo', 'Lo que el sistema no ve']],
-       'Elaboración propia a partir de codigo_fuente/base_de_datos/datos_de_prueba/generate_historial.py.',
+       'Elaboración propia a partir de base_de_datos/datos_de_prueba/generate_historial.py.',
        [4.6, 5.0, 6.4]))
     eu, eo = EXP_U, EXP_O
     if eu and eo:
@@ -228,16 +229,12 @@ def bloques() -> list[tuple]:
             'cuatro candidatos con validación cruzada de cinco pliegues **agrupada por estudiante**, para que un mismo '
             'alumno nunca aparezca a la vez en entrenamiento y validación. Se eligió el modelo de mayor ROC-AUC medio, '
             'con el PR-AUC como desempate; luego se calibró con Platt sobre las predicciones fuera de pliegue y se '
-            'fijaron los umbrales por recall. La {F:actividad_modelo} resume el proceso y la {F:codigo_modelo} '
-            'muestra el código que lo implementa.'))
+            'fijaron los umbrales por recall. La {F:actividad_modelo} resume el proceso; el código que lo '
+            'implementa se explica en la sección 3.3.3.'))
     a(('fig', 'actividad_modelo', 'Diagrama de Actividades del Entrenamiento y la Calificación',
        DIAGRAMAS / 'av2_actividad_modelo.png', 16.0,
        'Diagrama de actividades con la preparación del panel, cuatro modelos en paralelo, calibración y calificación',
        'Elaboración propia a partir de ml/entrenar.py y ml/calificar.py.'))
-    a(('fig', 'codigo_modelo', 'Código de la Selección, Calibración y Validación Temporal del Modelo',
-       DIAGRAMAS / 'av2_codigo_entrenamiento.png', 16.0,
-       'Extracto de código Python de la función entrenar_panel',
-       'Extracto de codigo_fuente/backend/ml/entrenar.py; se omiten líneas de registro.'))
 
     # ── Fase 5 ────────────────────────────────────────────────────────────
     a(('h3', '3.1.6 Fase 5: evaluación'))
@@ -301,6 +298,7 @@ def bloques() -> list[tuple]:
        10.5, 'Matriz de confusión dos por dos', 'Prueba temporal 2014B y 2014J. Elaboración propia.'))
     a(('fig', 'ganancia', 'Ganancia Acumulada del Modelo en OULAD', FIGURAS / 'OULAD_UK_ganancia.png', 14.0,
        'Curva de ganancia acumulada frente a la línea de azar', 'Elaboración propia.'))
+    b.extend(_desempeno_por_periodo(um, om))
     if pr:
         ys, yr = pr['y_siguiente'], pr['y_resto']
         a(('p', f'**Evaluación prospectiva.** En OULAD, la presentación {pr["presentacion"]} se cargó solo hasta su '
@@ -437,25 +435,14 @@ def bloques() -> list[tuple]:
            'Elaboración propia a partir de eval/evaluar_consulta.py.', [9.0, 7.0]))
 
     # ── Fase 6 ────────────────────────────────────────────────────────────
-    a(('h3', '3.1.7 Fase 6: despliegue y demostración'))
-    a(('p', 'El despliegue se organizó en las cuatro capas que se describen en la sección 3.2. El backend expone 27 '
-            'servicios REST con FastAPI; el más representativo es el de la consulta conversacional ({F:codigo_api}), '
-            'que verifica el permiso del rol, delega la respuesta en el motor y registra la auditoría sin guardar el '
-            'texto de los datos. El motor ({F:codigo_motor}) aplica primero las barreras, luego intenta una métrica '
-            'certificada y, solo si no la encuentra, genera SQL con un modelo de lenguaje; ese SQL pasa por el '
-            'validador de árbol sintáctico ({F:codigo_validador}). El aislamiento final lo garantiza la base de datos '
-            'con vistas filtradas por el contexto de sesión ({F:codigo_vista}).'))
-    a(('fig', 'codigo_api', 'Servicio REST de la Consulta Conversacional', DIAGRAMAS / 'av2_codigo_api.png', 16.0,
-       'Extracto de código del endpoint POST /consulta', 'Extracto de codigo_fuente/backend/api/consulta.py.'))
-    a(('fig', 'codigo_motor', 'Motor de la Consulta Conversacional', DIAGRAMAS / 'av2_codigo_motor.png', 16.0,
-       'Extracto de código de la función responder', 'Extracto de codigo_fuente/backend/nl2sql/motor.py; se omiten '
-       'el manejo de errores y la medición del tiempo.'))
-    a(('fig', 'codigo_validador', 'Validación del SQL Generado sobre su Árbol Sintáctico',
-       DIAGRAMAS / 'av2_codigo_validador.png', 16.0, 'Extracto de código de la función validar con sqlglot',
-       'Extracto simplificado de codigo_fuente/backend/nl2sql/validador.py.'))
-    a(('fig', 'codigo_vista', 'Vista Gobernada con Aislamiento por Institución', DIAGRAMAS / 'av2_codigo_vista.png', 16.0,
-       'Extracto de código SQL de una vista filtrada por SESSION_CONTEXT', 'Extracto de '
-       'codigo_fuente/base_de_datos/crear_almacen_academico.sql.'))
+    a(('h3', '3.1.7 Fase 6: despliegue, operación y demostración'))
+    a(('p', 'El despliegue se organizó en las cuatro capas que se describen en la sección 3.2: base de datos, procesos '
+            'por lotes, API y aplicación web. El backend expone 27 operaciones REST con FastAPI y la interfaz las '
+            'consume según el rol del usuario; el código de ambos se explica, a manera de manual, en la sección 3.3. '
+            'Atendiendo la recomendación de la tutoría del Avance 2, la fase de despliegue incorporó además la '
+            'operación continua del modelo (MLOps), porque un modelo de abandono se degrada si cambian los datos de '
+            'entrada aunque el código no cambie.'))
+    b.extend(_operacion_modelo())
     a(('p', 'El prototipo funciona de punta a punta. La pantalla de apertura ({F:cap_ingreso}) presenta las capacidades '
             'del sistema alrededor de la tarjeta de ingreso. El panel ({F:cap_panel}) resume el periodo en un '
             'termómetro institucional y en una lectura de pocas frases; la ficha ({F:cap_ficha}) explica por qué un '
@@ -486,19 +473,22 @@ def bloques() -> list[tuple]:
     a(('p', 'La calidad del software se verificó en cuatro niveles ({T:pruebas}). Las pruebas automatizadas se '
             'ejecutan en cada cambio; las de integración requieren el contenedor de SQL Server y comprueban el '
             'aislamiento y los permisos reales de las cuentas, y forman parte de la corrida final del sistema. '
-            + lat + 'La prueba con usuarios no técnicos queda planificada para el Avance 3 con el protocolo de la '
-            'tabla, porque exige coordinar con autoridades y personal de bienestar de la universidad. La {T:traza} '
+            + lat + 'La prueba con usuarios no técnicos sigue el protocolo de la tabla; requiere la participación '
+            'de autoridades y personal de bienestar de la universidad y su instrumento (tareas y escala SUS) se '
+            'incluye en los anexos. La {T:traza} '
             'enlaza cada historia de usuario con sus requerimientos y con la prueba que la verifica.'))
     a(('tab', 'pruebas', 'Estrategia de Pruebas del Prototipo', ['Nivel', 'Qué verifica', 'Herramienta y alcance'],
        [['Unitarias', 'Variables sin fuga, enrutador, guardarraíles, validador SQL, privacidad y redacción',
-         'pytest: 153 pruebas del backend'],
+         f'pytest: {N_PRUEBAS_BACKEND} pruebas del backend'],
         ['Integración', 'Aislamiento por SESSION_CONTEXT, permisos de chat_reader y app_seguimiento, ETL completo',
          'pytest sobre SQL Server 2022: 8 pruebas'],
         ['Interfaz', 'Formatos es-EC, navegación por rol, accesibilidad de componentes', 'vitest: 11 pruebas; '
                                                                                         'TypeScript estricto'],
         ['Aceptación técnica', 'Historias de usuario, conjunto dorado de la consulta y validación visual en '
                                'escritorio y móvil', 'Playwright y revisión por los autores'],
-        ['Aceptación con usuarios (Avance 3)', 'Tareas de HU-01 a HU-07 con 2 autoridades y 3 profesionales de '
+        ['Operación del modelo', 'Validación por periodo y carrera, origen móvil, calidad de datos con Great '
+                                 'Expectations, deriva con Evidently y registro en MLflow', 'pytest: test_mlops'],
+        ['Aceptación con usuarios', 'Tareas de HU-01 a HU-07 con 2 autoridades y 3 profesionales de '
                                                'bienestar; tasa de éxito, tiempo y escala SUS',
          'Meta: éxito ≥ 80 % y SUS ≥ 68']],
        'Elaboración propia.', [3.0, 7.6, 5.4]))
@@ -518,15 +508,15 @@ def bloques() -> list[tuple]:
         ['HU-09 Confianza en el modelo', 'RF-03, RF-04, RF-13, RNF-04', 'test_modelo; validación cruzada, temporal y '
                                                                         'prospectiva'],
         ['HU-10 Informe ejecutivo', 'RF-14', 'test_api (reportes ejecutivos)']],
-       'Elaboración propia a partir de codigo_fuente/backend/tests/.', [4.2, 4.6, 7.2]))
+       'Elaboración propia a partir de backend/tests/.', [4.2, 4.6, 7.2]))
 
     # ── 3.2 Diseño ─────────────────────────────────────────────────────────
     a(('h2', '3.2 Diseño'))
     a(('h3', '3.2.1 Arquitectura de la solución'))
     a(('p', 'La solución sigue una arquitectura en capas con un almacén de datos gobernado en el centro ({F:arq}). La '
             'capa de datos contiene la base operativa de cada institución y el almacén ALMACEN_ACADEMICO en SQL '
-            'Server 2022. La capa analítica ejecuta por lotes el ETL, el entrenamiento, la calificación y la '
-            'segmentación. La capa de servicios es una API FastAPI que concentra la autenticación, los permisos, la '
+            'Server 2022. La capa analítica ejecuta por lotes el ETL, el entrenamiento, la calificación, la '
+            'segmentación y la operación del modelo (calidad de datos, deriva y registro de experimentos). La capa de servicios es una API FastAPI que concentra la autenticación, los permisos, la '
             'privacidad, la auditoría y el motor de consulta conversacional. La capa de presentación es una '
             'aplicación React que nunca accede a la base de datos. La {T:componentes} describe cada componente.'))
     a(('p', 'Antes de construir se compararon tres estilos con seis escenarios de calidad derivados de los '
@@ -540,10 +530,13 @@ def bloques() -> list[tuple]:
        'Diagrama de arquitectura en cuatro capas', 'Elaboración propia.'))
     a(('tab', 'componentes', 'Componentes de la Arquitectura', ['Capa', 'Componente', 'Responsabilidad'],
        [['Datos', 'Base operativa por institución', 'Origen de la trayectoria (UNEMI_PRUEBAS, OULAD_PRUEBAS)'],
-        ['Datos', 'ALMACEN_ACADEMICO', 'Esquema estrella, vistas VIS_* y procedimientos de seguimiento'],
+        ['Datos', 'ALMACEN_ACADEMICO', 'Esquema estrella, vistas VIS_*, procedimientos de seguimiento y esquema bi '
+                                       'agregado para Metabase'],
         ['Analítica', 'ETL por perfil', 'Valida, transforma y carga cada institución sin tocar las demás'],
         ['Analítica', 'Entrenamiento y calificación', 'Modelos, calibración, umbrales, SHAP y PSI'],
         ['Analítica', 'Segmentación', 'K-means de carreras con validación'],
+        ['Analítica', 'Operación del modelo', 'Calidad de datos (Great Expectations), deriva (Evidently) y registro '
+                                              'de experimentos (MLflow)'],
         ['Servicios', 'API FastAPI', 'Autenticación JWT, roles, auditoría y 27 servicios REST'],
         ['Servicios', 'Motor NL2SQL', 'Barreras, 40 métricas certificadas, generación, validación y resumen'],
         ['Servicios', 'Privacidad', 'Enmascaramiento, tokens cifrados y seudonimización'],

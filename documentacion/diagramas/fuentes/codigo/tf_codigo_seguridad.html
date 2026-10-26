@@ -1,0 +1,109 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<style>
+@page { size: 16cm auto; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { width: 16cm; background: #fff; padding: 2px; font-family: Arial, Helvetica, sans-serif; }
+.marco { border: 1.2px solid #94a8ba; border-radius: 6px; overflow: hidden; }
+.ruta { background: #002e45; color: #fff; font-size: 10pt; padding: 4px 8px; }
+.ruta b { color: #ffd2b0; font-weight: 700; }
+pre { font-family: 'DejaVu Sans Mono', Consolas, monospace; font-size: 10pt; line-height: 1.32;
+       padding: 6px 8px; background: #f8fafc; white-space: pre-wrap; word-break: break-word; color: #0f172a; }
+pre { line-height: 125%; }
+td.linenos .normal { color: #666666; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+span.linenos { color: #666666; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+td.linenos .special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+.codigo .hll { background-color: #ffffcc }
+.codigo {  }
+.codigo .c { color: #60A0B0; font-style: italic } /* Comment */
+.codigo .err { border: 1px solid #F00 } /* Error */
+.codigo .k { color: #007020; font-weight: bold } /* Keyword */
+.codigo .o { color: #666 } /* Operator */
+.codigo .ch { color: #60A0B0; font-style: italic } /* Comment.Hashbang */
+.codigo .cm { color: #60A0B0; font-style: italic } /* Comment.Multiline */
+.codigo .cp { color: #007020 } /* Comment.Preproc */
+.codigo .cpf { color: #60A0B0; font-style: italic } /* Comment.PreprocFile */
+.codigo .c1 { color: #60A0B0; font-style: italic } /* Comment.Single */
+.codigo .cs { color: #60A0B0; background-color: #FFF0F0 } /* Comment.Special */
+.codigo .gd { color: #A00000 } /* Generic.Deleted */
+.codigo .ge { font-style: italic } /* Generic.Emph */
+.codigo .ges { font-weight: bold; font-style: italic } /* Generic.EmphStrong */
+.codigo .gr { color: #F00 } /* Generic.Error */
+.codigo .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.codigo .gi { color: #00A000 } /* Generic.Inserted */
+.codigo .go { color: #888 } /* Generic.Output */
+.codigo .gp { color: #C65D09; font-weight: bold } /* Generic.Prompt */
+.codigo .gs { font-weight: bold } /* Generic.Strong */
+.codigo .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.codigo .gt { color: #04D } /* Generic.Traceback */
+.codigo .kc { color: #007020; font-weight: bold } /* Keyword.Constant */
+.codigo .kd { color: #007020; font-weight: bold } /* Keyword.Declaration */
+.codigo .kn { color: #007020; font-weight: bold } /* Keyword.Namespace */
+.codigo .kp { color: #007020 } /* Keyword.Pseudo */
+.codigo .kr { color: #007020; font-weight: bold } /* Keyword.Reserved */
+.codigo .kt { color: #902000 } /* Keyword.Type */
+.codigo .m { color: #40A070 } /* Literal.Number */
+.codigo .s { color: #4070A0 } /* Literal.String */
+.codigo .na { color: #4070A0 } /* Name.Attribute */
+.codigo .nb { color: #007020 } /* Name.Builtin */
+.codigo .nc { color: #0E84B5; font-weight: bold } /* Name.Class */
+.codigo .no { color: #60ADD5 } /* Name.Constant */
+.codigo .nd { color: #555; font-weight: bold } /* Name.Decorator */
+.codigo .ni { color: #D55537; font-weight: bold } /* Name.Entity */
+.codigo .ne { color: #007020 } /* Name.Exception */
+.codigo .nf { color: #06287E } /* Name.Function */
+.codigo .nl { color: #002070; font-weight: bold } /* Name.Label */
+.codigo .nn { color: #0E84B5; font-weight: bold } /* Name.Namespace */
+.codigo .nt { color: #062873; font-weight: bold } /* Name.Tag */
+.codigo .nv { color: #BB60D5 } /* Name.Variable */
+.codigo .ow { color: #007020; font-weight: bold } /* Operator.Word */
+.codigo .w { color: #BBB } /* Text.Whitespace */
+.codigo .mb { color: #40A070 } /* Literal.Number.Bin */
+.codigo .mf { color: #40A070 } /* Literal.Number.Float */
+.codigo .mh { color: #40A070 } /* Literal.Number.Hex */
+.codigo .mi { color: #40A070 } /* Literal.Number.Integer */
+.codigo .mo { color: #40A070 } /* Literal.Number.Oct */
+.codigo .sa { color: #4070A0 } /* Literal.String.Affix */
+.codigo .sb { color: #4070A0 } /* Literal.String.Backtick */
+.codigo .sc { color: #4070A0 } /* Literal.String.Char */
+.codigo .dl { color: #4070A0 } /* Literal.String.Delimiter */
+.codigo .sd { color: #4070A0; font-style: italic } /* Literal.String.Doc */
+.codigo .s2 { color: #4070A0 } /* Literal.String.Double */
+.codigo .se { color: #4070A0; font-weight: bold } /* Literal.String.Escape */
+.codigo .sh { color: #4070A0 } /* Literal.String.Heredoc */
+.codigo .si { color: #70A0D0; font-style: italic } /* Literal.String.Interpol */
+.codigo .sx { color: #C65D09 } /* Literal.String.Other */
+.codigo .sr { color: #235388 } /* Literal.String.Regex */
+.codigo .s1 { color: #4070A0 } /* Literal.String.Single */
+.codigo .ss { color: #517918 } /* Literal.String.Symbol */
+.codigo .bp { color: #007020 } /* Name.Builtin.Pseudo */
+.codigo .fm { color: #06287E } /* Name.Function.Magic */
+.codigo .vc { color: #BB60D5 } /* Name.Variable.Class */
+.codigo .vg { color: #BB60D5 } /* Name.Variable.Global */
+.codigo .vi { color: #BB60D5 } /* Name.Variable.Instance */
+.codigo .vm { color: #BB60D5 } /* Name.Variable.Magic */
+.codigo .il { color: #40A070 } /* Literal.Number.Integer.Long */ .codigo .err { border: none; }
+</style></head><body><div class="marco"><div class="ruta"><b>Archivo:</b> backend/core/seguridad.py y core/db.py · permisos y aislamiento</div><div class="codigo"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">requiere</span><span class="p">(</span><span class="n">capacidad</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">con_institucion</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Dependencia que exige una capacidad del rol."""</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dependencia</span><span class="p">(</span><span class="n">sesion</span><span class="p">:</span> <span class="n">Sesion</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">sesion_actual</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sesion</span><span class="o">.</span><span class="n">puede</span><span class="p">(</span><span class="n">capacidad</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="mi">403</span><span class="p">,</span> <span class="s1">'Su rol no permite esta acción.'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">con_institucion</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">sesion</span><span class="o">.</span><span class="n">institucion</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="s1">'Seleccione una institución.'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sesion</span>
+    <span class="k">return</span> <span class="n">_dependencia</span>
+
+
+<span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_conexion_con_contexto</span><span class="p">(</span><span class="n">usuario</span><span class="p">,</span> <span class="n">clave</span><span class="p">,</span> <span class="n">institucion</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Conexión de solo lectura con la institución fijada."""</span>
+    <span class="n">institucion</span> <span class="o">=</span> <span class="n">validar_institucion</span><span class="p">(</span><span class="n">institucion</span><span class="p">)</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">pyodbc</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">_cadena</span><span class="p">(</span><span class="n">usuario</span><span class="p">,</span> <span class="n">clave</span><span class="p">,</span> <span class="n">CONFIG</span><span class="o">.</span><span class="n">almacen</span><span class="p">))</span>
+    <span class="n">cur</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+    <span class="c1"># @read_only = 1: nadie cambia la institución en esta conexión</span>
+    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"EXEC sp_set_session_context "</span>
+                <span class="s2">"@key = N'institucion_activa', @value = ?, "</span>
+                <span class="s2">"@read_only = 1"</span><span class="p">,</span> <span class="n">institucion</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">cur</span>
+</pre></div>
+</div></body></html>

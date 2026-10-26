@@ -13,7 +13,7 @@
   </div>
 </div>
 <div class="flecha">▼ token JWT + institución activa (X-Institucion)</div>
-<div class="capa"><h3>2. Capa de servicios · API REST FastAPI (24 rutas por rol)</h3>
+<div class="capa"><h3>2. Capa de servicios · API REST FastAPI (27 operaciones por rol)</h3>
   <div class="fila">
     <div class="caja"><b>Predicción</b>probabilidad calibrada, razones SHAP, simulador</div>
     <div class="caja naranja"><b>Consulta NL2SQL</b>barreras, 40 métricas certificadas, validador sqlglot</div>
@@ -26,11 +26,12 @@
   <div class="capa" style="flex:2;margin-bottom:0"><h3>3. Capa de datos · SQL Server 2022</h3>
     <div class="fila">
       <div class="caja"><b>Bases operativas</b>UNEMI_PRUEBAS<br>OULAD_PRUEBAS</div>
-      <div class="caja oscura"><b>ALMACEN_ACADEMICO</b>esquema estrella, vistas VIS_* filtradas por SESSION_CONTEXT, procedimientos de seguimiento</div>
+      <div class="caja oscura"><b>ALMACEN_ACADEMICO</b>esquema estrella, vistas VIS_* filtradas por SESSION_CONTEXT, procedimientos de seguimiento y esquema bi agregado para Metabase</div>
     </div>
   </div>
   <div class="capa" style="flex:1.25;margin-bottom:0"><h3>4. Procesos por lotes (CRISP-DM)</h3>
-    <div class="caja" style="margin-bottom:4px">ETL → entrenar → calificar → segmentar → reportes</div>
+    <div class="caja" style="margin-bottom:4px">ETL → entrenar → calificar → segmentar → reportes → mlops</div>
+    <div class="caja" style="margin-bottom:4px"><b>Operación del modelo</b>Great Expectations · Evidently · MLflow</div>
     <div class="caja naranja"><b>Proveedores de IA</b>Gemini → Groq → NVIDIA NIM → DeepSeek (sin filas de datos)</div>
   </div>
 </div>

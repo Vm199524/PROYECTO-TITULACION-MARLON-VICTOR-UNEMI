@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Control automático de coherencia del Avance 2.
+Control automático de coherencia del trabajo final.
 
-Revisa AVANCE2_MARLON_VICTOR.docx y su PDF, y termina con código 1 si:
+Revisa TRABAJO_FINAL_MARLON_VICTOR.docx y su PDF, y termina con código 1 si:
   1. Una cita del texto no está en Referencias, o una referencia no se cita.
   2. Una cifra clave del documento no coincide con los artefactos del modelo
      (ml/modelos/<INSTITUCION>/metricas.json y segmentacion.json), o el
-     resumen no está entre 200 y 250 palabras.
+     resumen pasa de 150 palabras (formato oficial del trabajo final).
+  5. El PDF pasa de 105 páginas (límite acordado para la entrega).
   3. Un apartado no alcanza el mínimo de páginas de la guía del Avance 2.
   4. Los capítulos finales no siguen la numeración del formato oficial
      (4. Conclusiones y recomendaciones, 5. Referencias, 6. Anexos,
      7. Anexo de información académica) o usan numeración automática.
 
-Uso (después de construir_avance2.py y docx_a_pdf.py):
+Uso (después de construir_trabajo_final.py y docx_a_pdf.py):
     python _verificar_coherencia.py
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
@@ -30,9 +31,10 @@ import docx
 import pymupdf
 
 AQUI = Path(__file__).resolve().parent
-MODELOS = AQUI.parents[1] / 'codigo_fuente' / 'backend' / 'ml' / 'modelos'
-DOCX = AQUI.parent / 'avances' / 'AVANCE2_MARLON_VICTOR.docx'
-PDF = AQUI.parent / 'avances' / 'AVANCE2_MARLON_VICTOR.pdf'
+MODELOS = AQUI.parents[1] / 'backend' / 'ml' / 'modelos'
+DOCX = AQUI.parent / 'avances' / 'TRABAJO_FINAL_MARLON_VICTOR.docx'
+PDF = AQUI.parent / 'avances' / 'TRABAJO_FINAL_MARLON_VICTOR.pdf'
+MAX_PAGINAS = 105
 errores: list[str] = []
 
 
@@ -105,10 +107,10 @@ for nombre in ('ROC-AUC temporal UNEMI_PRUEBAS', 'ROC-AUC temporal OULAD_UK'):
     if not any(f in resumen for f in {_n(esperadas[nombre], 3), _n(esperadas[nombre], 2)}):
         errores.append(f'Resumen: falta {nombre}')
 palabras = len(resumen.split())
-if not 200 <= palabras <= 250:
-    errores.append(f'Resumen con {palabras} palabras (se esperan de 200 a 250)')
+if not 100 <= palabras <= 150:
+    errores.append(f'Resumen con {palabras} palabras (máximo 150)')
 
-# ── 3. Páginas mínimas por apartado (guía del Avance 2) ───────────────────
+# ── 3. Páginas mínimas por apartado (guía del estudio de caso) ────────────
 pdf = pymupdf.open(str(PDF))
 marcas = ['1.1 Descripción', '1.2 Propósito del caso', '1.3 Base conceptual', '2. Análisis del caso',
           '2.1 Requerimientos', '3. Diseño y desarrollo', '3.1 Metodología', '3.2 Diseño', '4. Conclusiones']
@@ -145,6 +147,8 @@ for p in titulos1:
     if pPr is not None and pPr.numPr is not None and re.search(r'Referencias|Anexo', p.text):
         errores.append(f'Título con numeración automática: «{p.text.strip()}»')
 
+if len(pdf) > MAX_PAGINAS:
+    errores.append(f'El PDF tiene {len(pdf)} páginas (máximo {MAX_PAGINAS})')
 print(f'Referencias: {len(refs)}  |  Cifras verificadas: {len(esperadas)}  |  '
       f'Resumen: {palabras} palabras  |  Páginas del PDF: {len(pdf)}')
 if errores:

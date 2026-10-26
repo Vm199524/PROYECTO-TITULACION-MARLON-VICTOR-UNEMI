@@ -46,6 +46,10 @@ def consultar(datos: Pregunta, sesion: Sesion = Depends(requiere('consultar'))) 
 @router.post('/consulta/{id_respuesta}/interpretar')
 def interpretar(id_respuesta: str, sesion: Sesion = Depends(requiere('consultar'))) -> dict:
     """Lectura con IA de un resultado reciente, verificada contra sus cifras."""
+    from core.config import CONFIG
+    if not CONFIG.interpretar_con_ia:
+        raise HTTPException(403, 'La interpretación con IA está deshabilitada por la política de datos de la '
+                                 'institución (CONSULTA_INTERPRETAR=0).')
     guardado = motor.resultado_guardado(id_respuesta, sesion.institucion)
     if not guardado:
         raise HTTPException(404, 'La respuesta ya no está disponible; vuelva a hacer la pregunta.')

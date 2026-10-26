@@ -1,0 +1,315 @@
+{
+  "institucion": "OULAD_UK",
+  "fecha": "2026-10-26T18:24:09",
+  "filas_referencia": 17163,
+  "filas_actuales": 8485,
+  "variables": [
+    {
+      "variable": "promedio_rel_cohorte",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0914,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0499,
+      "importancia": 0.0148
+    },
+    {
+      "variable": "dias_sin_actividad",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.168,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.239,
+      "importancia": 0.0133
+    },
+    {
+      "variable": "creditos_matriculados",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0816,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0049,
+      "importancia": 0.0045
+    },
+    {
+      "variable": "pct_tardias",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1741,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.2198,
+      "importancia": 0.0031
+    },
+    {
+      "variable": "promedio_pct_cohorte",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0157,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0015,
+      "importancia": 0.0022
+    },
+    {
+      "variable": "dias_anticipacion_matricula",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0909,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0494,
+      "importancia": 0.002
+    },
+    {
+      "variable": "asistencia_media_acum",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0795,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0255,
+      "importancia": 0.0019
+    },
+    {
+      "variable": "asistencia_rel_cohorte",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0461,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.023,
+      "importancia": 0.0019
+    },
+    {
+      "variable": "asistencia_media_movil",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0795,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0255,
+      "importancia": 0.0007
+    },
+    {
+      "variable": "asistencia_pct_cohorte",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0328,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0061,
+      "importancia": 0.0007
+    },
+    {
+      "variable": "actividad_rel_cohorte",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0524,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0116,
+      "importancia": 0.0005
+    },
+    {
+      "variable": "numero_matricula",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0463,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.002,
+      "importancia": 0.0004
+    },
+    {
+      "variable": "racha_asistencia_baja",
+      "metodo": "Jensen-Shannon distance",
+      "valor": 0.047,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0081,
+      "importancia": 0.0004
+    },
+    {
+      "variable": "asistencia_t",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1188,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.0361,
+      "importancia": 0.0003
+    },
+    {
+      "variable": "actividad_lms_log",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.051,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0065,
+      "importancia": 0.0002
+    },
+    {
+      "variable": "asistencia_lag1",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.077,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0271,
+      "importancia": 0.0002
+    },
+    {
+      "variable": "actividad_lms_delta",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0612,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0196,
+      "importancia": 0.0001
+    },
+    {
+      "variable": "asistencia_delta",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0783,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0103,
+      "importancia": -0.0
+    },
+    {
+      "variable": "asistencia_minima_hist",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1042,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.0326,
+      "importancia": 0.0
+    },
+    {
+      "variable": "promedio_delta",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.2511,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.3693,
+      "importancia": 0.0
+    },
+    {
+      "variable": "promedio_pendiente",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1169,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.067,
+      "importancia": -0.0
+    },
+    {
+      "variable": "evaluaciones_vencidas",
+      "metodo": "Jensen-Shannon distance",
+      "valor": 0.2226,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 1.5808,
+      "importancia": -0.0002
+    },
+    {
+      "variable": "nota_evaluaciones",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.2367,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.1105,
+      "importancia": -0.0002
+    },
+    {
+      "variable": "asistencia_lag2",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0427,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0152,
+      "importancia": -0.0003
+    },
+    {
+      "variable": "promedio_lag1",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.247,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.155,
+      "importancia": -0.0003
+    },
+    {
+      "variable": "promedio_lag2",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1737,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.1843,
+      "importancia": -0.0004
+    },
+    {
+      "variable": "promedio_media_movil",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1571,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.1523,
+      "importancia": -0.0005
+    },
+    {
+      "variable": "promedio_minimo_hist",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1836,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.1758,
+      "importancia": -0.0005
+    },
+    {
+      "variable": "actividad_lms_acum_log",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.0912,
+      "umbral": 0.1,
+      "deriva": false,
+      "psi": 0.0238,
+      "importancia": -0.0007
+    },
+    {
+      "variable": "promedio_media_acum",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1571,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.1523,
+      "importancia": -0.0008
+    },
+    {
+      "variable": "asistencia_pendiente",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1347,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.024,
+      "importancia": -0.0014
+    },
+    {
+      "variable": "promedio_t",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1231,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.0858,
+      "importancia": -0.0014
+    },
+    {
+      "variable": "pct_entregadas",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.1767,
+      "umbral": 0.1,
+      "deriva": true,
+      "psi": 0.0391,
+      "importancia": -0.0023
+    }
+  ],
+  "motor": "Evidently 0.7.23 (DataDriftPreset)",
+  "variables_con_deriva": 16,
+  "proporcion_con_deriva": 0.4848,
+  "umbral_conjunto": 0.5,
+  "importantes_con_deriva": [
+    "dias_sin_actividad",
+    "pct_tardias"
+  ],
+  "conjunto_con_deriva": false,
+  "lectura": "16 de 33 variables cambian de distribución; el conjunto se considera estable. Las variables marcadas se vigilan en el siguiente corte."
+}

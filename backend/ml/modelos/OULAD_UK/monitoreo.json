@@ -1,9 +1,9 @@
 {
   "calificados": 8485,
   "distribucion": {
-    "MEDIO": 3457,
-    "BAJO": 3319,
-    "ALTO": 1709
+    "MEDIO": 3622,
+    "BAJO": 3328,
+    "ALTO": 1535
   },
   "psi": [
     {
@@ -12,28 +12,18 @@
       "estado": "ESTABLE"
     },
     {
-      "variable": "creditos_matriculados",
-      "psi": 0.0027,
-      "estado": "ESTABLE"
-    },
-    {
       "variable": "dias_sin_actividad",
       "psi": 0.4417,
       "estado": "DERIVA"
     },
     {
-      "variable": "promedio_pct_cohorte",
-      "psi": 0.0312,
-      "estado": "ESTABLE"
+      "variable": "corte",
+      "psi": 8.3554,
+      "estado": "DERIVA"
     },
     {
-      "variable": "asistencia_media_acum",
-      "psi": 0.0507,
-      "estado": "ESTABLE"
-    },
-    {
-      "variable": "dias_anticipacion_matricula",
-      "psi": 0.0345,
+      "variable": "creditos_matriculados",
+      "psi": 0.0027,
       "estado": "ESTABLE"
     },
     {
@@ -42,19 +32,29 @@
       "estado": "DERIVA"
     },
     {
-      "variable": "pct_entregadas",
-      "psi": 0.0922,
+      "variable": "promedio_pct_cohorte",
+      "psi": 0.0312,
       "estado": "ESTABLE"
     },
     {
-      "variable": "corte",
-      "psi": 8.3554,
-      "estado": "DERIVA"
+      "variable": "dias_anticipacion_matricula",
+      "psi": 0.0345,
+      "estado": "ESTABLE"
     },
     {
-      "variable": "asistencia_pendiente",
-      "psi": 1.1293,
-      "estado": "DERIVA"
+      "variable": "asistencia_media_acum",
+      "psi": 0.0507,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "asistencia_rel_cohorte",
+      "psi": 0.0214,
+      "estado": "ESTABLE"
+    },
+    {
+      "variable": "asistencia_media_movil",
+      "psi": 0.1435,
+      "estado": "MODERADO"
     }
   ]
 }

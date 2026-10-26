@@ -1,0 +1,237 @@
+{
+  "institucion": "OULAD_UK",
+  "fecha": "2026-10-26T18:24:08",
+  "motor": "Great Expectations 1.24.1",
+  "filas": 189299,
+  "evaluadas": 23,
+  "cumplidas": 23,
+  "porcentaje_cumplimiento": 100.0,
+  "apto_para_entrenar": true,
+  "criticas_fallidas": [],
+  "expectativas": [
+    {
+      "expectativa": "expect_table_row_count_to_be_between",
+      "columna": null,
+      "descripcion": "Al menos 1 000 filas de trayectoria",
+      "critica": true,
+      "cumple": true,
+      "observado": 189299
+    },
+    {
+      "expectativa": "expect_column_values_to_be_unique",
+      "columna": "matricula_id",
+      "descripcion": "Cada matrícula aparece una sola vez",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_not_be_null",
+      "columna": "matricula_id",
+      "descripcion": "matricula_id no puede estar vacío",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_not_be_null",
+      "columna": "alumno_id",
+      "descripcion": "alumno_id no puede estar vacío",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_not_be_null",
+      "columna": "carrera_id",
+      "descripcion": "carrera_id no puede estar vacío",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_not_be_null",
+      "columna": "periodo_id",
+      "descripcion": "periodo_id no puede estar vacío",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_not_be_null",
+      "columna": "estado_codigo",
+      "descripcion": "estado_codigo no puede estar vacío",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_not_be_null",
+      "columna": "fecha",
+      "descripcion": "fecha no puede estar vacío",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_in_set",
+      "columna": "estado_codigo",
+      "descripcion": "Estado de matrícula dentro del catálogo",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_in_set",
+      "columna": "es_ultimo_periodo",
+      "descripcion": "Marca de último periodo es 0 o 1",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_between",
+      "columna": "promedio",
+      "descripcion": "Promedio en la escala 0 a 10",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_between",
+      "columna": "asistencia_pct",
+      "descripcion": "Asistencia entre 0 % y 100 %",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_between",
+      "columna": "nivel",
+      "descripcion": "Nivel o semestre positivo",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_between",
+      "columna": "corte",
+      "descripcion": "Corte de evaluación positivo",
+      "critica": true,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_not_be_null",
+      "columna": "promedio",
+      "descripcion": "Promedio registrado (al menos 95 %)",
+      "critica": false,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_not_be_null",
+      "columna": "asistencia_pct",
+      "descripcion": "Asistencia registrada (al menos 95 %)",
+      "critica": false,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_in_set",
+      "columna": "modalidad_codigo",
+      "descripcion": "Modalidad dentro del catálogo",
+      "critica": false,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_unique_value_count_to_be_between",
+      "columna": "periodo_id",
+      "descripcion": "Al menos 3 periodos para la validación temporal",
+      "critica": true,
+      "cumple": true,
+      "observado": 4
+    },
+    {
+      "expectativa": "expect_column_unique_value_count_to_be_between",
+      "columna": "alumno_id",
+      "descripcion": "Al menos 300 estudiantes",
+      "critica": true,
+      "cumple": true,
+      "observado": 28785
+    },
+    {
+      "expectativa": "expect_column_values_to_be_between",
+      "columna": "saldo_pendiente",
+      "descripcion": "Saldo pendiente no negativo",
+      "critica": false,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_between",
+      "columna": "beca_porcentaje",
+      "descripcion": "Beca entre 0 % y 100 %",
+      "critica": false,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_between",
+      "columna": "actividad_lms",
+      "descripcion": "Actividad en el aula virtual no negativa",
+      "critica": false,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    },
+    {
+      "expectativa": "expect_column_values_to_be_between",
+      "columna": "dias_sin_actividad",
+      "descripcion": "Días sin actividad no negativos",
+      "critica": false,
+      "cumple": true,
+      "filas": 189299,
+      "no_cumplen": 0,
+      "porcentaje_no_cumple": 0.0
+    }
+  ]
+}

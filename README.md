@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="https://github.com/Vm199524/PROYECTO-TITULACION-MARLON-VICTOR-UNEMI/actions/workflows/ci.yml"><img src="https://github.com/Vm199524/PROYECTO-TITULACION-MARLON-VICTOR-UNEMI/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/versión-3.0_·_Avance_2-FF6900?style=flat-square" alt="Versión 3.0, Avance 2">
+  <img src="https://img.shields.io/badge/versión-3.1_·_Trabajo_final-FF6900?style=flat-square" alt="Versión 3.1, trabajo final">
   <a href="CITATION.cff"><img src="https://img.shields.io/badge/cita-CITATION.cff-002E45?style=flat-square" alt="Cómo citar"></a>
   <a href="#licencia"><img src="https://img.shields.io/badge/licencia-uso_restringido_(titulación)-6E7781?style=flat-square" alt="Licencia"></a>
 </p>
@@ -117,7 +117,10 @@ La versión 3 consolida el enfoque académico: todo el sistema, de la base de da
 | Consulta | 40 métricas certificadas, cascada de cuatro proveedores de IA y validación del árbol SQL; la IA nunca escribe ni lee otra institución |
 | Usuarios | Tres roles (autoridad académica, bienestar estudiantil y administración de TI), capacidades por rol, auditoría y bloqueo por intentos |
 | Interfaz | Identidad propia (isotipo animado en naranja UNEMI), apertura con las seis capacidades, panel ejecutivo, ficha con simulador, seguimiento, reportes PDF y Excel, tema claro y oscuro, versión móvil |
-| Operación | `reconstruir_sistema.bat` deja todo listo de punta a punta; 153 pruebas del backend y 11 de la interfaz |
+| Operación del modelo | Great Expectations valida los datos antes de entrenar, Evidently mide la deriva, MLflow registra cada entrenamiento y Metabase ofrece consulta agregada sin datos personales |
+| Validación por periodo | Origen móvil (*backtesting*) y métricas por periodo y por carrera, visibles en la página Calidad del modelo |
+| Gobierno de datos | Documento LOPDP con roles, ciclo de vida e incidentes, y `anonimizar_carrera.py` (seudónimos HMAC y k-anonimato) para validar con una carrera real |
+| Operación | `reconstruir_sistema.bat` deja todo listo de punta a punta; 178 pruebas del backend (8 de integración con SQL Server) y 11 de la interfaz |
 
 ## Identidad visual
 
@@ -211,13 +214,14 @@ Cifras leídas de [`ml/modelos/*/metricas.json`](backend/ml/modelos). **UNEMI_PR
 
 | Métrica (prueba temporal) | UNEMI_PRUEBAS | OULAD (real) |
 |---|---|---|
-| Modelo elegido (mayor ROC-AUC en validación cruzada) | LightGBM (0,828 ± 0,003) | LightGBM (0,803 ± 0,010) |
-| ROC-AUC | **0,829** | **0,766** |
-| PR-AUC (prevalencia) | 0,466 (0,065) | 0,103 (0,031) |
-| Recall en el umbral medio | 0,781 | 0,786 |
-| Abandonos en el 20 % de mayor riesgo | 67,9 % | 55,2 % |
-| Brier sin calibrar → calibrado | 0,134 → 0,046 | 0,191 → 0,029 |
-| **Evaluación prospectiva** (2014J, desenlace real nunca cargado) | | **ROC-AUC 0,762 · recall 0,913** |
+| Modelo elegido (mayor ROC-AUC en validación cruzada) | LightGBM (0,828 ± 0,003) | LightGBM (0,804 ± 0,012) |
+| ROC-AUC | **0,829** | **0,768** |
+| PR-AUC (prevalencia) | 0,466 (0,065) | 0,104 (0,031) |
+| Recall en el umbral medio | 0,781 | 0,787 |
+| Abandonos en el 20 % de mayor riesgo | 67,9 % | 55,4 % |
+| Brier sin calibrar → calibrado | 0,134 → 0,046 | 0,192 → 0,029 |
+| **Origen móvil** (cada periodo predicho solo con el pasado) | 0,827 a 0,836 (4 periodos) | 0,742 a 0,779 (2 periodos) |
+| **Evaluación prospectiva** (2014J, desenlace real nunca cargado) | | **ROC-AUC 0,764 · recall 0,913** |
 
 - **Segmentación (UNEMI_PRUEBAS):** 18 carreras en 3 segmentos; silueta 0,355; ARI medio 0,540; Kruskal-Wallis *p* = 0,004.
 - **Consulta conversacional** (SQL Server 2022 con proveedores de IA, 52 preguntas del conjunto dorado): exactitud por ejecución de 100 % (65 % de las preguntas base con coincidencia exacta de columnas); 33 respondidas por métricas certificadas y 19 por SQL generado y validado; 8/8 preguntas maliciosas contenidas; 0 lecturas de otra institución; mediana de respuesta de 77 ms.
@@ -290,7 +294,7 @@ npm run reconstruir -- --con-consulta      &REM equivale a scripts\reconstruir_s
 
 ```bash
 npm test                                    # backend (pytest) y frontend (vitest)
-cd backend && venv\Scripts\python -m pytest -q   # 153 pruebas + 8 de integración con SQL Server
+cd backend && venv\Scripts\python -m pytest -q   # 170 pruebas + 8 de integración con SQL Server
 cd frontend && npm test                     # 11 pruebas de la interfaz
 ```
 
@@ -306,8 +310,10 @@ base_de_datos/        Script del almacén y datos de prueba (simulador UNEMI)
 scripts/              iniciar.mjs, reconstruir_sistema.bat, levantar_sistema.bat y demo_tesis.ps1
 datos/                Datos externos (OULAD, se descargan aparte)
 documentacion/
-├── avances/          AVANCE1 y AVANCE2 (docx y pdf)
-├── generador_documentos/  Generación del Avance 2 desde los resultados reales
+├── avances/          AVANCE1, AVANCE2 y TRABAJO_FINAL (docx y pdf)
+├── generador_documentos/  Generación del trabajo final, la presentación y los guiones desde los resultados reales
+├── gobierno_datos/   Documento de gobierno de datos (LOPDP)
+├── presentacion/     Presentación del video, guion y guía de sustentación
 ├── diagramas/        UML, arquitectura y esquema estrella (PNG y fuentes)
 ├── figuras/          Figuras de validación de cada institución
 ├── capturas/         Capturas del sistema
@@ -320,7 +326,9 @@ documentacion/
 
 ## Documentación
 
-- 📄 [Avance 2 (PDF)](documentacion/avances/AVANCE2_MARLON_VICTOR.pdf) · [DOCX](documentacion/avances/AVANCE2_MARLON_VICTOR.docx)
+- 📄 [Trabajo final (PDF)](documentacion/avances/TRABAJO_FINAL_MARLON_VICTOR.pdf) · [DOCX](documentacion/avances/TRABAJO_FINAL_MARLON_VICTOR.docx) · [Avance 2 (PDF)](documentacion/avances/AVANCE2_MARLON_VICTOR.pdf)
+- 🛡️ [Gobierno de datos (LOPDP)](documentacion/gobierno_datos/GOBIERNO_DE_DATOS.md) · [Metabase como alternativa de consulta](documentacion/tecnica/METABASE_ALTERNATIVA_DE_CONSULTA.md)
+- 🎤 [Presentación](documentacion/presentacion/Presentacion_Trabajo_Final_Marlon_Victor.pptx) · [Guion del video](documentacion/presentacion/GUION_VIDEO.md) · [Guía de sustentación](documentacion/presentacion/GUIA_SUSTENTACION.md)
 - 📘 [Manual de usuario](documentacion/manuales/MANUAL_DE_USUARIO.md) · [Manual técnico de instalación](documentacion/manuales/MANUAL_TECNICO_DE_INSTALACION.md) · [Guía de pruebas de aceptación](documentacion/manuales/GUIA_DE_PRUEBAS_DE_ACEPTACION.md)
 - 🗃️ [Diccionario de datos](documentacion/tecnica/DICCIONARIO_DE_DATOS.md) · [Decisiones técnicas](documentacion/decisiones/)
 

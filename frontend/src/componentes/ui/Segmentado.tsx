@@ -24,7 +24,7 @@ export function Segmentado<T extends string>({
           aria-checked={valor === o.valor}
           onClick={() => onCambio(o.valor)}
           className={cn(
-            'h-9 rounded-[10px] px-3 sm:h-8 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+            'h-9 shrink-0 whitespace-nowrap rounded-[10px] px-3 sm:h-8 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
             valor === o.valor ? 'bg-surface text-foreground shadow-tarjeta' : 'text-muted-foreground hover:text-foreground'
           )}
         >

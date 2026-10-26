@@ -20,7 +20,7 @@ import { cn } from '../lib/cn'
 import { useDatos } from '../lib/consultas'
 import { capital, decimal, entero, fechaHora, proporcion } from '../lib/formato'
 import { useSesion } from '../lib/sesion'
-import type { CalidadModelo as Calidad, EvaluacionUmbral } from '../lib/tipos'
+import type { CalidadModelo as Calidad, EvaluacionUmbral, MetricaGrupo } from '../lib/tipos'
 import { NOMBRE_MODELO } from '../lib/modelos'
 
 const G = {
@@ -30,7 +30,7 @@ const G = {
   Importancia: lazy(() => import('./calidad/Graficos').then((m) => ({ default: m.Importancia }))),
 }
 
-type Pestana = 'resumen' | 'validacion' | 'explicacion' | 'consulta' | 'ficha'
+type Pestana = 'resumen' | 'validacion' | 'periodos' | 'operacion' | 'explicacion' | 'consulta' | 'ficha'
 const NOMBRE_GRUPO: Record<string, string> = { financieras: 'Financieras', matricula: 'Matrícula', aula_virtual: 'Aula virtual', evaluaciones: 'Evaluaciones' }
 const NOMBRE_VARIABLE_EQUIDAD: Record<string, string> = {
   genero: 'Género',
@@ -256,6 +256,156 @@ function Validacion({ d }: { d: Calidad }) {
   )
 }
 
+function TablaGrupos({ filas, etiqueta, nota }: { filas: (MetricaGrupo & { grupo?: string; periodo?: string })[]; etiqueta: string; nota?: string }) {
+  return (
+    <Table>
+      <TableHead>
+        <tr>
+          <Th>{etiqueta}</Th>
+          <Th numero>Casos</Th>
+          <Th numero>Abandonos</Th>
+          <Th numero>ROC-AUC</Th>
+          <Th numero>PR-AUC</Th>
+          <Th numero>Recall medio</Th>
+          <Th numero>Recall alto</Th>
+          <Th numero>Precisión alta</Th>
+        </tr>
+      </TableHead>
+      <TableBody>
+        {filas.map((f) => (
+          <TableRow key={f.periodo ?? f.grupo}>
+            <Td className="font-medium text-foreground">{f.periodo ?? f.grupo}</Td>
+            <Td numero>{entero(f.n)}</Td>
+            <Td numero>
+              {entero(f.positivos)} <span className="text-xs text-muted-foreground">({proporcion(f.prevalencia)})</span>
+            </Td>
+            <Td numero>{f.roc_auc != null ? decimal(f.roc_auc, 3) : <span className="text-xs text-muted-foreground">pocos casos</span>}</Td>
+            <Td numero>{f.pr_auc != null ? decimal(f.pr_auc, 3) : '—'}</Td>
+            <Td numero>{f.recall_medio != null ? proporcion(f.recall_medio, 0) : '—'}</Td>
+            <Td numero>{f.recall_alto != null ? proporcion(f.recall_alto, 0) : '—'}</Td>
+            <Td numero>{proporcion(f.precision_alto, 0)}</Td>
+          </TableRow>
+        ))}
+      </TableBody>
+      {nota && (
+        <caption className="caption-bottom px-6 py-3 text-left text-xs text-muted-foreground">{nota}</caption>
+      )}
+    </Table>
+  )
+}
+
+function PorPeriodo({ d }: { d: Calidad }) {
+  const om = d.origen_movil
+  const r = om?.resumen
+  return (
+    <div className="space-y-6">
+      {r?.origenes ? (
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Kpi etiqueta="ROC-AUC medio por periodo" valor={decimal(r.roc_auc_media, 3)} tono="accent" icono={IconoModelo} contexto={`${r.origenes} periodos evaluados con origen móvil`} />
+          <Kpi etiqueta="Peor periodo" valor={decimal(r.roc_auc_min, 3)} tono="warning" contexto={`mejor: ${decimal(r.roc_auc_max, 3)}`} />
+          <Kpi etiqueta="Recall medio por periodo" valor={proporcion(r.recall_medio_media, 0)} tono="success" contexto="abandonos con alerta media o alta" />
+          <Kpi etiqueta="Prueba temporal global" valor={decimal(d.temporal?.roc_auc, 3)} contexto={`periodos ${d.temporal?.periodos.join(', ')}`} />
+        </section>
+      ) : null}
+      {om && om.periodos.length > 0 && (
+        <Card className="overflow-hidden">
+          <CardHeader
+            title="Validación con origen móvil"
+            description="Cada periodo se predice entrenando solo con los periodos anteriores, como si el sistema se hubiera puesto en marcha en esa fecha. Calibración y umbrales se ajustan solo con el pasado."
+            className="pb-4"
+          />
+          <TablaGrupos filas={om.periodos} etiqueta="Periodo evaluado" />
+        </Card>
+      )}
+      {d.por_periodo && d.por_periodo.length > 0 && (
+        <Card className="overflow-hidden">
+          <CardHeader title="Prueba temporal por periodo" description="Las cifras globales de la prueba temporal, separadas por periodo académico." className="pb-4" />
+          <TablaGrupos filas={d.por_periodo} etiqueta="Periodo" />
+        </Card>
+      )}
+      {d.por_carrera && d.por_carrera.length > 0 && (
+        <Card className="overflow-hidden">
+          <CardHeader title="Prueba temporal por carrera" description="El modelo debe servir en cada carrera, no solo en promedio." className="pb-4" />
+          <TablaGrupos filas={d.por_carrera} etiqueta="Carrera" nota="Sin ROC-AUC cuando la carrera tiene menos de 100 casos o 10 abandonos en la prueba: la cifra no sería estable." />
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function Operacion({ d }: { d: Calidad }) {
+  const c = d.calidad_datos
+  const v = d.deriva
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Kpi etiqueta="Expectativas de calidad cumplidas" valor={c ? `${c.cumplidas}/${c.evaluadas}` : '—'} tono={c?.apto_para_entrenar ? 'success' : 'warning'} contexto={c ? (c.apto_para_entrenar ? 'datos aptos para entrenar' : 'revisar antes de entrenar') : 'sin evaluar'} />
+        <Kpi etiqueta="Variables con deriva" valor={v ? `${v.variables_con_deriva}/${v.variables.length}` : '—'} tono={v?.conjunto_con_deriva ? 'warning' : 'accent'} contexto={v ? (v.conjunto_con_deriva ? 'conviene reentrenar' : 'conjunto estable') : 'sin evaluar'} />
+        <Kpi etiqueta="Importantes con deriva" valor={v ? entero(v.importantes_con_deriva.length) : '—'} contexto="de las 10 variables que más pesan" />
+        <Kpi etiqueta="Experimento registrado" valor={d.mlflow ? d.mlflow.run_id.slice(0, 8) : '—'} contexto={d.mlflow ? `MLflow · ${d.mlflow.experimento}` : 'MLflow no disponible'} />
+      </section>
+      {c && (
+        <Card className="overflow-hidden">
+          <CardHeader title="Calidad de los datos" description={`${c.motor} · ${entero(c.filas)} filas de trayectoria · ${fechaHora(c.fecha)}`} className="pb-4" />
+          <Table>
+            <TableHead>
+              <tr>
+                <Th>Expectativa</Th>
+                <Th>Columna</Th>
+                <Th numero>No cumplen</Th>
+                <Th>Resultado</Th>
+              </tr>
+            </TableHead>
+            <TableBody>
+              {c.expectativas.map((e, i) => (
+                <TableRow key={i}>
+                  <Td className="text-sm">
+                    {e.descripcion} {e.critica && <span className="text-2xs text-muted-foreground">(crítica)</span>}
+                  </Td>
+                  <Td className="font-mono text-xs text-muted-foreground">{e.columna ?? 'tabla'}</Td>
+                  <Td numero>{e.porcentaje_no_cumple != null ? `${decimal(e.porcentaje_no_cumple, 2)} %` : e.observado != null ? `obs. ${entero(e.observado)}` : '—'}</Td>
+                  <Td>{e.cumple ? <Badge variant="success">Cumple</Badge> : <Badge variant={e.critica ? 'danger' : 'warning'}>No cumple</Badge>}</Td>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+      {v && (
+        <Card className="overflow-hidden">
+          <CardHeader
+            title="Deriva de las variables de entrada"
+            description={`${v.motor}: ${entero(v.filas_referencia)} filas de referencia frente a ${entero(v.filas_actuales)} estudiantes calificados. ${v.lectura}`}
+            className="pb-4"
+          />
+          <Table>
+            <TableHead>
+              <tr>
+                <Th>Variable</Th>
+                <Th>Prueba</Th>
+                <Th numero>Valor</Th>
+                <Th numero>PSI</Th>
+                <Th>Estado</Th>
+              </tr>
+            </TableHead>
+            <TableBody>
+              {v.variables.slice(0, 15).map((x) => (
+                <TableRow key={x.variable}>
+                  <Td className="font-mono text-sm">{x.variable}</Td>
+                  <Td className="text-xs text-muted-foreground">{x.metodo}</Td>
+                  <Td numero>{decimal(x.valor, 3)}</Td>
+                  <Td numero>{x.psi != null ? decimal(x.psi, 3) : '—'}</Td>
+                  <Td>{x.deriva ? <Badge variant="warning">Deriva</Badge> : <Badge variant="success">Estable</Badge>}</Td>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  )
+}
+
 function Explicacion({ d }: { d: Calidad }) {
   return (
     <div className="space-y-6">
@@ -439,6 +589,8 @@ export default function CalidadModelo() {
               opciones={[
                 { valor: 'resumen', texto: 'Resumen' },
                 { valor: 'validacion', texto: 'Validación' },
+                { valor: 'periodos', texto: 'Por periodo y carrera' },
+                { valor: 'operacion', texto: 'Datos y deriva' },
                 { valor: 'explicacion', texto: 'Variables y equidad' },
                 { valor: 'consulta', texto: 'Consulta conversacional' },
                 { valor: 'ficha', texto: 'Ficha del modelo' },
@@ -473,6 +625,10 @@ export default function CalidadModelo() {
         <Resumen d={data} />
       ) : pestana === 'validacion' ? (
         <Validacion d={data} />
+      ) : pestana === 'periodos' ? (
+        <PorPeriodo d={data} />
+      ) : pestana === 'operacion' ? (
+        <Operacion d={data} />
       ) : pestana === 'explicacion' ? (
         <Explicacion d={data} />
       ) : pestana === 'consulta' ? (

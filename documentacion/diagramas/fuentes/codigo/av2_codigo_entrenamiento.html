@@ -82,8 +82,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 .codigo .vg { color: #BB60D5 } /* Name.Variable.Global */
 .codigo .vi { color: #BB60D5 } /* Name.Variable.Instance */
 .codigo .vm { color: #BB60D5 } /* Name.Variable.Magic */
-.codigo .il { color: #40A070 } /* Literal.Number.Integer.Long */
-</style></head><body><div class="marco"><div class="ruta"><b>Archivo:</b> codigo_fuente/backend/ml/entrenar.py · entrenar_panel()</div><div class="codigo"><pre><span></span><span class="c1"># Prueba temporal: los periodos académicos más recientes</span>
+.codigo .il { color: #40A070 } /* Literal.Number.Integer.Long */ .codigo .err { border: none; }
+</style></head><body><div class="marco"><div class="ruta"><b>Archivo:</b> backend/ml/entrenar.py · entrenar_panel()</div><div class="codigo"><pre><span></span><span class="c1"># Prueba temporal: los periodos académicos más recientes</span>
 <span class="n">es_prueba</span><span class="p">,</span> <span class="n">periodos_prueba</span> <span class="o">=</span> <span class="n">particion_temporal</span><span class="p">(</span><span class="n">etiquetado</span><span class="p">)</span>
 <span class="n">train</span><span class="p">,</span> <span class="n">prueba</span> <span class="o">=</span> <span class="n">etiquetado</span><span class="p">[</span><span class="o">~</span><span class="n">es_prueba</span><span class="p">],</span> <span class="n">etiquetado</span><span class="p">[</span><span class="n">es_prueba</span><span class="p">]</span>
 <span class="n">X_tr</span><span class="p">,</span> <span class="n">X_te</span> <span class="o">=</span> <span class="n">matriz</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">columnas</span><span class="p">),</span> <span class="n">matriz</span><span class="p">(</span><span class="n">prueba</span><span class="p">,</span> <span class="n">columnas</span><span class="p">)</span>

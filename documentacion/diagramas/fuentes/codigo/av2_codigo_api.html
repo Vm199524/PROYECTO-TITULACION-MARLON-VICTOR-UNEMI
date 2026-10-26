@@ -82,8 +82,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 .codigo .vg { color: #BB60D5 } /* Name.Variable.Global */
 .codigo .vi { color: #BB60D5 } /* Name.Variable.Instance */
 .codigo .vm { color: #BB60D5 } /* Name.Variable.Magic */
-.codigo .il { color: #40A070 } /* Literal.Number.Integer.Long */
-</style></head><body><div class="marco"><div class="ruta"><b>Archivo:</b> codigo_fuente/backend/api/consulta.py</div><div class="codigo"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Pregunta</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+.codigo .il { color: #40A070 } /* Literal.Number.Integer.Long */ .codigo .err { border: none; }
+</style></head><body><div class="marco"><div class="ruta"><b>Archivo:</b> backend/api/consulta.py</div><div class="codigo"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">Pregunta</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
     <span class="n">pregunta</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">min_length</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
     <span class="n">historial</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 

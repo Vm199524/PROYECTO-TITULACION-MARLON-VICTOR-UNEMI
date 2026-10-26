@@ -330,6 +330,60 @@ export interface CalidadModelo {
     adversariales: { id: string; tipo: string; pregunta: string; intencion: string; origen: string; filas: number; contenida: boolean }[]
   } | null
   ficha?: Record<string, string>
+  por_periodo?: MetricaGrupo[]
+  por_carrera?: MetricaGrupo[]
+  origen_movil?: {
+    periodos: (MetricaGrupo & { periodo: string; periodos_entrenamiento: number; filas_entrenamiento: number })[]
+    resumen: { origenes?: number; roc_auc_media?: number; roc_auc_min?: number; roc_auc_max?: number; recall_medio_media?: number | null }
+    metodo: string
+  } | null
+  calidad_datos?: {
+    fecha: string
+    motor: string
+    filas: number
+    evaluadas: number
+    cumplidas: number
+    porcentaje_cumplimiento: number
+    apto_para_entrenar: boolean
+    expectativas: {
+      expectativa: string
+      columna: string | null
+      descripcion: string
+      critica: boolean
+      cumple: boolean
+      porcentaje_no_cumple?: number
+      observado?: number
+    }[]
+  } | null
+  deriva?: {
+    fecha: string
+    motor: string
+    filas_referencia: number
+    filas_actuales: number
+    variables_con_deriva: number
+    proporcion_con_deriva: number
+    conjunto_con_deriva: boolean
+    importantes_con_deriva: string[]
+    lectura: string
+    variables: { variable: string; metodo: string; valor: number; umbral: number; deriva: boolean; psi: number | null; importancia: number | null }[]
+  } | null
+  mlflow?: { experimento: string; run_id: string; parametros: number; metricas: number; fecha: string } | null
+}
+
+/** Desempeño del modelo en una porción de la prueba (un periodo, una carrera). */
+export interface MetricaGrupo {
+  grupo?: string
+  n: number
+  positivos: number
+  prevalencia: number | null
+  roc_auc: number | null
+  pr_auc: number | null
+  recall_medio: number | null
+  precision_medio: number | null
+  tasa_alerta_medio: number | null
+  recall_alto: number | null
+  precision_alto: number | null
+  evaluable: boolean
 }
 
 // ── Consulta conversacional ────────────────────────────────────────────────

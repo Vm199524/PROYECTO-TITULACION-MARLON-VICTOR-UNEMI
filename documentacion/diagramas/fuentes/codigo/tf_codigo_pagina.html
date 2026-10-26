@@ -1,0 +1,112 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<style>
+@page { size: 16cm auto; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { width: 16cm; background: #fff; padding: 2px; font-family: Arial, Helvetica, sans-serif; }
+.marco { border: 1.2px solid #94a8ba; border-radius: 6px; overflow: hidden; }
+.ruta { background: #002e45; color: #fff; font-size: 10pt; padding: 4px 8px; }
+.ruta b { color: #ffd2b0; font-weight: 700; }
+pre { font-family: 'DejaVu Sans Mono', Consolas, monospace; font-size: 10pt; line-height: 1.32;
+       padding: 6px 8px; background: #f8fafc; white-space: pre-wrap; word-break: break-word; color: #0f172a; }
+pre { line-height: 125%; }
+td.linenos .normal { color: #666666; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+span.linenos { color: #666666; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+td.linenos .special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+.codigo .hll { background-color: #ffffcc }
+.codigo {  }
+.codigo .c { color: #60A0B0; font-style: italic } /* Comment */
+.codigo .err { border: 1px solid #F00 } /* Error */
+.codigo .k { color: #007020; font-weight: bold } /* Keyword */
+.codigo .o { color: #666 } /* Operator */
+.codigo .ch { color: #60A0B0; font-style: italic } /* Comment.Hashbang */
+.codigo .cm { color: #60A0B0; font-style: italic } /* Comment.Multiline */
+.codigo .cp { color: #007020 } /* Comment.Preproc */
+.codigo .cpf { color: #60A0B0; font-style: italic } /* Comment.PreprocFile */
+.codigo .c1 { color: #60A0B0; font-style: italic } /* Comment.Single */
+.codigo .cs { color: #60A0B0; background-color: #FFF0F0 } /* Comment.Special */
+.codigo .gd { color: #A00000 } /* Generic.Deleted */
+.codigo .ge { font-style: italic } /* Generic.Emph */
+.codigo .ges { font-weight: bold; font-style: italic } /* Generic.EmphStrong */
+.codigo .gr { color: #F00 } /* Generic.Error */
+.codigo .gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.codigo .gi { color: #00A000 } /* Generic.Inserted */
+.codigo .go { color: #888 } /* Generic.Output */
+.codigo .gp { color: #C65D09; font-weight: bold } /* Generic.Prompt */
+.codigo .gs { font-weight: bold } /* Generic.Strong */
+.codigo .gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.codigo .gt { color: #04D } /* Generic.Traceback */
+.codigo .kc { color: #007020; font-weight: bold } /* Keyword.Constant */
+.codigo .kd { color: #007020; font-weight: bold } /* Keyword.Declaration */
+.codigo .kn { color: #007020; font-weight: bold } /* Keyword.Namespace */
+.codigo .kp { color: #007020 } /* Keyword.Pseudo */
+.codigo .kr { color: #007020; font-weight: bold } /* Keyword.Reserved */
+.codigo .kt { color: #902000 } /* Keyword.Type */
+.codigo .m { color: #40A070 } /* Literal.Number */
+.codigo .s { color: #4070A0 } /* Literal.String */
+.codigo .na { color: #4070A0 } /* Name.Attribute */
+.codigo .nb { color: #007020 } /* Name.Builtin */
+.codigo .nc { color: #0E84B5; font-weight: bold } /* Name.Class */
+.codigo .no { color: #60ADD5 } /* Name.Constant */
+.codigo .nd { color: #555; font-weight: bold } /* Name.Decorator */
+.codigo .ni { color: #D55537; font-weight: bold } /* Name.Entity */
+.codigo .ne { color: #007020 } /* Name.Exception */
+.codigo .nf { color: #06287E } /* Name.Function */
+.codigo .nl { color: #002070; font-weight: bold } /* Name.Label */
+.codigo .nn { color: #0E84B5; font-weight: bold } /* Name.Namespace */
+.codigo .nt { color: #062873; font-weight: bold } /* Name.Tag */
+.codigo .nv { color: #BB60D5 } /* Name.Variable */
+.codigo .ow { color: #007020; font-weight: bold } /* Operator.Word */
+.codigo .w { color: #BBB } /* Text.Whitespace */
+.codigo .mb { color: #40A070 } /* Literal.Number.Bin */
+.codigo .mf { color: #40A070 } /* Literal.Number.Float */
+.codigo .mh { color: #40A070 } /* Literal.Number.Hex */
+.codigo .mi { color: #40A070 } /* Literal.Number.Integer */
+.codigo .mo { color: #40A070 } /* Literal.Number.Oct */
+.codigo .sa { color: #4070A0 } /* Literal.String.Affix */
+.codigo .sb { color: #4070A0 } /* Literal.String.Backtick */
+.codigo .sc { color: #4070A0 } /* Literal.String.Char */
+.codigo .dl { color: #4070A0 } /* Literal.String.Delimiter */
+.codigo .sd { color: #4070A0; font-style: italic } /* Literal.String.Doc */
+.codigo .s2 { color: #4070A0 } /* Literal.String.Double */
+.codigo .se { color: #4070A0; font-weight: bold } /* Literal.String.Escape */
+.codigo .sh { color: #4070A0 } /* Literal.String.Heredoc */
+.codigo .si { color: #70A0D0; font-style: italic } /* Literal.String.Interpol */
+.codigo .sx { color: #C65D09 } /* Literal.String.Other */
+.codigo .sr { color: #235388 } /* Literal.String.Regex */
+.codigo .s1 { color: #4070A0 } /* Literal.String.Single */
+.codigo .ss { color: #517918 } /* Literal.String.Symbol */
+.codigo .bp { color: #007020 } /* Name.Builtin.Pseudo */
+.codigo .fm { color: #06287E } /* Name.Function.Magic */
+.codigo .vc { color: #BB60D5 } /* Name.Variable.Class */
+.codigo .vg { color: #BB60D5 } /* Name.Variable.Global */
+.codigo .vi { color: #BB60D5 } /* Name.Variable.Instance */
+.codigo .vm { color: #BB60D5 } /* Name.Variable.Magic */
+.codigo .il { color: #40A070 } /* Literal.Number.Integer.Long */ .codigo .err { border: none; }
+</style></head><body><div class="marco"><div class="ruta"><b>Archivo:</b> frontend/src/paginas/CalidadModelo.tsx · validación por periodo</div><div class="codigo"><pre><span></span><span class="kd">function</span><span class="w"> </span><span class="nx">PorPeriodo</span><span class="p">({</span><span class="w"> </span><span class="nx">d</span><span class="w"> </span><span class="p">}</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">d</span><span class="o">:</span><span class="w"> </span><span class="kt">Calidad</span><span class="w"> </span><span class="p">})</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">om</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">d</span><span class="p">.</span><span class="nx">origen_movil</span><span class="w">              </span><span class="c1">// backtesting por periodo</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">om</span><span class="o">?</span><span class="p">.</span><span class="nx">resumen</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="p">&lt;</span><span class="nt">div</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">"space-y-6"</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">section</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">"grid gap-4 sm:grid-cols-2 xl:grid-cols-4"</span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">Kpi</span><span class="w"> </span><span class="na">etiqueta</span><span class="o">=</span><span class="s">"ROC-AUC medio por periodo"</span>
+<span class="w">             </span><span class="na">valor</span><span class="o">=</span><span class="p">{</span><span class="nx">decimal</span><span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">roc_auc_media</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">)}</span><span class="w"> </span><span class="na">tono</span><span class="o">=</span><span class="s">"accent"</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">Kpi</span><span class="w"> </span><span class="na">etiqueta</span><span class="o">=</span><span class="s">"Peor periodo"</span><span class="w"> </span><span class="na">valor</span><span class="o">=</span><span class="p">{</span><span class="nx">decimal</span><span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">roc_auc_min</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">)}</span>
+<span class="w">             </span><span class="na">tono</span><span class="o">=</span><span class="s">"warning"</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">Kpi</span><span class="w"> </span><span class="na">etiqueta</span><span class="o">=</span><span class="s">"Recall medio por periodo"</span>
+<span class="w">             </span><span class="na">valor</span><span class="o">=</span><span class="p">{</span><span class="nx">proporcion</span><span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">recall_medio_media</span><span class="p">,</span><span class="w"> </span><span class="mf">0</span><span class="p">)}</span>
+<span class="w">             </span><span class="na">tono</span><span class="o">=</span><span class="s">"success"</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">section</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">Card</span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">CardHeader</span><span class="w"> </span><span class="na">title</span><span class="o">=</span><span class="s">"Validación con origen móvil"</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">TablaGrupos</span><span class="w"> </span><span class="na">filas</span><span class="o">=</span><span class="p">{</span><span class="nx">om</span><span class="p">.</span><span class="nx">periodos</span><span class="p">}</span>
+<span class="w">                     </span><span class="na">etiqueta</span><span class="o">=</span><span class="s">"Periodo evaluado"</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">Card</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">Card</span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">CardHeader</span><span class="w"> </span><span class="na">title</span><span class="o">=</span><span class="s">"Prueba temporal por carrera"</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">TablaGrupos</span><span class="w"> </span><span class="na">filas</span><span class="o">=</span><span class="p">{</span><span class="nx">d</span><span class="p">.</span><span class="nx">por_carrera</span><span class="p">}</span><span class="w"> </span><span class="na">etiqueta</span><span class="o">=</span><span class="s">"Carrera"</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">Card</span><span class="p">&gt;</span>
+<span class="w">    </span><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;)</span>
+<span class="p">}</span>
+</pre></div>
+</div></body></html>

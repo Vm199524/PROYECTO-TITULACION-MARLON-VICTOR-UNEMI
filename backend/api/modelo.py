@@ -2,8 +2,10 @@
 """
 Calidad y transparencia del modelo: lo que una autoridad necesita para decidir
 cuánto confiar en las alertas (validación cruzada, prueba temporal, prueba
-prospectiva, calibración, equidad, importancia de variables, deriva y
-exactitud de la consulta conversacional).
+prospectiva, calibración, equidad, desempeño por periodo y por carrera,
+validación con origen móvil, calidad de los datos (Great Expectations),
+deriva (Evidently y PSI), registro del experimento (MLflow) y exactitud de la
+consulta conversacional).
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
@@ -49,6 +51,10 @@ def calidad(sesion: Sesion = Depends(requiere('ver_modelo'))) -> dict:
         'temporal': m.get('validacion_temporal'), 'equidad': m.get('equidad'), 'importancia': importancia,
         'prospectiva': servicio.reporte(inst, 'prospectiva'), 'monitoreo': servicio.reporte(inst, 'monitoreo'),
         'consulta': _evaluacion_consulta(inst),
+        'por_periodo': m.get('por_periodo'), 'por_carrera': m.get('por_carrera'),
+        'origen_movil': m.get('origen_movil'),
+        'calidad_datos': servicio.reporte(inst, 'calidad_datos'), 'deriva': servicio.reporte(inst, 'deriva'),
+        'mlflow': servicio.reporte(inst, 'mlflow_registro'),
         'ficha': {
             'proposito': 'Priorizar el acompañamiento de bienestar estudiantil: estima la probabilidad de que un '
                          'estudiante activo abandone en el próximo periodo.',

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Construye el Avance 2 del trabajo de titulación sobre una copia del Avance 1.
+Construye el trabajo final (Avance 3) del trabajo de titulación sobre una copia del Avance 1.
 
 Conserva intactos la portada, los certificados, la declaración de autoría, los
 índices, el encabezado, el pie y el Anexo de información académica de la
@@ -11,8 +11,8 @@ referencias. Las cifras se leen de los resultados reales del sistema
 software nunca digan cosas distintas.
 
 Uso:
-    python documentacion/generador_documentos/construir_avance2.py \
-        --base AVANCE1_MARLON_VICTOR.docx --salida documentacion/avances/AVANCE2_MARLON_VICTOR.docx
+    python documentacion/generador_documentos/construir_trabajo_final.py \
+        --base AVANCE1_MARLON_VICTOR.docx --salida documentacion/avances/TRABAJO_FINAL_MARLON_VICTOR.docx
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
@@ -26,6 +26,7 @@ import shutil
 from pathlib import Path
 
 import docx
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -33,7 +34,7 @@ from docx.shared import Cm, Pt
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-from contenido_avance2 import bloques, resumen_abstract  # noqa: E402
+from contenido import bloques, resumen_abstract  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[2]
 ANCHO_UTIL_CM = 15.0   # A4 con márgenes de 3 cm (plantilla UNEMI)
@@ -186,7 +187,7 @@ class Constructor:
         el = self.parrafo(texto, modelo=f'h{nivel}', cursiva=True if nivel == 3 else None)
         if nivel == 1:
             self.n_h1 = getattr(self, 'n_h1', 0) + 1
-            if self.n_h1 > 1:  # cada capítulo empieza en página nueva
+            if self.n_h1 > 1 and getattr(self, 'salto_capitulo', True):  # cada capítulo en página nueva
                 ppr = el.find(qn('w:pPr'))
                 if ppr.find(qn('w:pageBreakBefore')) is None:
                     ppr.insert(1, OxmlElement('w:pageBreakBefore'))
@@ -437,47 +438,48 @@ def _jc(ppr, valor: str) -> None:
 
 
 # Actividades del trabajo para la tabla de la Declaración de autoría (mínimo 5 actividades y al
-# menos 4 interacciones con docentes). Las fechas salen del historial del repositorio; lo que solo
-# conocen los autores queda entre corchetes para completarlo.
+# menos 4 interacciones con docentes). Las fechas salen del historial del repositorio y de las
+# solicitudes de tutoría registradas en el sistema académico de la UNEMI.
+EVIDENCIA_TUTORIAS = 'PDF de evidencias de tutorías (carpeta «Anexo de interacción con sus docentes»)'
 ACTIVIDADES_AUTORIA = [
     ('07/09/2026 al 09/09/2026',
      'Consolidación del repositorio del proyecto y primera versión del prototipo',
      'Código fuente versionado en GitHub con el historial de ambos autores',
-     'Repositorio GitHub del proyecto (cuenta Vm199524)'),
-    ('[completar fecha]',
+     'Repositorio GitHub del proyecto'),
+    ('Septiembre de 2026',
      'Búsqueda y selección sistemática de la literatura en Scopus (cinco búsquedas, cribado y lectura completa)',
-     'Referencias en formato RIS y tabla comparativa de 14 trabajos previos',
+     'Referencias en formato RIS gestionadas con Zotero y comparación de 14 trabajos previos',
      'Carpeta documentacion/literatura del repositorio'),
-    ('[completar fecha]',
+    ('17/09/2026',
      'Entrega del Avance 1: introducción, propósito, delimitación y base conceptual',
-     'Documento del Avance 1 y presentación de dos minutos entregados',
-     'Carpetas documentacion/avances y documentacion/presentaciones/avance1'),
-    ('[completar fecha]',
-     'Tutoría 1 con las tutoras: revisión del Avance 1',
-     'Observaciones: numeración de Referencias y Anexos, comparación de 10 estudios, RF y RNF por pieza, '
-     'historias de usuario, protección de datos, métricas, CRISP-DM, esquema estrella, UML y demo',
-     '[completar enlace de la evidencia]'),
-    ('03/10/2026 al 05/10/2026',
-     'Reorganización del repositorio por capas, integración continua, decisiones técnicas (ADR) y manuales',
-     'Repositorio ordenado, seis decisiones con matriz ponderada y manuales de usuario, instalación y pruebas',
-     'Carpetas documentacion/decisiones y documentacion/manuales'),
-    ('[completar fecha]',
-     'Tutoría 2 con las tutoras: revisión de los requerimientos y del enfoque académico del sistema',
-     'Ajuste del enfoque hacia la alerta temprana del abandono estudiantil y de los requerimientos por rol',
-     '[completar enlace de la evidencia]'),
-    ('07/10/2026',
-     'Versión 3 del sistema: almacén en esquema estrella, modelo calibrado, consulta conversacional y '
-     'aplicación web por rol',
-     'Validación con UNEMI_PRUEBAS y OULAD; 153 pruebas automáticas del backend y 11 de la interfaz superadas',
-     'Carpeta codigo_fuente y capturas en documentacion/capturas'),
-    ('[completar fecha]',
-     'Tutoría 3 con las tutoras: revisión del prototipo en funcionamiento',
-     'Demostración de la predicción, la ficha explicada, el seguimiento y la consulta en lenguaje natural',
-     '[completar enlace de la evidencia]'),
-    ('07/10/2026 al 08/10/2026',
-     'Entrega del Avance 2: análisis del caso, metodología y diseño',
-     'Documento con requerimientos, fases de CRISP-DM, diagramas UML y modelo de datos',
-     'Carpeta documentacion/avances y Anexo C (videos)'),
+     'Documento y presentación del Avance 1',
+     'Carpetas documentacion/avances y documentacion/presentaciones'),
+    ('25/09/2026',
+     'Tutoría con la Msc. Mirella Azucena Correa Peralta (Desarrollo del Trabajo de Titulación): metodología',
+     'Observaciones al Avance 1: numeración, comparación de estudios, requerimientos por pieza, CRISP-DM, UML y '
+     'demostración', EVIDENCIA_TUTORIAS),
+    ('03/10/2026 al 08/10/2026',
+     'Versión 3 del sistema y entrega del Avance 2: análisis del caso, metodología y diseño',
+     'Almacén en esquema estrella, modelo calibrado, consulta conversacional evaluada en SQL Server y aplicación web '
+     'por roles', 'Carpetas backend, frontend y documentacion/avances'),
+    ('14/10/2026',
+     'Tutoría con la Msc. María Gabriela Espinoza Bravo (Redacción de Investigación): revisión del proyecto',
+     'Revisión de la redacción, las citas y la estructura del trabajo', EVIDENCIA_TUTORIAS),
+    ('14/10/2026 al 15/10/2026',
+     'Estructura plana del repositorio, arranque único con npm start e interfaz más legible',
+     'Sistema que se instala y levanta con un solo comando', 'Historial del repositorio'),
+    ('16/10/2026',
+     'Tutoría con la Msc. Mirella Azucena Correa Peralta: avance del proyecto de titulación',
+     'Presentación resumida del proyecto: objetivo, funcionamiento, seguridad y viabilidad', EVIDENCIA_TUTORIAS),
+    ('21/10/2026',
+     'Tutoría con la Msc. María Gabriela Espinoza Bravo: revistas para publicar',
+     'Orientación sobre revistas para la publicación del artículo derivado de la tesis', EVIDENCIA_TUTORIAS),
+    ('23/10/2026',
+     'Tutoría grupal con la Msc. Mirella Azucena Correa Peralta: solución propuesta',
+     'Revisión de la solución propuesta y de las mejoras para el trabajo final', EVIDENCIA_TUTORIAS),
+    ('26/10/2026 en adelante',
+     'Trabajo final: operación del modelo, validación por periodo y carrera, gobierno de datos y desarrollo',
+     'Documento final, video, presentación y guion de sustentación', 'Carpeta digital del grupo y repositorio'),
 ]
 
 
@@ -582,6 +584,164 @@ def indices_a_figura(doc):
         u = OxmlElement('w:updateFields'); u.set(qn('w:val'), 'true'); ajustes.append(u)
 
 
+TITULO = ('Prototipo de un sistema web para predecir el abandono en estudiantes universitarios mediante '
+          'aprendizaje automático y consulta conversacional')
+AUTORES = ('Marlon David Pérez Almachi', 'Víctor Manuel Lluilema Pisco')
+FECHA_PORTADA = 'Milagro, octubre de 2026'
+DRIVE = 'https://drive.google.com/drive/folders/1ZOVwEslSaSjJbUeS1RCL1q3BDyVea9tT'
+
+
+def portada(doc) -> None:
+    """Primera página: tema, integrantes, tutoras, fecha y enlace de la carpeta digital del grupo.
+
+    La tarea pide ubicar en la primera página a los integrantes y el enlace del Drive del grupo. Se
+    agregan dos filas a la tabla de la portada (Tema y Carpeta digital), clonando el formato de las
+    filas existentes, y se ajusta la fecha.
+    """
+    tabla = next(t for t in doc.tables if t.rows and t.rows[0].cells[0].text.strip().startswith('Facultad'))
+    molde = tabla.rows[0]._tr
+
+    def fila(etiqueta: str, valor: str, antes=None):
+        tr = copy.deepcopy(molde)
+        celdas = tr.findall(qn('w:tc'))
+        for tc, texto in zip(celdas, (etiqueta, valor)):
+            ps = tc.findall(qn('w:p'))
+            for extra in ps[1:]:
+                tc.remove(extra)
+            pp = Paragraph(ps[0], tabla._parent)
+            _poner_texto(pp, texto)
+        if antes is not None:
+            antes.addprevious(tr)
+        else:
+            tabla._tbl.append(tr)
+        return tr
+
+    fila_fecha = next((r._tr for r in tabla.rows if 'Milagro,' in r.cells[-1].text), None)
+    tema = fila('Tema:', TITULO, antes=molde)
+    fila('Carpeta digital:', DRIVE, antes=fila_fecha)
+    for p_el in tema.iter(qn('w:p')):       # el título largo se lee mejor alineado a la izquierda que justificado
+        Paragraph(p_el, tabla._parent).alignment = WD_ALIGN_PARAGRAPH.LEFT
+    for p_el in doc.element.body.iter(qn('w:p')):   # la fecha viene partida en varios runs
+        texto = ''.join(t.text or '' for t in p_el.iter(qn('w:t')))
+        if texto.strip().startswith('Milagro,') and '2026' in texto:
+            ts = [t for t in p_el.iter(qn('w:t'))]
+            i = next(k for k, t in enumerate(ts) if 'Milagro' in (t.text or ''))
+            ts[i].text = FECHA_PORTADA
+            for t in ts[i + 1:]:
+                t.text = ''
+    # Las filas nuevas ocupan dos líneas: se quitan dos párrafos vacíos tras la tabla para que la portada
+    # siga en una sola página.
+    sig = tabla._tbl.getnext()
+    quitados = 0
+    while sig is not None and sig.tag == qn('w:p') and quitados < 3:
+        texto = ''.join(x.text or '' for x in sig.iter(qn('w:t')))
+        siguiente = sig.getnext()
+        if not texto.strip() and sig.find('.//' + qn('w:sectPr')) is None and sig.find('.//' + qn('w:br')) is None \
+                and sig.find('.//' + qn('w:drawing')) is None:
+            sig.getparent().remove(sig)
+            quitados += 1
+        sig = siguiente
+
+
+def _hipervinculo(parrafo: Paragraph, url: str, rpr_modelo=None) -> None:
+    """Agrega al párrafo un hipervínculo externo real (clic en Word y en el PDF)."""
+    rid = parrafo.part.relate_to(url, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
+                                 is_external=True)
+    h = OxmlElement('w:hyperlink'); h.set(qn('r:id'), rid)
+    r = OxmlElement('w:r')
+    rpr = copy.deepcopy(rpr_modelo) if rpr_modelo is not None else OxmlElement('w:rPr')
+    for etiqueta in ('w:b', 'w:bCs'):
+        x = rpr.find(qn(etiqueta))
+        if x is not None:
+            rpr.remove(x)
+    color = OxmlElement('w:color'); color.set(qn('w:val'), '0563C1'); rpr.append(color)
+    sub = OxmlElement('w:u'); sub.set(qn('w:val'), 'single'); rpr.append(sub)
+    r.append(rpr)
+    t = OxmlElement('w:t'); t.text = url; t.set('{http://www.w3.org/XML/1998/namespace}space', 'preserve')
+    r.append(t); h.append(r); parrafo._p.append(h)
+
+
+def enlace_carpeta(doc) -> None:
+    """El enlace del video del Avance 1 pasa a ser el de la carpeta digital del grupo (video, trabajo y anexos)."""
+    for p in doc.paragraphs:
+        if p.text.strip().startswith('ENLACE DEL VIDEO'):
+            rpr = p.runs[0]._r.find(qn('w:rPr')) if p.runs else None
+            rpr = copy.deepcopy(rpr) if rpr is not None else None
+            for hijo in list(p._p):
+                if hijo.tag != qn('w:pPr'):
+                    p._p.remove(hijo)
+            r = p.add_run('CARPETA DIGITAL DEL GRUPO (video de presentación, trabajo práctico, presentaciones y '
+                          'anexos): ')
+            if rpr is not None:
+                r._r.insert(0, copy.deepcopy(rpr))
+            _hipervinculo(p, DRIVE, rpr)
+            # El salto de página que sigue quedaba solo en una hoja en blanco cuando el párrafo llega al pie:
+            # se reemplaza por «salto de página antes» en el título del resumen.
+            sig = p._p.getnext()
+            if sig is not None and sig.tag == qn('w:p') and not ''.join(t.text or '' for t in sig.iter(qn('w:t'))).strip() \
+                    and sig.find('.//' + qn('w:br')) is not None:
+                destino = sig.getnext()
+                sig.getparent().remove(sig)
+                if destino is not None and destino.tag == qn('w:p'):
+                    ppr = destino.find(qn('w:pPr'))
+                    if ppr is None:
+                        ppr = OxmlElement('w:pPr'); destino.insert(0, ppr)
+                    if ppr.find(qn('w:pageBreakBefore')) is None:
+                        ppr.insert(1 if ppr.find(qn('w:pStyle')) is not None else 0, OxmlElement('w:pageBreakBefore'))
+            return
+
+
+VIDEO_AVANCE1 = 'https://drive.google.com/file/d/10ZI6g20BWEHMgdke1Nz3ZfMRb5qi1H0a/view?usp=sharing'
+
+
+def llenar_videos(tabla_el, doc) -> None:
+    """Completa la tabla oficial de videos: el del Avance 1 y, para los demás, la carpeta digital del grupo."""
+    from docx.table import Table
+    tabla = Table(tabla_el, doc._body)
+    enlaces = {'Video de presentación': ('Avance 1: ', VIDEO_AVANCE1),
+               'Video de Avance 2': ('En la carpeta digital del grupo: ', DRIVE),
+               'Video de Explicación Técnica': ('Trabajo final, en la carpeta digital del grupo: ', DRIVE)}
+    for fila in tabla.rows[1:]:
+        celda = fila.cells[-1]
+        clave = next((k for k in enlaces if k in celda.text), None)
+        if clave is None:
+            continue
+        ps = celda.paragraphs
+        destino = ps[1] if len(ps) > 1 else celda.add_paragraph()
+        for extra in ps[2:]:
+            extra._p.getparent().remove(extra._p)
+        texto, url = enlaces[clave]
+        _poner_texto(destino, texto)
+        _hipervinculo(destino, url)
+        destino.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
+def ficha_titulo(doc) -> None:
+    """En la ficha del Repositorio Nacional, el campo TÍTULO lleva el título del trabajo de titulación."""
+    for t in doc.tables:
+        for row in t.rows:
+            if row.cells[0].text.strip() == 'TÍTULO:':
+                celda = next(c for c in row.cells[1:] if c._tc is not row.cells[0]._tc)
+                for extra in celda.paragraphs[1:]:
+                    extra._p.getparent().remove(extra._p)
+                _poner_texto(celda.paragraphs[0], TITULO)
+                return
+
+
+def firmas_declaracion(doc) -> None:
+    """En la Declaración de autoría firman los autores (formato oficial: «NOMBRE DEL AUTOR (A) y (B)»)."""
+    en_declaracion = False
+    cambios = {'Peralta Correa Mirella Azucena': AUTORES[0], 'Espinoza Bravo María Gabriela': AUTORES[1]}
+    for p in doc.paragraphs:
+        t = p.text.strip()
+        if t.startswith('DECLARACIÓN DE AUTORÍA'):
+            en_declaracion = True
+            continue
+        if en_declaracion and t.startswith('TABLA DE CONTENIDO'):
+            break
+        if en_declaracion and t in cambios:
+            _poner_texto(p, cambios[t])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--base', required=True)
@@ -597,6 +757,10 @@ def main() -> int:
     previo, fin, videos = vaciar_cuerpo(doc)
     actualizar_anexo_academico(doc, Paragraph(fin, doc._body), res, abs_, cla, key)
     llenar_autoria(doc, _run_base(c.modelos['cuerpo']))
+    portada(doc)
+    firmas_declaracion(doc)
+    enlace_carpeta(doc)
+    ficha_titulo(doc)
     c.ancla = previo
     for b in bloques():
         tipo = b[0]
@@ -615,6 +779,7 @@ def main() -> int:
         elif tipo == 'salto':
             c.salto_pagina()
         elif tipo == 'videos' and videos is not None:
+            llenar_videos(videos, doc)
             c.ancla.addnext(videos)
             c.ancla = videos
     indices_a_figura(doc)
