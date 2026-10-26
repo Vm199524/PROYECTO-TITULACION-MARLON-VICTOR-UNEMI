@@ -742,6 +742,17 @@ def firmas_declaracion(doc) -> None:
             _poner_texto(p, cambios[t])
 
 
+def formato_niveles(doc) -> None:
+    """La tabla de contenido muestra solo los niveles 1 y 2, y los títulos de nivel 3 llevan sangría."""
+    for it in doc.element.body.iter(qn('w:instrText')):
+        if it.text and 'TOC' in it.text and '\\o "1-3"' in it.text:
+            it.text = it.text.replace('\\o "1-3"', '\\o "1-2"')
+    doc.styles['Heading 3'].paragraph_format.left_indent = Cm(1.27)
+    for p in doc.paragraphs:      # por si algún título trae sangría propia que anule la del estilo
+        if p.style.name == 'Heading 3':
+            p.paragraph_format.left_indent = Cm(1.27)
+            p.paragraph_format.first_line_indent = Cm(0)
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--base', required=True)
@@ -783,6 +794,7 @@ def main() -> int:
             c.ancla.addnext(videos)
             c.ancla = videos
     indices_a_figura(doc)
+    formato_niveles(doc)
     doc.save(str(salida))
     print(f'{salida}: {c.n_fig} figuras, {c.n_tab} tablas')
     return 0
