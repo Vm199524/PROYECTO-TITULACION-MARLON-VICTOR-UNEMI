@@ -139,6 +139,9 @@ def _segmentos(texto: str):
             yield s, None, None
 
 
+_ES_CIFRA = re.compile(r'^(?:[\d\s.,%±()+\-−—/]+|n\. d\.|—)$')
+
+
 class Constructor:
     def __init__(self, doc):
         self.doc = doc
@@ -273,8 +276,9 @@ class Constructor:
         base = _run_base(self.modelos['cuerpo'])
         for i, fila in enumerate([encabezados] + filas):
             row = t.rows[i]
-            if i == 0:
+            if i == 0:   # encabezado centrado y un poco más alto (criterio de los autores en el Avance 3)
                 trpr = row._tr.get_or_add_trPr()
+                alto = OxmlElement('w:trHeight'); alto.set(qn('w:val'), '400'); trpr.append(alto)
                 h = OxmlElement('w:tblHeader'); trpr.append(h)
             cant = OxmlElement('w:cantSplit'); row._tr.get_or_add_trPr().append(cant)
             for j, txt in enumerate(fila):
@@ -283,7 +287,8 @@ class Constructor:
                 pf = p.paragraph_format
                 pf.first_line_indent = Cm(0); pf.left_indent = Cm(0)
                 pf.space_before = Pt(1); pf.space_after = Pt(1); pf.line_spacing = 1.0
-                p.alignment = 0
+                # encabezados y celdas con cifras van centrados; el texto, a la izquierda
+                p.alignment = 1 if i == 0 or _ES_CIFRA.match(str(txt).strip()) else 0
                 for k, linea in enumerate(str(txt).split('\n')):
                     if k:
                         br = OxmlElement('w:r'); br.append(OxmlElement('w:br')); p._p.append(br)
@@ -750,7 +755,8 @@ def formato_niveles(doc) -> None:
     doc.styles['Heading 3'].paragraph_format.left_indent = Cm(1.27)
     for p in doc.paragraphs:      # por si algún título trae sangría propia que anule la del estilo
         if p.style.name == 'Heading 3':
-            p.paragraph_format.left_indent = Cm(1.27)
+            # los títulos de los anexos van a la izquierda, sin sangría (criterio de los autores)
+            p.paragraph_format.left_indent = Cm(0) if p.text.strip().startswith('Anexo ') else Cm(1.27)
             p.paragraph_format.first_line_indent = Cm(0)
 
 def main() -> int:

@@ -5,6 +5,12 @@ con validación de origen móvil, métricas por periodo y por carrera, operació
 Evidently, MLflow), Metabase como alternativa de consulta y documento de gobierno de datos (LOPDP). Pruebas: 178 del
 backend (8 de integración con SQL Server) y 11 de la interfaz.
 
+## Avance 4 (próxima semana)
+
+- Trabajar **sobre la versión editada por los autores** de `documentacion/avances/TRABAJO_FINAL_MARLON_VICTOR.docx`
+  (insertar y modificar en ese archivo, sin regenerarlo). Sus criterios de formato y enlaces están en
+  `documentacion/avances/CAMBIOS_DE_LOS_AUTORES_AVANCE3.md`.
+
 ## En el equipo con SQL Server (Windows)
 
 1. Traer los cambios: `git pull` en la rama `main`.
@@ -17,7 +23,7 @@ backend (8 de integración con SQL Server) y 11 de la interfaz.
    `docker compose -f despliegue\metabase\docker-compose.yml up -d` (http://localhost:3001).
 5. Ver los experimentos (la interfaz web necesita el paquete completo: `venv\Scripts\pip install mlflow`):
    `cd backend && venv\Scripts\mlflow ui --backend-store-uri sqlite:///datos_locales/mlflow/mlflow.db`.
-6. Si se cambia el contenido, regenerar el documento, la presentación y los guiones:
+6. Solo si hiciera falta reconstruir desde cero (se perderían los ajustes hechos a mano en Word):
    ```bat
    cd documentacion\generador_documentos
    python construir_trabajo_final.py --base ..\avances\AVANCE1_MARLON_VICTOR.docx --salida ..\avances\TRABAJO_FINAL_MARLON_VICTOR.docx
