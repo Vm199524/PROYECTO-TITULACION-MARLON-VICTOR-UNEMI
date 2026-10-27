@@ -24,6 +24,9 @@ Uso:
     cd backend
     python -m eval.evaluar_consulta [--limite 10] [--pausa 3]
 
+Requerimientos que implementa: RNF-05 (calidad de la consulta), RNF-06
+    (rendimiento).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

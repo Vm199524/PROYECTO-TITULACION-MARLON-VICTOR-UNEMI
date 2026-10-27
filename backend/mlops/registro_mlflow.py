@@ -27,6 +27,8 @@ la interfaz web; para verla se instala el paquete completo y se abre con:
 
 Si MLflow no está instalado, el registro se omite con un aviso.
 
+Requerimientos que implementa: RF-13 (calidad del modelo), RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

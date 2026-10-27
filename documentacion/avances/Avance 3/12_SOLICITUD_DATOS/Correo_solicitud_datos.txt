@@ -1,0 +1,15 @@
+Para: (correos institucionales de la Máster Mirella Peralta y la Máster María Gabriela Espinoza)
+Asunto: Solicitud de canalización de datos académicos anonimizados — Trabajo de titulación Pérez y Lluilema
+
+Estimadas Máster Peralta y Máster Espinoza:
+
+Reciban un cordial saludo. En atención a la recomendación de validar nuestro modelo con datos reales anonimizados de una carrera y reportar sus métricas por periodo, adjuntamos el oficio en el que solicitamos, por su intermedio, que se canalice ante la instancia correspondiente el acceso a un conjunto de datos académicos anonimizados, junto con el protocolo de anonimización que proponemos.
+
+Entendemos que el trámite requiere autorizaciones institucionales y que su tiempo puede exceder la entrega del 29 de octubre; en ese caso, presentaremos la validación con los datos de prueba de la UNEMI y el conjunto público OULAD, y dejaremos esta solicitud como antecedente para la continuidad del caso.
+
+Quedamos atentos a sus indicaciones.
+
+Atentamente,
+Marlon David Pérez Almachi
+Víctor Manuel Lluilema Pisco
+Estudiantes de Ingeniería en Tecnologías de la Información — UNEMI

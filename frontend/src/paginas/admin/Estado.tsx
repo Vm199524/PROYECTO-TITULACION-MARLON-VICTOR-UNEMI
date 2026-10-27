@@ -4,6 +4,10 @@
  * Por institución: datos cargados, estudiantes calificados, modelo vigente y deriva.
  * Además, el resultado de la última corrida de los procesos por lotes, las cuentas de
  * base de datos de mínimo privilegio y los proveedores de IA configurados.
+ *
+ * Ruta: /admin/estado · Rol: Administración de TI (capacidad `ver_estado`).
+ * API: GET /admin/estado.
+ * Requisitos: RF-16, RF-17.
  */
 import { IconoActualizar, IconoBaseDatos, IconoChispa, IconoEstado } from '../../componentes/iconos'
 import { EncabezadoPagina } from '../../componentes/layout/EncabezadoPagina'

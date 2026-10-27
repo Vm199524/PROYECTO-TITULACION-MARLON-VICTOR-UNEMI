@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Anonimización del dataset de prueba (RNF de privacidad, LOPDP).
+Anonimización del dataset de prueba (protección de datos, LOPDP).
 
 alumnos_prueba.csv parte del padrón electoral público de UNEMI: sus cédulas y
 nombres corresponden a personas reales, mientras que el resto de columnas
@@ -12,6 +12,8 @@ resto de columnas, así ninguna métrica del modelo cambia. Es idempotente.
 
 Uso (desde la raíz del proyecto):
     python "base_de_datos/datos_de_prueba/anonimizar_padron.py"
+
+Requerimientos que implementa: RNF-01 (protección de datos).
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026

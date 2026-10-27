@@ -1,6 +1,9 @@
 /**
  * src/paginas/consulta/Resultado.tsx — muestra la respuesta de la consulta conversacional:
  * cifra destacada, gráfico de barras o líneas, o tabla, según la forma del resultado.
+ *
+ * Se muestra en: /consulta (Consulta.tsx). API: ninguna; recibe la respuesta de la página.
+ * Requisitos: RF-10.
  */
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Leyenda, TooltipGrafico } from '../../componentes/graficos/Tooltip'

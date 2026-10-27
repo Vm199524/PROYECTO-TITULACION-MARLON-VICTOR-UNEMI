@@ -7,6 +7,9 @@ validación con origen móvil, calidad de los datos (Great Expectations),
 deriva (Evidently y PSI), registro del experimento (MLflow) y exactitud de la
 consulta conversacional).
 
+Requerimientos que implementa: RF-13 (calidad del modelo), RNF-09
+    (explicabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

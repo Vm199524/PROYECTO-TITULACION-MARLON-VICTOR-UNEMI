@@ -3,6 +3,8 @@
  * académico (no por tabla): Inicio, Alerta temprana, Análisis institucional,
  * Confianza en el modelo, Reportes y Administración. Lo leen la barra lateral y las
  * migas de pan; una pantalla nueva se registra solo aquí, con la capacidad que exige.
+ *
+ * Requisitos: RF-01 (cada entrada declara la capacidad que exige).
  */
 import type { Capacidad } from '../../lib/permisos'
 import {

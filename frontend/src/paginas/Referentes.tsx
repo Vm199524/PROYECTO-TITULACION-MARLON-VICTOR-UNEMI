@@ -3,6 +3,10 @@
  *
  * Compara pares con pares: cada referente muestra su definición del indicador, su
  * país, modalidad y nivel de comparabilidad, con la fuente y el DOI.
+ *
+ * Ruta: /referentes · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI (capacidad `ver_referentes`).
+ * API: GET /referentes.
+ * Requisitos: RF-12.
  */
 import { IconoEnlace, IconoReferentes } from '../componentes/iconos'
 import { EncabezadoPagina } from '../componentes/layout/EncabezadoPagina'

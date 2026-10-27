@@ -8,6 +8,9 @@ periodo» con conclusiones generadas por reglas sobre los datos (nunca
 inventadas), un gráfico y tablas con encabezado repetido. Formatos del
 Ecuador: 1.234,5 y fechas dd/mm/aaaa. Las cédulas siempre van enmascaradas.
 
+Requerimientos que implementa: RF-14 (exportación e informe ejecutivo), RNF-01
+    (protección de datos).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

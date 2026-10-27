@@ -7,6 +7,9 @@ Las tres herramientas son opcionales en tiempo de ejecución: si una no está
 instalada, el paso correspondiente lo informa y el sistema sigue funcionando
 con sus controles propios (PSI y validaciones del ETL).
 
+Requerimientos que implementa: RF-13 (calidad del modelo), RF-17 (calificación
+    por lotes y deriva), RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

@@ -2,6 +2,9 @@
 """
 Reportes ejecutivos descargables (Excel y PDF) de la institución activa.
 
+Requerimientos que implementa: RF-14 (exportación e informe ejecutivo), RNF-01
+    (protección de datos), RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

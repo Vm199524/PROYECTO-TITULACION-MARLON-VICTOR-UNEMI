@@ -2,6 +2,9 @@
 """
 Inicio de sesión, perfil e instituciones del usuario.
 
+Requerimientos que implementa: RF-01 (autenticación y permisos por rol), RF-18
+    (aislamiento por institución), RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

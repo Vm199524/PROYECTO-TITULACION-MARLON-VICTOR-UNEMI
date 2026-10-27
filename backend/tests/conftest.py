@@ -6,6 +6,8 @@ Las pruebas unitarias no necesitan SQL Server ni proveedores de IA: usan un
 lector falso en memoria y un almacén de cuentas temporal. Las de integración
 (marca `integracion`) se omiten solas si no hay conexión con el almacén.
 
+Verifica: RNF-08 (mantenibilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

@@ -15,6 +15,9 @@ Escribe en ml/modelos/<INSTITUCION>/:
     deriva.json             resumen de la deriva por variable
     deriva_evidently.html   informe interactivo de Evidently (no se versiona)
 
+Requerimientos que implementa: RF-13 (calidad del modelo), RF-17 (calificación
+    por lotes y deriva), RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

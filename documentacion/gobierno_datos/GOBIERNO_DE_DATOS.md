@@ -53,10 +53,10 @@ Solicitud y autorización → Extracción → Anonimización → Calidad (Great 
 | Extracción | Solo las columnas del contrato del almacén (minimización) | `COLUMNAS_OBLIGATORIAS` y `COLUMNAS_OPCIONALES` | `backend/etl/perfiles.py` |
 | Anonimización | Seudónimo HMAC-SHA256 con clave institucional; supresión de nombres; generalización de ciudad; k-anonimato con k = 5 | Script con informe sin datos personales | `backend/scripts/anonimizar_carrera.py` |
 | Calidad | Integridad, dominio, rango y volumen antes de entrenar; una falla crítica detiene el pipeline | 23 expectativas de Great Expectations | `backend/mlops/calidad_datos.py` |
-| Almacenamiento | Aislamiento por institución en el motor; tablas físicas sin acceso para las cuentas de la aplicación | `SESSION_CONTEXT`, vistas `VIS_*`, cuentas `chat_reader` y `app_seguimiento` | `base_de_datos/crear_almacen_academico.sql` |
+| Almacenamiento | Aislamiento por institución en el motor; tablas físicas sin acceso para las cuentas de la aplicación; canal cifrado y contraseñas sujetas a la política del motor | `SESSION_CONTEXT`, vistas `VIS_*`, cuentas `chat_reader` y `app_seguimiento` creadas con `CHECK_POLICY = ON`; conexión con `Encrypt=yes` (el certificado autofirmado solo se acepta si `DB_TRUST_SERVER_CERT` lo permite) | `base_de_datos/crear_almacen_academico.sql`, `backend/core/db.py` |
 | Entrenamiento | Cada modelo queda trazado: datos, parámetros, métricas y artefactos | Experimento por institución en MLflow | `backend/mlops/registro_mlflow.py` |
 | Uso | Alerta = sugerencia, no decisión; una persona revisa antes de contactar | Registro de intervención con su responsable | Página «Seguimiento», `sp_registrar_intervencion` |
-| Consulta conversacional | La IA externa recibe el esquema y, si se pide interpretación, filas seudonimizadas; nunca cédulas ni nombres | Seudonimización y verificador de cifras | `backend/core/privacidad.py`, `backend/nl2sql/redactor.py` |
+| Consulta conversacional | La IA externa recibe el esquema y la pregunta depurada (cédulas, correos, teléfonos y nombres de estudiantes reemplazados por marcadores); si se pide interpretación, filas seudonimizadas y sin texto libre del seguimiento; nunca cédulas ni nombres | Depuración de la pregunta (`depurar_texto`), seudonimización (`filas_para_ia`), verificador de cifras y evento `INTERPRETACION` en la bitácora | `backend/core/privacidad.py`, `backend/nl2sql/generador.py`, `backend/nl2sql/redactor.py`, `backend/api/consulta.py` |
 | Inteligencia de negocios | Metabase solo ve agregados de 5 o más estudiantes, sin identificadores | Esquema `bi` y cuenta `metabase_lector` | `base_de_datos/crear_vistas_metabase.sql` |
 | Monitoreo | Si la distribución de entrada cambia, se avisa y se reentrena | Evidently (DataDriftPreset) y PSI | `backend/mlops/deriva.py`, `backend/ml/calificar.py` |
 | Auditoría | Cada ingreso, consulta y exportación queda registrada con su usuario y la huella del SQL | Bitácora de auditoría | Página «Auditoría» |
@@ -92,8 +92,10 @@ La matriz se aplica en el backend (`CAPACIDADES_POR_ROL` en `core/seguridad.py`,
 Los proveedores de lenguaje (Gemini, Groq, NVIDIA y DeepSeek) operan fuera del Ecuador. En el prototipo reciben solo:
 
 - el esquema de las vistas, sin datos;
-- la pregunta del usuario;
-- y, solo si el usuario pide una interpretación, las filas del resultado seudonimizadas.
+- la pregunta del usuario, depurada antes del envío: las cédulas, correos, teléfonos y nombres de estudiantes se reemplazan por marcadores que se restauran solo en el servidor (`core/privacidad.py`, `depurar_texto`);
+- y, solo si el usuario pide una interpretación, las filas del resultado seudonimizadas (sin las columnas de texto libre del seguimiento).
+
+Cada interpretación queda en la bitácora como evento `INTERPRETACION`, con el proveedor, el número de filas enviadas y la huella del mensaje, nunca con los datos.
 
 Para un despliegue con datos reales se requiere una de dos opciones:
 
@@ -131,6 +133,10 @@ Mientras no exista ninguna de las dos, la interpretación con IA debe deshabilit
 | Brecha de recall entre grupos | ≤ 10 puntos | `metricas.json` (equidad) |
 | Consultas que intentan escribir o leer otra institución | 0 ejecutadas | Evaluación de la consulta conversacional |
 | Accesos sin bitácora | 0 | Auditoría |
+
+## 11. Documento complementario
+
+`documentacion/tecnica/GOBIERNO_DE_DATOS_LOPDP.md` desarrolla, artículo por artículo y con la página de la edición consultada, el análisis jurídico que respalda esta política: definiciones (art. 4), principios (art. 10), derechos del titular con sus plazos (arts. 12 a 20 y 62), retención (art. 10, lit. i; art. 15), notificación de vulneraciones (arts. 43 y 46), evaluación de impacto (art. 42), matriz de responsabilidades y la lista de brechas pendientes antes de cargar datos reales. Este documento fija la política; aquel, su fundamento y su estado de cumplimiento.
 
 ## Referencias
 

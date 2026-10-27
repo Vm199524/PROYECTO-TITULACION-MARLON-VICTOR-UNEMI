@@ -1,0 +1,81 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "2 · Datos: ETL por perfiles y almacén en estrella",
+  "description": "De la base operativa de cada institución al almacén en estrella con vistas gobernadas.",
+  "isPrimary": false,
+  "steps": [
+    {
+      "file": "backend/etl/perfiles.py",
+      "pattern": "class PerfilInstitucion:",
+      "title": "Un perfil por institución",
+      "description": "Cada institución describe cómo extraer sus datos al **contrato** del almacén. Agregar una universidad es escribir un perfil, no cambiar el ETL."
+    },
+    {
+      "file": "backend/etl/perfiles.py",
+      "pattern": "_UNEMI_PRUEBAS = PerfilInstitucion\\(",
+      "title": "Perfil UNEMI (datos de prueba)",
+      "description": "El SELECT de origen traduce las columnas propias de la institución a los nombres del contrato: periodo, nivel, estado, promedio, asistencia y variables opcionales."
+    },
+    {
+      "file": "backend/etl/perfiles.py",
+      "pattern": "def validar_filas\\(",
+      "title": "Reglas de calidad que bloquean la carga",
+      "description": "Antes de cargar comprobamos estados y modalidades válidos y rangos de promedio (0-10) y asistencia (0-100). Si algo falla, el ETL se detiene."
+    },
+    {
+      "file": "backend/mlops/calidad_datos.py",
+      "pattern": "def reglas\\(df: pd.DataFrame\\)",
+      "title": "Expectativas de calidad con Great Expectations",
+      "description": "Sobre la trayectoria ya cargada en el almacén declaramos expectativas de integridad, dominio, rango y volumen, y las validamos con **Great Expectations**. El resultado queda en `calidad_datos.json`; si GX no está instalado, las mismas reglas se evalúan con pandas."
+    },
+    {
+      "file": "backend/etl/etl_academico.py",
+      "pattern": "problemas = validar_filas\\(filas\\)",
+      "title": "Extraer, validar y cargar",
+      "description": "El flujo del ETL: extraemos con el perfil, validamos el contrato y solo si no hay errores de calidad cargamos al almacén."
+    },
+    {
+      "file": "backend/etl/etl_academico.py",
+      "pattern": "def cargar\\(conn, filas",
+      "title": "Carga idempotente por institución",
+      "description": "Actualizamos la dimensión institución con MERGE y recargamos solo los hechos de esa institución, respetando el orden de las llaves foráneas."
+    },
+    {
+      "file": "base_de_datos/crear_almacen_academico.sql",
+      "pattern": "-- ── Dimensiones",
+      "title": "Esquema en estrella: dimensiones",
+      "description": "Modelamos el almacén como **esquema estrella**: dimensiones de institución, tiempo, estado, modalidad, periodo, sede, carrera y alumno."
+    },
+    {
+      "file": "base_de_datos/crear_almacen_academico.sql",
+      "pattern": "CREATE TABLE dbo.fact_matriculas \\(",
+      "title": "Hecho central",
+      "description": "La tabla de hechos tiene un grano claro: alumno × carrera × periodo × corte. Sobre ella se arma el panel del modelo."
+    },
+    {
+      "file": "base_de_datos/crear_almacen_academico.sql",
+      "pattern": "CREATE TABLE dbo.fact_prediccion_abandono \\(",
+      "title": "Resultados de los procesos por lotes",
+      "description": "Las predicciones, segmentos y evaluaciones del modelo también son hechos, pero los escribe solo el sistema, nunca un usuario."
+    },
+    {
+      "file": "base_de_datos/crear_almacen_academico.sql",
+      "pattern": "CREATE VIEW dbo.VIS_ALUMNO AS",
+      "title": "Vistas gobernadas VIS_*",
+      "description": "Cada vista filtra por `SESSION_CONTEXT(N'institucion_activa')`. Si la conexión no fijó una institución, la vista devuelve cero filas: el aislamiento lo garantiza el motor, no la aplicación."
+    },
+    {
+      "file": "base_de_datos/crear_almacen_academico.sql",
+      "pattern": "CREATE PROCEDURE dbo.sp_registrar_intervencion",
+      "title": "Escritura solo por procedimientos",
+      "description": "El registro de seguimiento se hace con procedimientos almacenados que toman la institución del contexto de sesión, no de un parámetro manipulable."
+    },
+    {
+      "file": "base_de_datos/crear_almacen_academico.sql",
+      "pattern": "GRANT SELECT ON dbo.VIS_INSTITUCION",
+      "title": "Cuentas de mínimo privilegio",
+      "description": "`chat_reader` solo puede leer las vistas VIS_* y `app_seguimiento` solo ejecutar sus dos procedimientos. Ninguna cuenta de la aplicación toca las tablas físicas."
+    }
+  ],
+  "nextTour": "3 · Entrenamiento del modelo de abandono"
+}

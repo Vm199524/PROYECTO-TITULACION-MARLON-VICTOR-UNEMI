@@ -16,6 +16,10 @@ Flujo de una pregunta:
   5. Respuesta: resumen determinista, visualización sugerida, cédulas
      enmascaradas y SQL visible solo para el rol de administración de TI.
 
+Requerimientos que implementa: RF-10 (consulta en español), RF-18 (aislamiento
+    por institución), RNF-01 (protección de datos), RNF-02 (mínimo privilegio y
+    aislamiento).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -28,7 +32,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Callable
 
 from core import db
-from core.privacidad import enmascarar_para_pantalla
+from core.privacidad import IndiceNombres, enmascarar_para_pantalla, indice_nombres
 from nl2sql import enrutador, generador, redactor, validador
 from nl2sql.guardarrailes import clasificar
 from nl2sql.proveedores import SinProveedores
@@ -70,6 +74,7 @@ class Respuesta:
 
 # ── Caché pequeña: entidades por institución y resultados recientes ─────
 _cache_entidades: dict[str, tuple[float, list[str], list[str]]] = {}
+_cache_nombres: dict[str, tuple[float, IndiceNombres]] = {}
 _resultados: dict[str, tuple[float, str, str, list[str], list[list]]] = {}
 _candado = threading.Lock()
 
@@ -86,6 +91,30 @@ def _entidades_institucion(institucion: str, lector: Lector) -> tuple[list[str],
     with _candado:
         _cache_entidades[institucion] = (ahora, carreras, facultades)
     return carreras, facultades
+
+
+def nombres_institucion(institucion: str, lector: Lector | None = None) -> IndiceNombres:
+    """Índice de nombres de los estudiantes de la institución activa (caché de 10 minutos).
+
+    Sirve para reemplazar por marcadores los nombres que aparezcan en una
+    pregunta antes de enviarla a un proveedor de IA. Si la consulta falla se
+    devuelve un índice vacío y se aplican solo los patrones de identificadores.
+    """
+    ahora = time.time()
+    with _candado:
+        guardado = _cache_nombres.get(institucion)
+    if guardado and ahora - guardado[0] < 600:
+        return guardado[1]
+    try:
+        columnas, filas = (lector or db.leer)('SELECT DISTINCT apellidos, nombres FROM VIS_ALUMNO', institucion, ())
+    except Exception:  # noqa: BLE001 — sin nombres, la depuración sigue con los patrones
+        return {}
+    if [str(c).lower() for c in columnas[:2]] != ['apellidos', 'nombres']:
+        return {}
+    indice = indice_nombres([(f[0], f[1]) for f in filas if len(f) >= 2])
+    with _candado:
+        _cache_nombres[institucion] = (ahora, indice)
+    return indice
 
 
 def _guardar_resultado(r: Respuesta, institucion: str) -> None:
@@ -147,7 +176,7 @@ def responder(pregunta: str, institucion: str, instituciones_conocidas: list[str
             sugerida, r.sql = elegida.metrica['visualizacion'], sql
         else:
             ejemplos = enrutador.ejemplos_guiados(entidades)
-            gen = generador.generar(r.pregunta, ejemplos, historial)
+            gen = generador.generar(r.pregunta, ejemplos, historial, nombres=nombres_institucion(institucion, lector))
             r.proveedor = f'{gen.proveedor} ({gen.modelo})'
             if not gen.sql:
                 r.origen, r.explicacion = 'SIN_RESPUESTA', gen.nota or 'No encontré cómo responder esa pregunta con los datos disponibles.'

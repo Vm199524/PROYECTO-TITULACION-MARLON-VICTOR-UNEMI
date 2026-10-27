@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Barreras de intención antes de generar SQL (RNF de seguridad y aislamiento entre instituciones)."""
+"""Barreras de intención antes de generar SQL (seguridad y aislamiento entre instituciones).
+
+Verifica: RF-10 (consulta en español), RF-18 (aislamiento por institución),
+    RNF-05 (calidad de la consulta).
+"""
 import json
 from pathlib import Path
 

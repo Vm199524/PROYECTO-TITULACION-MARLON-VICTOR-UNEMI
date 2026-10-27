@@ -17,6 +17,9 @@ Acceso a SQL Server con tres cuentas de privilegio distinto.
 Que el panel y el chat lean por la misma cuenta y las mismas vistas garantiza
 que nunca muestren cifras distintas.
 
+Requerimientos que implementa: RF-18 (aislamiento por institución), RNF-02
+    (mínimo privilegio y aislamiento).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -48,8 +51,15 @@ def _pyodbc():
 
 
 def _cadena(usuario: str, clave: str, base: str) -> str:
+    """Arma la cadena ODBC con el canal siempre cifrado (Encrypt=yes).
+
+    TrustServerCertificate=yes solo se agrega si DB_TRUST_SERVER_CERT lo
+    permite (certificado autofirmado del contenedor de desarrollo). En
+    producción debe quedar en 'no' para que el driver valide el certificado.
+    """
+    confiar = 'yes' if CONFIG.db_confiar_certificado else 'no'
     return (f"DRIVER={{{CONFIG.db_driver}}};SERVER={CONFIG.db_host};DATABASE={base};"
-            f"UID={usuario};PWD={clave};TrustServerCertificate=yes;Encrypt=no;")
+            f"UID={usuario};PWD={clave};Encrypt=yes;TrustServerCertificate={confiar};")
 
 
 def conectar_admin(base: str | None = None, autocommit: bool = False, tiempo: int = 30):
@@ -146,7 +156,7 @@ def leer(sql: str, institucion: str, parametros: tuple | list = ()) -> tuple[lis
 def leer_dicts(sql: str, institucion: str, parametros: tuple | list = ()) -> list[dict[str, Any]]:
     """Igual que leer(), pero devuelve una lista de diccionarios."""
     columnas, filas = leer(sql, institucion, parametros)
-    return [dict(zip(columnas, f)) for f in filas]
+    return [dict(zip(columnas, f, strict=False)) for f in filas]
 
 
 def ejecutar_seguimiento(procedimiento: str, institucion: str, parametros: tuple) -> list[dict[str, Any]]:
@@ -160,7 +170,7 @@ def ejecutar_seguimiento(procedimiento: str, institucion: str, parametros: tuple
             if cur.description is None:
                 return []
             columnas = [c[0] for c in cur.description]
-            return [dict(zip(columnas, [_a_json(v) for v in fila])) for fila in cur.fetchall()]
+            return [dict(zip(columnas, [_a_json(v) for v in fila], strict=False)) for fila in cur.fetchall()]
     except ErrorBaseDatos:
         raise
     except Exception as exc:  # noqa: BLE001

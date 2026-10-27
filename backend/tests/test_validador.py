@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Validador del SQL generado: solo lecturas sobre las vistas gobernadas VIS_* (RNF de seguridad)."""
+"""Validador del SQL generado: solo lecturas sobre las vistas gobernadas VIS_*.
+
+Verifica: RF-10 (consulta en español), RNF-02 (mínimo privilegio y
+    aislamiento), RNF-05 (calidad de la consulta).
+"""
 import pytest
 
 from nl2sql.validador import LIMITE_FILAS, validar

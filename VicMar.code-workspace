@@ -1,0 +1,43 @@
+{
+  "folders": [{ "name": "VicMar", "path": "." }],
+  "settings": {
+    "editor.fontSize": 19,
+    "terminal.integrated.fontSize": 16,
+    "editor.minimap.enabled": false,
+    "editor.renderWhitespace": "none",
+    "editor.wordWrap": "on",
+    "breadcrumbs.enabled": true,
+    "workbench.startupEditor": "readme",
+    "files.exclude": {
+      "**/venv*": true,
+      "**/.venv": true,
+      "**/node_modules": true,
+      "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/.ruff_cache": true,
+      "backend/datos_locales/mlflow": true,
+      "**/dist": true,
+      "**/*.tsbuildinfo": true,
+      "**/.coverage": true,
+      "_POR_REVISAR_ELIMINAR": true,
+      "_MATERIAL_EXTERNO_NO_SUBIR": true,
+      "ANEXO_USO_ETICO_IA": true,
+      "datos/externos": true
+    },
+    "search.exclude": {
+      "**/package-lock.json": true,
+      "**/requirements.lock.txt": true,
+      "backend/ml/modelos/*/deriva_evidently.html": true
+    },
+    "files.watcherExclude": {
+      "**/venv*/**": true,
+      "**/node_modules/**": true,
+      "backend/datos_locales/mlflow/**": true,
+      "datos/externos/**": true
+    },
+    "codetour.promptForWorkspaceTours": true
+  },
+  "extensions": {
+    "recommendations": ["vsls-contrib.codetour", "ms-python.python", "ms-mssql.mssql"]
+  }
+}

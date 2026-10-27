@@ -3,6 +3,11 @@
  *
  * Solo para Administración de TI. El backend impide quitarse el propio rol, desactivarse
  * a sí mismo o eliminar la última cuenta de administración.
+ *
+ * Ruta: /admin/usuarios · Rol: Administración de TI (capacidad `administrar_usuarios`).
+ * API: GET /admin/usuarios, POST /admin/usuarios, PUT /admin/usuarios/{usuario},
+ * DELETE /admin/usuarios/{usuario}.
+ * Requisitos: RF-15.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'

@@ -1,4 +1,9 @@
-/** src/paginas/ficha/GraficoTrayectoria.tsx — promedio y asistencia del estudiante por periodo. */
+/**
+ * src/paginas/ficha/GraficoTrayectoria.tsx — promedio y asistencia del estudiante por periodo.
+ *
+ * Se muestra en: /estudiantes/:token (Ficha.tsx). API: ninguna; recibe los datos de la página.
+ * Requisitos: RF-07.
+ */
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Leyenda, TooltipGrafico } from '../../componentes/graficos/Tooltip'
 import { useColores } from '../../componentes/graficos/colores'

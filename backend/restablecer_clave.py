@@ -7,6 +7,8 @@ nunca se imprime. Uso, desde la carpeta backend:
 
     venv\\Scripts\\python.exe restablecer_clave.py
 
+Requerimientos que implementa: RF-15 (administración de cuentas).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 """
 from getpass import getpass

@@ -12,6 +12,9 @@ Advertencia que la interfaz muestra siempre: el modelo es predictivo, no
 causal. El resultado indica cómo cambiaría la estimación del modelo, no
 garantiza que una intervención produzca ese efecto.
 
+Requerimientos que implementa: RF-08 (simulador de escenarios), RNF-09
+    (explicabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

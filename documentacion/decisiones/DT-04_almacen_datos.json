@@ -42,7 +42,7 @@
         "C1": {
           "valor": 5,
           "justificacion": "SESSION_CONTEXT con valores de solo lectura y seguridad por filas en todas las ediciones; el aislamiento se comprobó con pruebas de integración.",
-          "fuente": "Microsoft Learn, «SESSION_CONTEXT (Transact-SQL)», consultado 2026-10-03; Microsoft Learn, «Editions and supported features of SQL Server 2022», consultado 2026-10-03; Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+          "fuente": "Microsoft Learn, «SESSION_CONTEXT (Transact-SQL)», consultado 2026-10-03; Microsoft Learn, «Editions and supported features of SQL Server 2022», consultado 2026-10-03; Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)"
         },
         "C2": {
           "valor": 3,
@@ -57,7 +57,7 @@
         "C4": {
           "valor": 5,
           "justificacion": "Es el motor implementado: vistas VIS_*, cuenta chat_reader y 22 pruebas de seguridad.",
-          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)"
         }
       }
     },

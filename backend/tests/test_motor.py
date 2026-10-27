@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Motor de consulta conversacional con un lector falso (sin SQL Server ni IA)."""
+"""Motor de consulta conversacional con un lector falso (sin SQL Server ni IA).
+
+Verifica: RF-10 (consulta en español).
+"""
 import pytest
 
 from nl2sql import generador, motor

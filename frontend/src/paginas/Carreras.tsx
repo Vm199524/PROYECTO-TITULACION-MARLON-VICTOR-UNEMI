@@ -5,6 +5,10 @@
  * y riesgo actual, para priorizar recursos por carrera. La validación (silhouette,
  * estabilidad, Kruskal-Wallis y comparación con otros algoritmos) se muestra con una
  * lectura en lenguaje llano.
+ *
+ * Ruta: /carreras · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI (capacidad `ver_carreras`).
+ * API: GET /carreras/segmentos.
+ * Requisitos: RF-11.
  */
 import { lazy, Suspense } from 'react'
 import { IconoCarreras } from '../componentes/iconos'

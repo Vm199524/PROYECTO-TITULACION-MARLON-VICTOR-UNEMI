@@ -3,6 +3,11 @@
  *
  * Cierra el ciclo alerta → acción → resultado: qué se hizo con cada estudiante en
  * riesgo, qué sigue abierto y con qué resultado se cerró.
+ *
+ * Ruta: /seguimiento · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI (capacidad `ver_seguimiento`);
+ * cerrar una intervención exige `registrar_seguimiento`.
+ * API: GET /seguimiento; POST /seguimiento/{id}/cerrar (componentes/seguimiento/Dialogos.tsx).
+ * Requisitos: RF-09.
  */
 import { useState } from 'react'
 import { Link } from 'react-router-dom'

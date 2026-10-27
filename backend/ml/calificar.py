@@ -17,6 +17,9 @@ Uso:
     cd backend
     python -m ml.calificar --institucion UNEMI_PRUEBAS
 
+Requerimientos que implementa: RF-07 (explicación de cada predicción), RF-17
+    (calificación por lotes y deriva), RNF-09 (explicabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

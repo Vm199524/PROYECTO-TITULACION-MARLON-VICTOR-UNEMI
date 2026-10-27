@@ -15,6 +15,9 @@ se evalúa.
 
 Son funciones puras: reciben DataFrames y no tocan la base de datos.
 
+Requerimientos que implementa: RF-03 (entrenamiento y validación), RF-13
+    (calidad del modelo), RNF-04 (calidad predictiva).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

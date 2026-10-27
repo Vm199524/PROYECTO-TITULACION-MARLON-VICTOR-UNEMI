@@ -1,4 +1,10 @@
-/** src/paginas/Perfil.tsx — datos de la cuenta y cambio de contraseña propia. */
+/**
+ * src/paginas/Perfil.tsx — datos de la cuenta y cambio de contraseña propia.
+ *
+ * Ruta: /perfil · Rol: cualquier usuario autenticado.
+ * API: PUT /auth/clave.
+ * Requisitos: RF-01.
+ */
 import { useMutation } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { EncabezadoPagina } from '../componentes/layout/EncabezadoPagina'

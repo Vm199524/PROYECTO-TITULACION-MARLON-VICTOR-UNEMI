@@ -13,6 +13,10 @@ Arranque en desarrollo:
     cd backend
     python -m uvicorn main:app --reload --port 8090
 
+Requerimientos que implementa: RF-01 (autenticación y permisos por rol), RF-18
+    (aislamiento por institución), RNF-02 (mínimo privilegio y aislamiento),
+    RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

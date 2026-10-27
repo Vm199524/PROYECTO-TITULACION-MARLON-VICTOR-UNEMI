@@ -13,6 +13,9 @@ Tres roles, pensados para quienes usan el sistema en una universidad:
 El frontend oculta lo que un rol no puede usar, pero la autorización real
 ocurre aquí, en cada petición (dependencia `requiere`).
 
+Requerimientos que implementa: RF-01 (autenticación y permisos por rol), RF-18
+    (aislamiento por institución).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -111,7 +114,7 @@ def sesion_actual(
     try:
         datos = jwt.decode(credenciales.credentials, CONFIG.jwt_clave, algorithms=[CONFIG.jwt_algoritmo])
     except JWTError:
-        raise no_autorizado
+        raise no_autorizado from None
     cuenta = usuarios.buscar(datos.get('sub', ''))
     if not cuenta or not cuenta.get('activo', True):
         raise no_autorizado

@@ -59,7 +59,7 @@
         "C3": {
           "valor": 5,
           "justificacion": "No impone ORM; el backend usa pyodbc y fija SESSION_CONTEXT y el SELECT en la misma conexión, comprobado por pruebas.",
-          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)"
         },
         "C4": {
           "valor": 4,

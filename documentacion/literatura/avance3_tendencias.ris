@@ -1,0 +1,358 @@
+TY  - JOUR
+AU  - Kreuzberger, D.
+AU  - Kühl, N.
+AU  - Hirschl, S.
+TI  - Machine Learning Operations (MLOps): Overview, Definition, and Architecture
+T2  - IEEE Access
+PY  - 2023
+VL  - 11
+SP  - 31866
+EP  - 31879
+DO  - 10.1109/ACCESS.2023.3262138
+UR  - https://doi.org/10.1109/ACCESS.2023.3262138
+N1  - Avance 3, tendencias: 1. MLOps y ciclo de vida
+ER  - 
+
+TY  - JOUR
+AU  - Berberi, L.
+AU  - Kozlov, V.
+AU  - Nguyen, G.
+AU  - Sáinz-Pardo Díaz, J.
+AU  - Calatrava, A.
+AU  - Moltó, G.
+AU  - Tran, V.
+AU  - López García, Á.
+TI  - Machine learning operations landscape: platforms and tools
+T2  - Artificial Intelligence Review
+PY  - 2025
+VL  - 58
+IS  - 6
+SP  - 167
+DO  - 10.1007/s10462-025-11164-3
+UR  - https://doi.org/10.1007/s10462-025-11164-3
+N1  - Avance 3, tendencias: 1. MLOps y ciclo de vida
+ER  - 
+
+TY  - JOUR
+AU  - Sherpa, L.
+AU  - Khaydarov, V.
+AU  - Müller-Pfefferkorn, R.
+TI  - FAIRness Along the Machine Learning Lifecycle Using Dataverse in Combination with MLflow
+T2  - Data Science Journal
+PY  - 2024
+VL  - 23
+SP  - 55
+DO  - 10.5334/dsj-2024-055
+UR  - https://doi.org/10.5334/dsj-2024-055
+N1  - Avance 3, tendencias: 1. MLOps y ciclo de vida
+ER  - 
+
+TY  - JOUR
+AU  - Bodor, A.
+AU  - Hnida, M.
+AU  - Daoudi, N.
+TI  - Machine Learning Models Monitoring in MLOps Context: Metrics and Tools
+T2  - International Journal of Interactive Mobile Technologies (iJIM)
+PY  - 2023
+VL  - 17
+IS  - 23
+SP  - 125
+EP  - 139
+DO  - 10.3991/ijim.v17i23.43479
+UR  - https://doi.org/10.3991/ijim.v17i23.43479
+N1  - Avance 3, tendencias: 2. Monitoreo de deriva
+ER  - 
+
+TY  - JOUR
+AU  - Kustitskaya, T. A.
+AU  - Esin, R. V.
+AU  - Noskov, M. V.
+TI  - Model Drift in Deployed Machine Learning Models for Predicting Learning Success
+T2  - Computers
+PY  - 2025
+VL  - 14
+IS  - 9
+SP  - 351
+DO  - 10.3390/computers14090351
+UR  - https://doi.org/10.3390/computers14090351
+N1  - Avance 3, tendencias: 2. Monitoreo de deriva
+ER  - 
+
+TY  - JOUR
+AU  - Sonnleitner, B.
+AU  - Madou, T.
+AU  - Deceuninck, M.
+AU  - Theodosiou, F.
+AU  - Sagaert, Y. R.
+TI  - Evaluation of early student performance prediction given concept drift
+T2  - Computers and Education: Artificial Intelligence
+PY  - 2025
+VL  - 8
+SP  - 100369
+DO  - 10.1016/j.caeai.2025.100369
+UR  - https://doi.org/10.1016/j.caeai.2025.100369
+N1  - Avance 3, tendencias: 2. Monitoreo de deriva
+ER  - 
+
+TY  - JOUR
+AU  - Becker, A.
+AU  - Becker, J.
+TI  - Dataset shift assessment measures in monitoring predictive models
+T2  - Procedia Computer Science
+PY  - 2021
+VL  - 192
+SP  - 3391
+EP  - 3402
+DO  - 10.1016/j.procs.2021.09.112
+UR  - https://doi.org/10.1016/j.procs.2021.09.112
+N1  - Avance 3, tendencias: 2. Monitoreo de deriva
+ER  - 
+
+TY  - JOUR
+AU  - Bayram, F.
+AU  - Ahmed, B. S.
+AU  - Hallin, E.
+TI  - End-to-end data quality-driven framework for machine learning in production environment
+T2  - Heliyon
+PY  - 2026
+VL  - 12
+IS  - 1
+SP  - e44416
+DO  - 10.1016/j.heliyon.2025.e44416
+UR  - https://doi.org/10.1016/j.heliyon.2025.e44416
+N1  - Avance 3, tendencias: 3. Calidad y validación de datos
+ER  - 
+
+TY  - JOUR
+AU  - Pancini, M.
+AU  - Camilli, M.
+AU  - Quattrocchi, G.
+AU  - Andrew Tamburri, D.
+TI  - Engineering MLOps Pipelines With Data Quality: A Case Study on Tabular Datasets in Kaggle
+T2  - Journal of Software: Evolution and Process
+PY  - 2025
+VL  - 37
+IS  - 9
+SP  - e70044
+DO  - 10.1002/smr.70044
+UR  - https://doi.org/10.1002/smr.70044
+N1  - Avance 3, tendencias: 3. Calidad y validación de datos
+ER  - 
+
+TY  - JOUR
+AU  - Nagy, M.
+AU  - Molontay, R.
+TI  - Interpretable Dropout Prediction: Towards XAI-Based Personalized Intervention
+T2  - International Journal of Artificial Intelligence in Education
+PY  - 2024
+VL  - 34
+IS  - 2
+SP  - 274
+EP  - 300
+DO  - 10.1007/s40593-023-00331-8
+UR  - https://doi.org/10.1007/s40593-023-00331-8
+N1  - Avance 3, tendencias: 4. Explicabilidad (SHAP/XAI)
+ER  - 
+
+TY  - JOUR
+AU  - Arévalo-Cordovilla, F. E.
+AU  - Peña, M.
+TI  - Evaluating ensemble models for fair and interpretable prediction in higher education using multimodal data
+T2  - Scientific Reports
+PY  - 2025
+VL  - 15
+IS  - 1
+SP  - 29420
+DO  - 10.1038/s41598-025-15388-9
+UR  - https://doi.org/10.1038/s41598-025-15388-9
+N1  - Avance 3, tendencias: 4. Explicabilidad (SHAP/XAI)
+ER  - 
+
+TY  - JOUR
+AU  - Tiukhova, E.
+AU  - Vemuri, P.
+AU  - López Flores, N. G.
+AU  - Islind, A. S.
+AU  - Óskarsdóttir, M.
+AU  - Poelmans, S.
+AU  - Baesens, B.
+AU  - Snoeck, M.
+TI  - Explainable Learning Analytics: Assessing the stability of student success prediction models by means of explainable AI
+T2  - Decision Support Systems
+PY  - 2024
+VL  - 182
+SP  - 114229
+DO  - 10.1016/j.dss.2024.114229
+UR  - https://doi.org/10.1016/j.dss.2024.114229
+N1  - Avance 3, tendencias: 4. Explicabilidad (SHAP/XAI)
+ER  - 
+
+TY  - JOUR
+AU  - Shi, L.
+AU  - Tang, Z.
+AU  - Zhang, N.
+AU  - Zhang, X.
+AU  - Yang, Z.
+TI  - A Survey on Employing Large Language Models for Text-to-SQL Tasks
+T2  - ACM Computing Surveys
+PY  - 2025
+VL  - 58
+IS  - 2
+SP  - 1
+EP  - 37
+DO  - 10.1145/3737873
+UR  - https://doi.org/10.1145/3737873
+N1  - Avance 3, tendencias: 5. Text-to-SQL con LLM y riesgos
+ER  - 
+
+TY  - JOUR
+AU  - Hong, Z.
+AU  - Yuan, Z.
+AU  - Zhang, Q.
+AU  - Chen, H.
+AU  - Dong, J.
+AU  - Huang, F.
+AU  - Huang, X.
+TI  - Next-Generation Database Interfaces: A Survey of LLM-Based Text-to-SQL
+T2  - IEEE Transactions on Knowledge and Data Engineering
+PY  - 2025
+VL  - 37
+IS  - 12
+SP  - 7328
+EP  - 7345
+DO  - 10.1109/TKDE.2025.3609486
+UR  - https://doi.org/10.1109/TKDE.2025.3609486
+N1  - Avance 3, tendencias: 5. Text-to-SQL con LLM y riesgos
+ER  - 
+
+TY  - JOUR
+AU  - Chafik, S.
+AU  - Ezzini, S.
+AU  - Berrada, I.
+TI  - Enhancing security in text-to-SQL systems: A novel dataset and agent-based framework
+T2  - Natural Language Processing
+PY  - 2025
+VL  - 31
+IS  - 6
+SP  - 1399
+EP  - 1422
+DO  - 10.1017/nlp.2025.10008
+UR  - https://doi.org/10.1017/nlp.2025.10008
+N1  - Avance 3, tendencias: 5. Text-to-SQL con LLM y riesgos
+ER  - 
+
+TY  - CPAPER
+AU  - Zhang, J.
+AU  - Zhou, Y.
+AU  - Hui, B.
+AU  - Liu, Y.
+AU  - Li, Z.
+AU  - Hu, S.
+TI  - TrojanSQL: SQL Injection against Natural Language Interface to Database
+T2  - Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing
+PY  - 2023
+SP  - 4344
+EP  - 4359
+DO  - 10.18653/v1/2023.emnlp-main.264
+UR  - https://doi.org/10.18653/v1/2023.emnlp-main.264
+N1  - Avance 3, tendencias: 5. Text-to-SQL con LLM y riesgos
+ER  - 
+
+TY  - JOUR
+AU  - Lennerholt, C.
+AU  - Van Laere, J.
+AU  - Söderström, E.
+TI  - User-Related Challenges of Self-Service Business Intelligence
+T2  - Information Systems Management
+PY  - 2021
+VL  - 38
+IS  - 4
+SP  - 309
+EP  - 323
+DO  - 10.1080/10580530.2020.1814458
+UR  - https://doi.org/10.1080/10580530.2020.1814458
+N1  - Avance 3, tendencias: 6. BI de autoservicio y lenguaje natural
+ER  - 
+
+TY  - JOUR
+AU  - Passlick, J.
+AU  - Grützner, L.
+AU  - Schulz, M.
+AU  - Breitner, M. H.
+TI  - Self-service business intelligence and analytics application scenarios: A taxonomy for differentiation
+T2  - Information Systems and e-Business Management
+PY  - 2023
+VL  - 21
+IS  - 1
+SP  - 159
+EP  - 191
+DO  - 10.1007/s10257-022-00574-3
+UR  - https://doi.org/10.1007/s10257-022-00574-3
+N1  - Avance 3, tendencias: 6. BI de autoservicio y lenguaje natural
+ER  - 
+
+TY  - JOUR
+AU  - Ruoff, M.
+AU  - Gnewuch, U.
+AU  - Maedche, A.
+AU  - Scheibehenne, B.
+TI  - Designing Conversational Dashboards for Effective Use in Crisis Response
+T2  - Journal of the Association for Information Systems
+PY  - 2023
+VL  - 24
+IS  - 6
+SP  - 1500
+EP  - 1526
+DO  - 10.17705/1jais.00801
+UR  - https://doi.org/10.17705/1jais.00801
+N1  - Avance 3, tendencias: 6. BI de autoservicio y lenguaje natural
+ER  - 
+
+TY  - JOUR
+AU  - Bañeres, D.
+AU  - Rodríguez-González, M. E.
+AU  - Guerrero-Roldán, A. E.
+AU  - Cortadas, P.
+TI  - An early warning system to identify and intervene online dropout learners
+T2  - International Journal of Educational Technology in Higher Education
+PY  - 2023
+VL  - 20
+IS  - 1
+SP  - 3
+DO  - 10.1186/s41239-022-00371-5
+UR  - https://doi.org/10.1186/s41239-022-00371-5
+N1  - Avance 3, tendencias: 7. Sistemas de alerta temprana
+ER  - 
+
+TY  - JOUR
+AU  - Plak, S.
+AU  - Cornelisz, I.
+AU  - Meeter, M.
+AU  - van Klaveren, C.
+TI  - Early warning systems for more effective student counselling in higher education: Evidence from a Dutch field experiment
+T2  - Higher Education Quarterly
+PY  - 2022
+VL  - 76
+IS  - 1
+SP  - 131
+EP  - 152
+DO  - 10.1111/hequ.12298
+UR  - https://doi.org/10.1111/hequ.12298
+N1  - Avance 3, tendencias: 7. Sistemas de alerta temprana
+ER  - 
+
+TY  - JOUR
+AU  - Carballo-Mendívil, B.
+AU  - Arellano-González, A.
+AU  - Ríos-Vázquez, N. J.
+AU  - Lizardi-Duarte, M. del P.
+TI  - Predicting Student Dropout from Day One: XGBoost-Based Early Warning System Using Pre-Enrollment Data
+T2  - Applied Sciences
+PY  - 2025
+VL  - 15
+IS  - 16
+SP  - 9202
+DO  - 10.3390/app15169202
+UR  - https://doi.org/10.3390/app15169202
+N1  - Avance 3, tendencias: 7. Sistemas de alerta temprana
+ER  - 

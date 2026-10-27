@@ -17,6 +17,10 @@ de lenguaje cuando no hace falta:
 Es la primera de cuatro barreras (intención, validador del árbol SQL, vistas
 filtradas y cuenta de solo lectura); ninguna depende de las otras.
 
+Requerimientos que implementa: RF-10 (consulta en español), RF-18 (aislamiento
+    por institución), RNF-02 (mínimo privilegio y aislamiento), RNF-05 (calidad
+    de la consulta).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

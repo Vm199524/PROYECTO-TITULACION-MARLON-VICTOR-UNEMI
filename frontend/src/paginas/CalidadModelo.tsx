@@ -5,6 +5,10 @@
  * alertas: validación cruzada agrupada, prueba temporal, prueba prospectiva,
  * calibración, matrices de confusión, importancia de variables, equidad por grupos,
  * deriva de los datos, exactitud de la consulta conversacional y la ficha del modelo.
+ *
+ * Ruta: /modelo · Rol: Autoridad académica y Administración de TI (capacidad `ver_modelo`).
+ * API: GET /modelo/calidad.
+ * Requisitos: RF-03, RF-04, RF-13, RF-17.
  */
 import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { IconoModelo } from '../componentes/iconos'

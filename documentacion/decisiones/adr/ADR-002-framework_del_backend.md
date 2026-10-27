@@ -20,7 +20,7 @@ La API debe atender el panel y el chat, llamar de forma concurrente a una cascad
 ### FastAPI — 4,85 / 5
 - Asincronía para llamadas a servicios externos: **5**. Soporte nativo de async/await sobre ASGI. *Fuente:* Documentación oficial de FastAPI (fastapi.tiangolo.com), consultada 2026-10-03
 - Validación y documentación automática de la API: **5**. Validación con Pydantic y documentación OpenAPI interactiva en /docs, generadas automáticamente. *Fuente:* Documentación oficial de FastAPI (fastapi.tiangolo.com), consultada 2026-10-03
-- Acceso a SQL Server con contexto en la misma conexión: **5**. No impone ORM; el backend usa pyodbc y fija SESSION_CONTEXT y el SELECT en la misma conexión, comprobado por pruebas. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)
+- Acceso a SQL Server con contexto en la misma conexión: **5**. No impone ORM; el backend usa pyodbc y fija SESSION_CONTEXT y el SELECT en la misma conexión, comprobado por pruebas. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)
 - Licencia y soporte: **4**. Licencia MIT y publicaciones frecuentes (0.142.2 del 30/09/2026), aunque sigue en la serie 0.x. *Fuente:* Repositorio oficial fastapi/fastapi en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03
 - Costo de cambio sobre el prototipo validado: **5**. Es el framework implementado y probado. *Fuente:* Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)
 

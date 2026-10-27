@@ -35,6 +35,9 @@ El CSV de entrada debe traer, con esos nombres o con un mapeo en --columnas,
 las columnas del contrato. El de salida se carga con un perfil
 REAL_ANONIMIZADO (por ejemplo UNEMI_CARRERA en etl/perfiles.py).
 
+Requerimientos que implementa: RNF-01 (protección de datos), RF-02 (carga y
+    transformación por perfil).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

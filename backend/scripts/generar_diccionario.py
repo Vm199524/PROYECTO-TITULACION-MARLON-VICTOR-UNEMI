@@ -16,6 +16,8 @@ Uso:
     python -m scripts.generar_diccionario            # desde SQL Server
     python -m scripts.generar_diccionario --script   # sin servidor: desde base_de_datos/crear_almacen_academico.sql
 
+Requerimientos que implementa: RNF-08 (mantenibilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

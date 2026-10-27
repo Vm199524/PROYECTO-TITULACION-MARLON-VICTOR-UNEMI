@@ -1,4 +1,9 @@
-/** src/paginas/carreras/MapaCarreras.tsx — dispersión de carreras coloreadas por segmento. */
+/**
+ * src/paginas/carreras/MapaCarreras.tsx — dispersión de carreras coloreadas por segmento.
+ *
+ * Se muestra en: /carreras (Carreras.tsx). API: ninguna; recibe los datos de la página.
+ * Requisitos: RF-11.
+ */
 import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
 import { Leyenda } from '../../componentes/graficos/Tooltip'
 import { useColores } from '../../componentes/graficos/colores'

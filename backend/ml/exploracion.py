@@ -15,6 +15,8 @@ Uso:
     cd backend
     python -m ml.exploracion --institucion UNEMI_PRUEBAS
 
+Requerimientos que implementa: RF-03 (entrenamiento y validación).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -90,7 +92,7 @@ def figura(inst: str, datos: dict) -> Path | None:
     if not cols:
         return None
     fig, ejes = plt.subplots(1, len(cols), figsize=(15 * PULG, 6.8 * PULG), sharey=True)
-    for ax, col in zip(np.atleast_1d(ejes), cols):
+    for ax, col in zip(np.atleast_1d(ejes), cols, strict=False):
         g = datos['tasa_por_grupo'][col]
         etiquetas = [x['grupo'] for x in g['grupos']]
         tasas = [100 * (x['tasa'] or 0) for x in g['grupos']]

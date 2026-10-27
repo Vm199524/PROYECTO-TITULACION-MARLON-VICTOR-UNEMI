@@ -21,6 +21,9 @@ que lee la página «Calidad del modelo». El PSI de las 10 variables más
 importantes (ml/calificar.py) se mantiene como segunda medida, con los
 umbrales habituales de 0,10 (vigilar) y 0,25 (deriva).
 
+Requerimientos que implementa: RF-13 (calidad del modelo), RF-17 (calificación
+    por lotes y deriva).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

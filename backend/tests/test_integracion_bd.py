@@ -5,6 +5,9 @@ Pruebas de integración con SQL Server (se omiten si no hay almacén cargado).
 Comprueban en el motor de base de datos, no en la aplicación, las garantías
 que el documento declara: mínimo privilegio, aislamiento entre instituciones
 y falla cerrada sin institución en la sesión.
+
+Verifica: RF-18 (aislamiento por institución), RNF-02 (mínimo privilegio y
+    aislamiento).
 """
 import json
 from pathlib import Path

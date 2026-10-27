@@ -5,6 +5,11 @@
  * resumen que solo cita valores del resultado. Cada respuesta dice de dónde salió:
  * una métrica certificada (SQL fijo), una consulta generada con IA y validada, o una
  * barrera de seguridad. La lectura con IA es opcional y se verifica contra las cifras.
+ *
+ * Ruta: /consulta · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI (capacidad `consultar`).
+ * API: GET /consulta/sugerencias, POST /consulta, POST /consulta/{id}/interpretar;
+ * GET /consulta/{id}/excel (capacidad `exportar`).
+ * Requisitos: RF-10, RF-14.
  */
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'

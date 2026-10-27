@@ -1,0 +1,111 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "5 · Seguridad y consulta en lenguaje natural",
+  "description": "Autenticación, aislamiento, privacidad y el flujo completo de una pregunta en lenguaje natural.",
+  "isPrimary": false,
+  "steps": [
+    {
+      "file": "backend/api/sesion.py",
+      "pattern": "def ingresar\\(datos: Credenciales",
+      "title": "Inicio de sesión",
+      "description": "Validamos la contraseña con bcrypt, frenamos los intentos fallidos (cinco en cinco minutos) y registramos cada ingreso en la auditoría."
+    },
+    {
+      "file": "backend/core/seguridad.py",
+      "pattern": "CAPACIDADES_POR_ROL: dict",
+      "title": "Capacidades por rol",
+      "description": "Autoridad, Bienestar y Administración de TI tienen capacidades distintas. Los permisos se piden por capacidad, no por nombre de rol."
+    },
+    {
+      "file": "backend/core/seguridad.py",
+      "pattern": "def sesion_actual\\(",
+      "title": "Validación del token en cada petición",
+      "description": "Verificamos el JWT, revalidamos la cuenta y comprobamos que la institución pedida en `X-Institucion` esté asignada al usuario."
+    },
+    {
+      "file": "backend/core/seguridad.py",
+      "pattern": "def requiere\\(capacidad",
+      "title": "Dependencia requiere()",
+      "description": "Cada endpoint declara la capacidad que necesita; si el rol no la tiene, respondemos 403 antes de tocar los datos."
+    },
+    {
+      "file": "backend/core/db.py",
+      "pattern": "def _cadena\\(",
+      "title": "Canal cifrado",
+      "description": "La conexión a SQL Server siempre usa `Encrypt=yes`. Solo en desarrollo se confía en el certificado autofirmado del contenedor."
+    },
+    {
+      "file": "backend/core/db.py",
+      "pattern": "def _conexion_con_contexto\\(",
+      "title": "Institución fijada en SESSION_CONTEXT",
+      "description": "Al abrir la conexión fijamos la institución con `@read_only = 1`: ninguna sentencia posterior puede cambiarla, y las vistas VIS_* filtran con ella."
+    },
+    {
+      "file": "backend/core/privacidad.py",
+      "pattern": "def token_estudiante\\(",
+      "title": "Token cifrado del estudiante",
+      "description": "La ficha se identifica con un token Fernet, nunca con la cédula, para que no viaje en direcciones ni registros. En pantalla la cédula aparece enmascarada."
+    },
+    {
+      "file": "backend/core/auditoria.py",
+      "pattern": "def registrar\\(accion",
+      "title": "Bitácora de auditoría",
+      "description": "Registramos quién hizo qué, sobre qué institución y con qué resultado. De las consultas guardamos la huella del SQL, no el SQL ni los datos."
+    },
+    {
+      "file": "backend/nl2sql/motor.py",
+      "pattern": "def responder\\(",
+      "title": "Flujo de una pregunta",
+      "description": "El motor orquesta todo: guardarraíles, métrica certificada si existe y, si no, SQL generado por IA, validado y ejecutado con la cuenta de solo lectura."
+    },
+    {
+      "file": "backend/nl2sql/guardarrailes.py",
+      "pattern": "def clasificar\\(",
+      "title": "Guardarraíles",
+      "description": "Antes de consultar detectamos inyección de instrucciones, pedidos de escritura, otras instituciones y tablas internas. Esas preguntas nunca llegan a la base."
+    },
+    {
+      "file": "backend/nl2sql/enrutador.py",
+      "pattern": "def elegir\\(",
+      "title": "Enrutador de métricas certificadas",
+      "description": "Si una métrica certificada entiende toda la pregunta, la respondemos con SQL fijo y revisado; la IA no interviene en la cifra."
+    },
+    {
+      "file": "backend/nl2sql/generador.py",
+      "pattern": "def generar\\(",
+      "title": "Generación con la pregunta depurada",
+      "description": "Si no hay métrica, pedimos el SQL a la IA, pero antes reemplazamos cédulas, correos, teléfonos y nombres por marcadores. Los valores reales nunca salen del servidor."
+    },
+    {
+      "file": "backend/core/privacidad.py",
+      "pattern": "def depurar_texto\\(",
+      "title": "Depuración de datos personales",
+      "description": "Esta función crea los marcadores (CEDULA_n, NOMBRE_n...) y guarda el diccionario para restaurar los valores en el SQL que ejecutamos localmente."
+    },
+    {
+      "file": "backend/nl2sql/proveedores.py",
+      "pattern": "def completar\\(",
+      "title": "Cascada de proveedores",
+      "description": "Probamos los proveedores configurados en orden y usamos la primera respuesta válida. Si uno falla o devuelve basura, pasamos al siguiente."
+    },
+    {
+      "file": "backend/nl2sql/validador.py",
+      "pattern": "def validar\\(sql",
+      "title": "Validador del árbol SQL",
+      "description": "Analizamos el SQL con sqlglot: una sola sentencia SELECT, solo vistas VIS_*, sin funciones peligrosas y con límite de filas. Si no cumple, no se ejecuta."
+    },
+    {
+      "file": "backend/nl2sql/motor.py",
+      "pattern": "def _ejecutar_generada\\(",
+      "title": "Una sola corrección automática",
+      "description": "Si la validación o la base rechazan el SQL, le pedimos a la IA una única corrección con el mensaje de error; si vuelve a fallar, informamos al usuario."
+    },
+    {
+      "file": "backend/nl2sql/redactor.py",
+      "pattern": "def cifras_no_respaldadas\\(",
+      "title": "Redacción verificada",
+      "description": "Cuando la IA interpreta un resultado, comprobamos que cada cifra del texto exista en las filas. Si inventa un número, la interpretación se marca como no verificada."
+    }
+  ],
+  "nextTour": "6 · Frontend: React por rol"
+}

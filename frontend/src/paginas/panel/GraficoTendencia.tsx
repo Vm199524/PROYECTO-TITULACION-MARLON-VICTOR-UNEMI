@@ -1,4 +1,9 @@
-/** src/paginas/panel/GraficoTendencia.tsx — retiros (barras) y tasa de abandono (línea) por periodo. */
+/**
+ * src/paginas/panel/GraficoTendencia.tsx — retiros (barras) y tasa de abandono (línea) por periodo.
+ *
+ * Se muestra en: /panel (Panel.tsx). API: ninguna; recibe los datos de la página.
+ * Requisitos: RF-05.
+ */
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Leyenda, TooltipGrafico } from '../../componentes/graficos/Tooltip'
 import { useColores } from '../../componentes/graficos/colores'

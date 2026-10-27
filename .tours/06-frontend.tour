@@ -1,0 +1,69 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "6 · Frontend: React por rol",
+  "description": "Cliente de la API, sesión, permisos y las pantallas principales.",
+  "isPrimary": false,
+  "steps": [
+    {
+      "file": "frontend/src/lib/api.ts",
+      "pattern": "function cabeceras\\(",
+      "title": "Cada petición lleva token e institución",
+      "description": "El cliente agrega el JWT y la cabecera `X-Institucion`; el backend valida ambos antes de leer."
+    },
+    {
+      "file": "frontend/src/lib/api.ts",
+      "pattern": "respuesta.status === 401",
+      "title": "Sesión vencida",
+      "description": "Un 401 cierra la sesión en todas las pantallas a la vez. El token vive en sessionStorage y se borra al cerrar la pestaña."
+    },
+    {
+      "file": "frontend/src/lib/sesion.tsx",
+      "pattern": "export function ProveedorSesion",
+      "title": "Contexto de sesión",
+      "description": "Guardamos el perfil, las instituciones asignadas y la institución activa; la guardada solo vale si sigue asignada al usuario."
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "pattern": "function Protegida\\(",
+      "title": "Rutas protegidas por capacidad",
+      "description": "Cada pantalla exige una capacidad. Ocultar el menú no basta: si el rol no la tiene, mostramos un aviso, y el backend igual rechaza la petición."
+    },
+    {
+      "file": "frontend/src/paginas/Panel.tsx",
+      "pattern": "export default function Panel\\(",
+      "title": "Panel ejecutivo",
+      "description": "Lo primero que ve la autoridad: indicadores de riesgo, tendencia, carreras con más alertas y la confiabilidad del modelo."
+    },
+    {
+      "file": "frontend/src/paginas/Estudiantes.tsx",
+      "pattern": "export default function Estudiantes\\(",
+      "title": "Estudiantes en riesgo",
+      "description": "Lista filtrable por riesgo y carrera, ordenada por probabilidad. La cédula llega enmascarada desde el servidor."
+    },
+    {
+      "file": "frontend/src/paginas/Ficha.tsx",
+      "pattern": "function Razones\\(",
+      "title": "Ficha: por qué está en riesgo",
+      "description": "Mostramos las variables que más empujan el riesgo, calculadas con SHAP, en lenguaje que entiende Bienestar."
+    },
+    {
+      "file": "frontend/src/paginas/Ficha.tsx",
+      "pattern": "function Simulador\\(",
+      "title": "Simulador ¿qué pasaría si...?",
+      "description": "Bienestar puede mover la asistencia o el promedio y ver cómo cambiaría el riesgo. Es una estimación del modelo, no una garantía."
+    },
+    {
+      "file": "frontend/src/paginas/Consulta.tsx",
+      "pattern": "const ORIGEN: Record",
+      "title": "Consulta: origen visible",
+      "description": "Cada respuesta muestra su origen: métrica certificada, generada con IA y validada, barrera de seguridad o sin respuesta. El usuario sabe cuánto confiar."
+    },
+    {
+      "file": "frontend/src/paginas/CalidadModelo.tsx",
+      "pattern": "function Validacion\\(",
+      "title": "Calidad del modelo",
+      "description": "Publicamos la validación completa: modelos comparados, prueba temporal, calibración, equidad y deriva, para que la autoridad sepa cuánto confiar."
+    }
+  ],
+  "nextTour": "7 · Pruebas e integración continua"
+}

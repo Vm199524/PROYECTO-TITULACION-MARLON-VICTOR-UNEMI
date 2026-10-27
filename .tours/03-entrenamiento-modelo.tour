@@ -1,0 +1,99 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "3 · Entrenamiento del modelo de abandono",
+  "description": "Del panel estudiante-periodo al modelo calibrado con sus umbrales, sin fuga de información.",
+  "isPrimary": false,
+  "steps": [
+    {
+      "file": "backend/ml/caracteristicas.py",
+      "pattern": "Unidad de análisis: el estudiante en un periodo",
+      "title": "Unidad de análisis",
+      "description": "Cada fila responde: con lo que sabemos del estudiante hasta este periodo, ¿abandonará en el siguiente? Las variables solo usan información hasta el periodo t."
+    },
+    {
+      "file": "backend/ml/caracteristicas.py",
+      "pattern": "def construir_panel\\(",
+      "title": "Una sola función para entrenar y calificar",
+      "description": "La misma transformación arma el panel para entrenar y para calificar; si se calcularan distinto, el modelo se descalibraría sin aviso."
+    },
+    {
+      "file": "backend/ml/caracteristicas.py",
+      "pattern": "lag1, lag2 = g\\[valor\\].shift\\(1\\)",
+      "title": "Variables sin fuga",
+      "description": "Rezagos, medias móviles y acumuladas miran solo hacia atrás (`shift(1)`, `cumsum`, `cummin`) dentro de la trayectoria. Nunca usan un periodo futuro."
+    },
+    {
+      "file": "backend/ml/caracteristicas.py",
+      "pattern": "cohorte = \\['carrera_id', 'periodo_id', 'corte'\\]",
+      "title": "Comparación con la cohorte",
+      "description": "Comparamos al estudiante con sus pares de la misma carrera, periodo y corte, es decir, con el mismo momento y no con el futuro."
+    },
+    {
+      "file": "backend/ml/caracteristicas.py",
+      "pattern": "# Etiqueta: estado del periodo siguiente",
+      "title": "La etiqueta",
+      "description": "La etiqueta `y` es 1 si el periodo siguiente de la misma trayectoria es RETIRADO. Solo calificamos el periodo vigente de quien sigue ACTIVO."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "def particion_temporal\\(",
+      "title": "Partición temporal",
+      "description": "Reservamos como prueba los periodos más recientes (al menos el 25 % de las filas): entrenamos con el pasado y evaluamos con el futuro, como en el uso real."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "def candidatos\\(",
+      "title": "Cuatro algoritmos candidatos",
+      "description": "Comparamos Random Forest ponderado, Random Forest con SMOTE (solo dentro del entrenamiento), regresión logística como línea base y LightGBM."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "def ajustar_lgbm\\(",
+      "title": "Optimización con Optuna",
+      "description": "Ajustamos LightGBM con optimización bayesiana (Optuna, TPE) usando pliegues agrupados por estudiante, siempre dentro del entrenamiento."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "def evaluar_cv\\(",
+      "title": "Validación cruzada agrupada",
+      "description": "StratifiedGroupKFold con 5 pliegues: un mismo estudiante nunca está a la vez en entrenamiento y validación. Guardamos las predicciones fuera de pliegue."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "final = max\\(comparacion",
+      "title": "Elección del modelo",
+      "description": "Elegimos el de mayor ROC-AUC medio y, si empatan, el de mayor PR-AUC. La prueba temporal no interviene en esta decisión."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "def calibrar\\(",
+      "title": "Calibración de Platt",
+      "description": "Calibramos con las predicciones fuera de pliegue para que la probabilidad que ve la autoridad se parezca a una frecuencia observada."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "def umbral_para_recall\\(",
+      "title": "Umbrales por recall",
+      "description": "El umbral MEDIO detecta al menos el 80 % de los abandonos y el ALTO al menos el 50 % con más precisión. Tomamos el mayor umbral que cumple el recall pedido."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "modelo_final = clone\\(",
+      "title": "Modelo final",
+      "description": "Tras evaluar, reentrenamos con todas las filas etiquetadas y empaquetamos modelo, calibrador, umbrales y la referencia para vigilar la deriva."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "from mlops.registro_mlflow import registrar_entrenamiento",
+      "title": "Registro al final del entrenamiento",
+      "description": "Al terminar, `main()` guarda el modelo y `metricas.json` y registra la corrida en MLflow."
+    },
+    {
+      "file": "backend/mlops/registro_mlflow.py",
+      "pattern": "def registrar_entrenamiento\\(",
+      "title": "Seguimiento de experimentos con MLflow",
+      "description": "Cada entrenamiento queda como corrida de **MLflow** (almacén SQLite local) con sus parámetros, métricas y artefactos, y deja un resumen en `mlflow_registro.json`. Si MLflow no está instalado, el entrenamiento sigue."
+    }
+  ],
+  "nextTour": "4 · Evaluación: métricas, sesgos, explicación y deriva"
+}

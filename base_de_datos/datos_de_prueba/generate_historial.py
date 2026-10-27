@@ -10,11 +10,11 @@ matrícula y la beca.
 
 Por qué una simulación y no reglas fijas
 -----------------------------------------
-Una versión anterior insertaba el deterioro solo en el periodo previo al
-retiro. Así el modelo separaba casi perfectamente (ROC-AUC ≈ 0,99), algo que no
-ocurre con datos reales. Además, los estudiantes «activos» quedaban detenidos
-en periodos antiguos. Esta versión simula el proceso que la literatura
-describe (Tinto, 1975; Bean y Metzner, 1985):
+Si el deterioro se insertara solo en el periodo previo al retiro, el modelo
+separaría casi perfectamente (ROC-AUC ≈ 0,99), algo que no ocurre con datos
+reales, y los estudiantes «activos» quedarían detenidos en periodos antiguos.
+Por eso se simula el proceso que la literatura describe (Tinto, 1975; Bean y
+Metzner, 1985):
 
   * Cada estudiante tiene factores latentes: capacidad académica, compromiso
     (que cambia de un periodo a otro con choques aleatorios) y situación
@@ -41,6 +41,9 @@ hace con OULAD (Kuzilek et al., 2017).
 
 Uso (desde la raíz del repositorio):
     python base_de_datos/datos_de_prueba/generate_historial.py
+
+Requerimientos que implementa: RF-02 (carga y transformación por perfil), RF-03
+    (entrenamiento y validación).
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026

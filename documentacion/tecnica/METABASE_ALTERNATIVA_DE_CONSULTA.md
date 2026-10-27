@@ -18,7 +18,7 @@ Las dos vías leen el mismo almacén estrella y las mismas métricas del modelo.
 
 ## Puesta en marcha
 
-1. En `backend/.env`, definir `METABASE_DB_PASSWORD` con una contraseña larga.
+1. En `backend/.env`, definir `METABASE_DB_PASSWORD` con una contraseña larga que cumpla la política de SQL Server (8 o más caracteres con mayúsculas, minúsculas, números y símbolos): el login se crea con `CHECK_POLICY = ON` y el motor rechaza una contraseña débil.
 2. Crear el esquema `bi` y la cuenta de solo lectura:
    ```bat
    cd backend

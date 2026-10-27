@@ -5,6 +5,10 @@
  * cambio de ruta lo cierran). Solo <main> se desplaza: la navegación nunca se mueve.
  * La barra superior lleva las migas de pan, el selector de institución (con el tipo de
  * datos a la vista), el cambio de tema y el menú del usuario.
+ *
+ * Ruta: todas las rutas autenticadas · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI.
+ * API: ninguna directa; la sesión y el cambio de institución pasan por lib/sesion.tsx.
+ * Requisitos: RF-01 (menú según las capacidades del rol), RF-18 (institución activa).
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'

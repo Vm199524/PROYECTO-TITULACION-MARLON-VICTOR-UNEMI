@@ -2,6 +2,8 @@
 """
 Referentes externos de abandono con su fuente y nivel de comparabilidad.
 
+Requerimientos que implementa: RF-12 (referentes externos).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

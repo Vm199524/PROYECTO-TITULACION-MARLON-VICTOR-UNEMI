@@ -2,6 +2,9 @@
  * src/paginas/calidad/Graficos.tsx — gráficos de validación del modelo: comparación de
  * candidatos (validación cruzada), curvas ROC y precisión-exhaustividad, calibración e
  * importancia de variables.
+ *
+ * Se muestra en: /modelo (CalidadModelo.tsx). API: ninguna; recibe los datos de la página.
+ * Requisitos: RF-03, RF-04, RF-13.
  */
 import {
   Bar,

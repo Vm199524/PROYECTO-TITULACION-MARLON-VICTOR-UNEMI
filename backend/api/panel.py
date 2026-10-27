@@ -6,6 +6,9 @@ Todas las cifras salen de las vistas gobernadas con la cuenta de solo
 lectura, las mismas que usa la consulta conversacional: el panel y el chat
 nunca muestran números distintos.
 
+Requerimientos que implementa: RF-05 (panel institucional), RF-18 (aislamiento
+    por institución), RNF-02 (mínimo privilegio y aislamiento).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

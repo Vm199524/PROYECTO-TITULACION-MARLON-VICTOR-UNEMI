@@ -5,6 +5,9 @@ Registro de seguimiento de bienestar estudiantil (cierra el ciclo alerta → acc
 Las escrituras van por la cuenta app_seguimiento, que solo puede ejecutar los
 dos procedimientos del registro; la institución sale de SESSION_CONTEXT.
 
+Requerimientos que implementa: RF-09 (registro de acompañamientos), RNF-02
+    (mínimo privilegio y aislamiento), RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

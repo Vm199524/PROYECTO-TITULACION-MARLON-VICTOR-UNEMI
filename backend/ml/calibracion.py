@@ -10,7 +10,9 @@ del puntaje, usando solo predicciones fuera de pliegue, y convierte el puntaje
 en una probabilidad interpretable por una autoridad. Es estrictamente
 creciente: no altera el orden de los estudiantes ni crea empates (la
 calibración isotónica sí los crea, y con ellos los umbrales ALTO y MEDIO
-podían coincidir).
+pueden coincidir).
+
+Requerimientos que implementa: RF-04 (calibración y umbrales).
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026

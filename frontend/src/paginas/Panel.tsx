@@ -4,6 +4,10 @@
  * Responde, en una sola pantalla y sin vocabulario técnico: cuántos estudiantes están
  * en riesgo, en qué carreras, a quién atender primero, cómo evoluciona el abandono y
  * cuánto confiar en las alertas. Todas las cifras llegan agregadas del backend.
+ *
+ * Ruta: /panel · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI (capacidad `ver_panel`).
+ * API: GET /panel/resumen; GET /reportes/ejecutivo.pdf (capacidad `exportar`).
+ * Requisitos: RF-05, RF-14, RF-18.
  */
 import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'

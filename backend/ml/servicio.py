@@ -6,6 +6,9 @@ Carga cada modelo una sola vez por proceso y lo recarga si el archivo cambia
 (por ejemplo, tras reentrenar). También entrega las métricas, la segmentación
 y el monitoreo guardados por los procesos por lotes.
 
+Requerimientos que implementa: RF-07 (explicación de cada predicción), RF-08
+    (simulador de escenarios), RF-13 (calidad del modelo).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

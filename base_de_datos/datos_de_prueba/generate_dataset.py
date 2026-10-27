@@ -12,6 +12,9 @@ contiene datos personales y se conserva FUERA del repositorio, por lo que este
 script no se puede volver a correr sin él: el artefacto del proyecto es el CSV
 anonimizado. Se ejecuta desde la raíz del repositorio.
 
+Requerimientos que implementa: RF-02 (carga y transformación por perfil),
+    RNF-01 (protección de datos).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -166,5 +169,5 @@ print('CSV final generado:', out_path, '-', len(rows), 'filas')
 
 # Anonimizar de inmediato: el CSV con cédulas/nombres reales no debe
 # quedar en disco ni un paso más de lo necesario.
-import runpy
+import runpy  # noqa: E402
 runpy.run_path('base_de_datos/datos_de_prueba/anonimizar_padron.py', run_name='__main__')

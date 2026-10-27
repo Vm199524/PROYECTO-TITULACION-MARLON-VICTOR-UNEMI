@@ -7,6 +7,9 @@ significado de negocio; nunca ve las tablas físicas ni filas de datos al
 escribir el SQL. El validador usa la misma lista para rechazar cualquier
 objeto que no esté aquí. Si una vista cambia en la base, se cambia aquí.
 
+Requerimientos que implementa: RF-10 (consulta en español), RNF-02 (mínimo
+    privilegio y aislamiento).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

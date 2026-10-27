@@ -27,6 +27,9 @@ Grupos de variables:
 Una sola función arma el panel para entrenar y para calificar: si ambos lo
 calcularan distinto, el modelo se descalibraría sin aviso.
 
+Requerimientos que implementa: RF-03 (entrenamiento y validación), RF-17
+    (calificación por lotes y deriva), RNF-08 (mantenibilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

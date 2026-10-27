@@ -1,0 +1,573 @@
+[
+  {
+    "id": "01-arquitectura",
+    "titulo": "1 · Arquitectura: cliente-servidor con backend en capas",
+    "descripcion": "Cómo está organizado VicMar y cómo viaja una petición desde la web hasta la base de datos.",
+    "pasos": [
+      {
+        "archivo": "ARQUITECTURA.md",
+        "patron": "La arquitectura es \\*\\*cliente-servidor desacoplada\\*\\*",
+        "titulo": "Estilo de arquitectura",
+        "nota": "Elegimos una arquitectura **cliente-servidor desacoplada**: una aplicación web de una sola página y una API REST con backend en capas. La capa de datos aísla a cada institución en el propio motor. La decisión está en DT-06."
+      },
+      {
+        "archivo": "ARQUITECTURA.md",
+        "patron": "## Reglas de dependencia entre capas",
+        "titulo": "Reglas de dependencia",
+        "nota": "El frontend solo habla con el backend por HTTP y `api/` usa `core/`, `ml/` y `nl2sql/`; ninguna capa de dominio importa las rutas. Así podemos probar la lógica sin levantar el servidor."
+      },
+      {
+        "archivo": "package.json",
+        "patron": "\"start\": \"node scripts/iniciar.mjs\"",
+        "titulo": "Arranque único",
+        "nota": "Con `npm start` levantamos a la vez la API (puerto 8090) y la aplicación web (puerto 3000)."
+      },
+      {
+        "archivo": "frontend/vite.config.ts",
+        "patron": "'/api': \\{ target:",
+        "titulo": "El frontend solo conoce /api",
+        "nota": "La web siempre llama a rutas relativas `/api/...`; en desarrollo Vite las reenvía al backend. El navegador nunca habla con la base de datos."
+      },
+      {
+        "archivo": "backend/main.py",
+        "patron": "app = FastAPI\\(",
+        "titulo": "Punto de entrada de la API",
+        "nota": "Aquí creamos la aplicación **FastAPI**. La documentación interactiva queda en `/docs`, útil para mostrar cada servicio."
+      },
+      {
+        "archivo": "backend/main.py",
+        "patron": "async def cabeceras_y_registro",
+        "titulo": "Cabeceras de seguridad",
+        "nota": "Un middleware agrega cabeceras de seguridad (`nosniff`, `DENY`, `no-store`) y registra la duración de cada petición."
+      },
+      {
+        "archivo": "backend/main.py",
+        "patron": "for modulo in \\(sesion, panel",
+        "titulo": "Un router por proceso académico",
+        "nota": "Montamos un router por proceso: sesión, panel, estudiantes, carreras, referentes, modelo, seguimiento, consulta, reportes y administración, todos bajo `/api`."
+      },
+      {
+        "archivo": "backend/api/consulta.py",
+        "patron": "def consultar\\(datos: Pregunta",
+        "titulo": "Ejemplo de la capa de servicio",
+        "nota": "Un endpoint típico: exige una capacidad con `requiere(...)`, delega la lógica a otra capa (`nl2sql.motor`) y deja rastro en la auditoría. El router no contiene reglas de negocio."
+      },
+      {
+        "archivo": "backend/core/db.py",
+        "patron": "def leer\\(sql: str, institucion: str",
+        "titulo": "Acceso a datos centralizado",
+        "nota": "Toda lectura pasa por esta función, con la cuenta de solo lectura y la institución activa. Ningún módulo abre conexiones por su cuenta."
+      },
+      {
+        "archivo": "backend/scripts/pipeline.py",
+        "patron": "PASOS = \\['entorno'",
+        "titulo": "Procesos por lotes",
+        "nota": "El entrenamiento y la calificación no ocurren en la petición web: este orquestador ejecuta en orden la carga, el ETL, el entrenamiento, la calificación, la segmentación y el monitoreo (calidad de datos, deriva y registro en MLflow)."
+      }
+    ]
+  },
+  {
+    "id": "02-datos-etl-estrella",
+    "titulo": "2 · Datos: ETL por perfiles y almacén en estrella",
+    "descripcion": "De la base operativa de cada institución al almacén en estrella con vistas gobernadas.",
+    "pasos": [
+      {
+        "archivo": "backend/etl/perfiles.py",
+        "patron": "class PerfilInstitucion:",
+        "titulo": "Un perfil por institución",
+        "nota": "Cada institución describe cómo extraer sus datos al **contrato** del almacén. Agregar una universidad es escribir un perfil, no cambiar el ETL."
+      },
+      {
+        "archivo": "backend/etl/perfiles.py",
+        "patron": "_UNEMI_PRUEBAS = PerfilInstitucion\\(",
+        "titulo": "Perfil UNEMI (datos de prueba)",
+        "nota": "El SELECT de origen traduce las columnas propias de la institución a los nombres del contrato: periodo, nivel, estado, promedio, asistencia y variables opcionales."
+      },
+      {
+        "archivo": "backend/etl/perfiles.py",
+        "patron": "def validar_filas\\(",
+        "titulo": "Reglas de calidad que bloquean la carga",
+        "nota": "Antes de cargar comprobamos estados y modalidades válidos y rangos de promedio (0-10) y asistencia (0-100). Si algo falla, el ETL se detiene."
+      },
+      {
+        "archivo": "backend/mlops/calidad_datos.py",
+        "patron": "def reglas\\(df: pd.DataFrame\\)",
+        "titulo": "Expectativas de calidad con Great Expectations",
+        "nota": "Sobre la trayectoria ya cargada en el almacén declaramos expectativas de integridad, dominio, rango y volumen, y las validamos con **Great Expectations**. El resultado queda en `calidad_datos.json`; si GX no está instalado, las mismas reglas se evalúan con pandas."
+      },
+      {
+        "archivo": "backend/etl/etl_academico.py",
+        "patron": "problemas = validar_filas\\(filas\\)",
+        "titulo": "Extraer, validar y cargar",
+        "nota": "El flujo del ETL: extraemos con el perfil, validamos el contrato y solo si no hay errores de calidad cargamos al almacén."
+      },
+      {
+        "archivo": "backend/etl/etl_academico.py",
+        "patron": "def cargar\\(conn, filas",
+        "titulo": "Carga idempotente por institución",
+        "nota": "Actualizamos la dimensión institución con MERGE y recargamos solo los hechos de esa institución, respetando el orden de las llaves foráneas."
+      },
+      {
+        "archivo": "base_de_datos/crear_almacen_academico.sql",
+        "patron": "-- ── Dimensiones",
+        "titulo": "Esquema en estrella: dimensiones",
+        "nota": "Modelamos el almacén como **esquema estrella**: dimensiones de institución, tiempo, estado, modalidad, periodo, sede, carrera y alumno."
+      },
+      {
+        "archivo": "base_de_datos/crear_almacen_academico.sql",
+        "patron": "CREATE TABLE dbo.fact_matriculas \\(",
+        "titulo": "Hecho central",
+        "nota": "La tabla de hechos tiene un grano claro: alumno × carrera × periodo × corte. Sobre ella se arma el panel del modelo."
+      },
+      {
+        "archivo": "base_de_datos/crear_almacen_academico.sql",
+        "patron": "CREATE TABLE dbo.fact_prediccion_abandono \\(",
+        "titulo": "Resultados de los procesos por lotes",
+        "nota": "Las predicciones, segmentos y evaluaciones del modelo también son hechos, pero los escribe solo el sistema, nunca un usuario."
+      },
+      {
+        "archivo": "base_de_datos/crear_almacen_academico.sql",
+        "patron": "CREATE VIEW dbo.VIS_ALUMNO AS",
+        "titulo": "Vistas gobernadas VIS_*",
+        "nota": "Cada vista filtra por `SESSION_CONTEXT(N'institucion_activa')`. Si la conexión no fijó una institución, la vista devuelve cero filas: el aislamiento lo garantiza el motor, no la aplicación."
+      },
+      {
+        "archivo": "base_de_datos/crear_almacen_academico.sql",
+        "patron": "CREATE PROCEDURE dbo.sp_registrar_intervencion",
+        "titulo": "Escritura solo por procedimientos",
+        "nota": "El registro de seguimiento se hace con procedimientos almacenados que toman la institución del contexto de sesión, no de un parámetro manipulable."
+      },
+      {
+        "archivo": "base_de_datos/crear_almacen_academico.sql",
+        "patron": "GRANT SELECT ON dbo.VIS_INSTITUCION",
+        "titulo": "Cuentas de mínimo privilegio",
+        "nota": "`chat_reader` solo puede leer las vistas VIS_* y `app_seguimiento` solo ejecutar sus dos procedimientos. Ninguna cuenta de la aplicación toca las tablas físicas."
+      }
+    ]
+  },
+  {
+    "id": "03-entrenamiento-modelo",
+    "titulo": "3 · Entrenamiento del modelo de abandono",
+    "descripcion": "Del panel estudiante-periodo al modelo calibrado con sus umbrales, sin fuga de información.",
+    "pasos": [
+      {
+        "archivo": "backend/ml/caracteristicas.py",
+        "patron": "Unidad de análisis: el estudiante en un periodo",
+        "titulo": "Unidad de análisis",
+        "nota": "Cada fila responde: con lo que sabemos del estudiante hasta este periodo, ¿abandonará en el siguiente? Las variables solo usan información hasta el periodo t."
+      },
+      {
+        "archivo": "backend/ml/caracteristicas.py",
+        "patron": "def construir_panel\\(",
+        "titulo": "Una sola función para entrenar y calificar",
+        "nota": "La misma transformación arma el panel para entrenar y para calificar; si se calcularan distinto, el modelo se descalibraría sin aviso."
+      },
+      {
+        "archivo": "backend/ml/caracteristicas.py",
+        "patron": "lag1, lag2 = g\\[valor\\].shift\\(1\\)",
+        "titulo": "Variables sin fuga",
+        "nota": "Rezagos, medias móviles y acumuladas miran solo hacia atrás (`shift(1)`, `cumsum`, `cummin`) dentro de la trayectoria. Nunca usan un periodo futuro."
+      },
+      {
+        "archivo": "backend/ml/caracteristicas.py",
+        "patron": "cohorte = \\['carrera_id', 'periodo_id', 'corte'\\]",
+        "titulo": "Comparación con la cohorte",
+        "nota": "Comparamos al estudiante con sus pares de la misma carrera, periodo y corte, es decir, con el mismo momento y no con el futuro."
+      },
+      {
+        "archivo": "backend/ml/caracteristicas.py",
+        "patron": "# Etiqueta: estado del periodo siguiente",
+        "titulo": "La etiqueta",
+        "nota": "La etiqueta `y` es 1 si el periodo siguiente de la misma trayectoria es RETIRADO. Solo calificamos el periodo vigente de quien sigue ACTIVO."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "def particion_temporal\\(",
+        "titulo": "Partición temporal",
+        "nota": "Reservamos como prueba los periodos más recientes (al menos el 25 % de las filas): entrenamos con el pasado y evaluamos con el futuro, como en el uso real."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "def candidatos\\(",
+        "titulo": "Cuatro algoritmos candidatos",
+        "nota": "Comparamos Random Forest ponderado, Random Forest con SMOTE (solo dentro del entrenamiento), regresión logística como línea base y LightGBM."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "def ajustar_lgbm\\(",
+        "titulo": "Optimización con Optuna",
+        "nota": "Ajustamos LightGBM con optimización bayesiana (Optuna, TPE) usando pliegues agrupados por estudiante, siempre dentro del entrenamiento."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "def evaluar_cv\\(",
+        "titulo": "Validación cruzada agrupada",
+        "nota": "StratifiedGroupKFold con 5 pliegues: un mismo estudiante nunca está a la vez en entrenamiento y validación. Guardamos las predicciones fuera de pliegue."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "final = max\\(comparacion",
+        "titulo": "Elección del modelo",
+        "nota": "Elegimos el de mayor ROC-AUC medio y, si empatan, el de mayor PR-AUC. La prueba temporal no interviene en esta decisión."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "def calibrar\\(",
+        "titulo": "Calibración de Platt",
+        "nota": "Calibramos con las predicciones fuera de pliegue para que la probabilidad que ve la autoridad se parezca a una frecuencia observada."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "def umbral_para_recall\\(",
+        "titulo": "Umbrales por recall",
+        "nota": "El umbral MEDIO detecta al menos el 80 % de los abandonos y el ALTO al menos el 50 % con más precisión. Tomamos el mayor umbral que cumple el recall pedido."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "modelo_final = clone\\(",
+        "titulo": "Modelo final",
+        "nota": "Tras evaluar, reentrenamos con todas las filas etiquetadas y empaquetamos modelo, calibrador, umbrales y la referencia para vigilar la deriva."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "from mlops.registro_mlflow import registrar_entrenamiento",
+        "titulo": "Registro al final del entrenamiento",
+        "nota": "Al terminar, `main()` guarda el modelo y `metricas.json` y registra la corrida en MLflow."
+      },
+      {
+        "archivo": "backend/mlops/registro_mlflow.py",
+        "patron": "def registrar_entrenamiento\\(",
+        "titulo": "Seguimiento de experimentos con MLflow",
+        "nota": "Cada entrenamiento queda como corrida de **MLflow** (almacén SQLite local) con sus parámetros, métricas y artefactos, y deja un resumen en `mlflow_registro.json`. Si MLflow no está instalado, el entrenamiento sigue."
+      }
+    ]
+  },
+  {
+    "id": "04-evaluacion-metricas-sesgos",
+    "titulo": "4 · Evaluación: métricas, sesgos, explicación y deriva",
+    "descripcion": "Cómo medimos la calidad del modelo, su equidad, sus explicaciones y su estabilidad en el tiempo.",
+    "pasos": [
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "def evaluar_prueba\\(",
+        "titulo": "Prueba temporal, una sola vez",
+        "nota": "Sobre los periodos reservados calculamos ROC-AUC, PR-AUC, Brier, recall y precisión en cada umbral, captura del 10 % de mayor riesgo y curva de calibración."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "def equidad\\(",
+        "titulo": "Equidad por subgrupo",
+        "nota": "Revisamos el desempeño por género, modalidad y sede. Si un grupo recibe muchas más falsas alarmas o menos detección, lo reportamos como sesgo."
+      },
+      {
+        "archivo": "backend/ml/entrenar.py",
+        "patron": "perm = permutation_importance\\(",
+        "titulo": "Importancia por permutación",
+        "nota": "Medimos cuánto empeora la PR-AUC al desordenar cada variable en la prueba temporal: qué variables pesan de verdad en el modelo."
+      },
+      {
+        "archivo": "backend/ml/evaluacion_grupos.py",
+        "patron": "def metricas_por_grupo\\(",
+        "titulo": "Métricas por periodo y por carrera",
+        "nota": "Desglosamos la prueba temporal por periodo y por carrera: una sola cifra global puede ocultar que el modelo falla en un semestre o en una carrera."
+      },
+      {
+        "archivo": "backend/ml/evaluacion_grupos.py",
+        "patron": "def validacion_origen_movil\\(",
+        "titulo": "Validación con origen móvil",
+        "nota": "Para cada uno de los periodos más recientes entrenamos solo con el pasado, calibramos y fijamos umbrales con ese pasado, y evaluamos una sola vez en el periodo: como si el sistema se hubiera puesto en marcha en esa fecha."
+      },
+      {
+        "archivo": "backend/ml/explicacion.py",
+        "patron": "def contribuciones\\(",
+        "titulo": "Explicación con SHAP",
+        "nota": "Calculamos la contribución de cada variable a la predicción de cada estudiante: SHAP para los árboles y coeficiente por valor estandarizado para la logística."
+      },
+      {
+        "archivo": "backend/ml/explicacion.py",
+        "patron": "def recomendaciones\\(",
+        "titulo": "De la explicación a la acción",
+        "nota": "Las variables que más elevan el riesgo se traducen en sugerencias de acompañamiento para Bienestar: tutoría, consejería o apoyo económico."
+      },
+      {
+        "archivo": "backend/ml/calificar.py",
+        "patron": "def psi\\(",
+        "titulo": "Vigilancia de la deriva (PSI)",
+        "nota": "Al calificar comparamos la distribución actual con la del entrenamiento mediante el índice de estabilidad poblacional. Un PSI alto avisa que conviene reentrenar."
+      },
+      {
+        "archivo": "backend/mlops/deriva.py",
+        "patron": "def informe_deriva\\(",
+        "titulo": "Deriva con Evidently",
+        "nota": "Comparamos variable por variable la referencia de entrenamiento con los estudiantes que se califican usando **Evidently AI**; el resumen queda en `deriva.json` y el PSI propio se mantiene como segunda medida."
+      },
+      {
+        "archivo": "backend/ml/segmentar.py",
+        "patron": "def asignar\\(",
+        "titulo": "Segmentación de carreras",
+        "nota": "Agrupamos las carreras con K-Means en Atención prioritaria, Estable y Bajo riesgo, ordenadas por un índice de riesgo y no por el número arbitrario del clúster."
+      },
+      {
+        "archivo": "backend/ml/segmentar.py",
+        "patron": "def validar\\(df: pd.DataFrame, k: int\\)",
+        "titulo": "Validación de la segmentación",
+        "nota": "Validamos con silhouette, Davies-Bouldin y Calinski-Harabasz, estabilidad por remuestreo, comparación con Ward y HDBSCAN, Kruskal-Wallis y una variante sin el riesgo del modelo."
+      }
+    ]
+  },
+  {
+    "id": "05-consulta-y-seguridad",
+    "titulo": "5 · Seguridad y consulta en lenguaje natural",
+    "descripcion": "Autenticación, aislamiento, privacidad y el flujo completo de una pregunta en lenguaje natural.",
+    "pasos": [
+      {
+        "archivo": "backend/api/sesion.py",
+        "patron": "def ingresar\\(datos: Credenciales",
+        "titulo": "Inicio de sesión",
+        "nota": "Validamos la contraseña con bcrypt, frenamos los intentos fallidos (cinco en cinco minutos) y registramos cada ingreso en la auditoría."
+      },
+      {
+        "archivo": "backend/core/seguridad.py",
+        "patron": "CAPACIDADES_POR_ROL: dict",
+        "titulo": "Capacidades por rol",
+        "nota": "Autoridad, Bienestar y Administración de TI tienen capacidades distintas. Los permisos se piden por capacidad, no por nombre de rol."
+      },
+      {
+        "archivo": "backend/core/seguridad.py",
+        "patron": "def sesion_actual\\(",
+        "titulo": "Validación del token en cada petición",
+        "nota": "Verificamos el JWT, revalidamos la cuenta y comprobamos que la institución pedida en `X-Institucion` esté asignada al usuario."
+      },
+      {
+        "archivo": "backend/core/seguridad.py",
+        "patron": "def requiere\\(capacidad",
+        "titulo": "Dependencia requiere()",
+        "nota": "Cada endpoint declara la capacidad que necesita; si el rol no la tiene, respondemos 403 antes de tocar los datos."
+      },
+      {
+        "archivo": "backend/core/db.py",
+        "patron": "def _cadena\\(",
+        "titulo": "Canal cifrado",
+        "nota": "La conexión a SQL Server siempre usa `Encrypt=yes`. Solo en desarrollo se confía en el certificado autofirmado del contenedor."
+      },
+      {
+        "archivo": "backend/core/db.py",
+        "patron": "def _conexion_con_contexto\\(",
+        "titulo": "Institución fijada en SESSION_CONTEXT",
+        "nota": "Al abrir la conexión fijamos la institución con `@read_only = 1`: ninguna sentencia posterior puede cambiarla, y las vistas VIS_* filtran con ella."
+      },
+      {
+        "archivo": "backend/core/privacidad.py",
+        "patron": "def token_estudiante\\(",
+        "titulo": "Token cifrado del estudiante",
+        "nota": "La ficha se identifica con un token Fernet, nunca con la cédula, para que no viaje en direcciones ni registros. En pantalla la cédula aparece enmascarada."
+      },
+      {
+        "archivo": "backend/core/auditoria.py",
+        "patron": "def registrar\\(accion",
+        "titulo": "Bitácora de auditoría",
+        "nota": "Registramos quién hizo qué, sobre qué institución y con qué resultado. De las consultas guardamos la huella del SQL, no el SQL ni los datos."
+      },
+      {
+        "archivo": "backend/nl2sql/motor.py",
+        "patron": "def responder\\(",
+        "titulo": "Flujo de una pregunta",
+        "nota": "El motor orquesta todo: guardarraíles, métrica certificada si existe y, si no, SQL generado por IA, validado y ejecutado con la cuenta de solo lectura."
+      },
+      {
+        "archivo": "backend/nl2sql/guardarrailes.py",
+        "patron": "def clasificar\\(",
+        "titulo": "Guardarraíles",
+        "nota": "Antes de consultar detectamos inyección de instrucciones, pedidos de escritura, otras instituciones y tablas internas. Esas preguntas nunca llegan a la base."
+      },
+      {
+        "archivo": "backend/nl2sql/enrutador.py",
+        "patron": "def elegir\\(",
+        "titulo": "Enrutador de métricas certificadas",
+        "nota": "Si una métrica certificada entiende toda la pregunta, la respondemos con SQL fijo y revisado; la IA no interviene en la cifra."
+      },
+      {
+        "archivo": "backend/nl2sql/generador.py",
+        "patron": "def generar\\(",
+        "titulo": "Generación con la pregunta depurada",
+        "nota": "Si no hay métrica, pedimos el SQL a la IA, pero antes reemplazamos cédulas, correos, teléfonos y nombres por marcadores. Los valores reales nunca salen del servidor."
+      },
+      {
+        "archivo": "backend/core/privacidad.py",
+        "patron": "def depurar_texto\\(",
+        "titulo": "Depuración de datos personales",
+        "nota": "Esta función crea los marcadores (CEDULA_n, NOMBRE_n...) y guarda el diccionario para restaurar los valores en el SQL que ejecutamos localmente."
+      },
+      {
+        "archivo": "backend/nl2sql/proveedores.py",
+        "patron": "def completar\\(",
+        "titulo": "Cascada de proveedores",
+        "nota": "Probamos los proveedores configurados en orden y usamos la primera respuesta válida. Si uno falla o devuelve basura, pasamos al siguiente."
+      },
+      {
+        "archivo": "backend/nl2sql/validador.py",
+        "patron": "def validar\\(sql",
+        "titulo": "Validador del árbol SQL",
+        "nota": "Analizamos el SQL con sqlglot: una sola sentencia SELECT, solo vistas VIS_*, sin funciones peligrosas y con límite de filas. Si no cumple, no se ejecuta."
+      },
+      {
+        "archivo": "backend/nl2sql/motor.py",
+        "patron": "def _ejecutar_generada\\(",
+        "titulo": "Una sola corrección automática",
+        "nota": "Si la validación o la base rechazan el SQL, le pedimos a la IA una única corrección con el mensaje de error; si vuelve a fallar, informamos al usuario."
+      },
+      {
+        "archivo": "backend/nl2sql/redactor.py",
+        "patron": "def cifras_no_respaldadas\\(",
+        "titulo": "Redacción verificada",
+        "nota": "Cuando la IA interpreta un resultado, comprobamos que cada cifra del texto exista en las filas. Si inventa un número, la interpretación se marca como no verificada."
+      }
+    ]
+  },
+  {
+    "id": "06-frontend",
+    "titulo": "6 · Frontend: React por rol",
+    "descripcion": "Cliente de la API, sesión, permisos y las pantallas principales.",
+    "pasos": [
+      {
+        "archivo": "frontend/src/lib/api.ts",
+        "patron": "function cabeceras\\(",
+        "titulo": "Cada petición lleva token e institución",
+        "nota": "El cliente agrega el JWT y la cabecera `X-Institucion`; el backend valida ambos antes de leer."
+      },
+      {
+        "archivo": "frontend/src/lib/api.ts",
+        "patron": "respuesta.status === 401",
+        "titulo": "Sesión vencida",
+        "nota": "Un 401 cierra la sesión en todas las pantallas a la vez. El token vive en sessionStorage y se borra al cerrar la pestaña."
+      },
+      {
+        "archivo": "frontend/src/lib/sesion.tsx",
+        "patron": "export function ProveedorSesion",
+        "titulo": "Contexto de sesión",
+        "nota": "Guardamos el perfil, las instituciones asignadas y la institución activa; la guardada solo vale si sigue asignada al usuario."
+      },
+      {
+        "archivo": "frontend/src/App.tsx",
+        "patron": "function Protegida\\(",
+        "titulo": "Rutas protegidas por capacidad",
+        "nota": "Cada pantalla exige una capacidad. Ocultar el menú no basta: si el rol no la tiene, mostramos un aviso, y el backend igual rechaza la petición."
+      },
+      {
+        "archivo": "frontend/src/paginas/Panel.tsx",
+        "patron": "export default function Panel\\(",
+        "titulo": "Panel ejecutivo",
+        "nota": "Lo primero que ve la autoridad: indicadores de riesgo, tendencia, carreras con más alertas y la confiabilidad del modelo."
+      },
+      {
+        "archivo": "frontend/src/paginas/Estudiantes.tsx",
+        "patron": "export default function Estudiantes\\(",
+        "titulo": "Estudiantes en riesgo",
+        "nota": "Lista filtrable por riesgo y carrera, ordenada por probabilidad. La cédula llega enmascarada desde el servidor."
+      },
+      {
+        "archivo": "frontend/src/paginas/Ficha.tsx",
+        "patron": "function Razones\\(",
+        "titulo": "Ficha: por qué está en riesgo",
+        "nota": "Mostramos las variables que más empujan el riesgo, calculadas con SHAP, en lenguaje que entiende Bienestar."
+      },
+      {
+        "archivo": "frontend/src/paginas/Ficha.tsx",
+        "patron": "function Simulador\\(",
+        "titulo": "Simulador ¿qué pasaría si...?",
+        "nota": "Bienestar puede mover la asistencia o el promedio y ver cómo cambiaría el riesgo. Es una estimación del modelo, no una garantía."
+      },
+      {
+        "archivo": "frontend/src/paginas/Consulta.tsx",
+        "patron": "const ORIGEN: Record",
+        "titulo": "Consulta: origen visible",
+        "nota": "Cada respuesta muestra su origen: métrica certificada, generada con IA y validada, barrera de seguridad o sin respuesta. El usuario sabe cuánto confiar."
+      },
+      {
+        "archivo": "frontend/src/paginas/CalidadModelo.tsx",
+        "patron": "function Validacion\\(",
+        "titulo": "Calidad del modelo",
+        "nota": "Publicamos la validación completa: modelos comparados, prueba temporal, calibración, equidad y deriva, para que la autoridad sepa cuánto confiar."
+      }
+    ]
+  },
+  {
+    "id": "07-pruebas",
+    "titulo": "7 · Pruebas e integración continua",
+    "descripcion": "Las pruebas que respaldan cada decisión y la integración continua en GitHub Actions.",
+    "pasos": [
+      {
+        "archivo": "backend/tests/test_caracteristicas.py",
+        "patron": "def test_variables_no_usan_periodos_futuros",
+        "titulo": "Sin fuga de información",
+        "nota": "Cortamos la historia después de un periodo y comprobamos que las variables de ese periodo no cambian: el modelo no puede ver el futuro."
+      },
+      {
+        "archivo": "backend/tests/test_modelo.py",
+        "patron": "def test_particion_temporal_reserva_los_periodos_mas_recientes",
+        "titulo": "Partición temporal",
+        "nota": "Verificamos que la prueba queda con los periodos más recientes."
+      },
+      {
+        "archivo": "backend/tests/test_modelo.py",
+        "patron": "def test_umbrales_ordenados_y_con_el_recall_pedido",
+        "titulo": "Umbrales",
+        "nota": "Comprobamos que el umbral ALTO es mayor o igual que el MEDIO y que el MEDIO detecta al menos el 80 % de los abandonos."
+      },
+      {
+        "archivo": "backend/tests/test_validador.py",
+        "patron": "def test_rechaza_sql_peligroso",
+        "titulo": "SQL malicioso rechazado",
+        "nota": "Probamos escrituras, tablas físicas, otras bases y funciones peligrosas: el validador las rechaza todas."
+      },
+      {
+        "archivo": "backend/tests/test_guardarrailes.py",
+        "patron": "def test_bloquea_preguntas_adversariales",
+        "titulo": "Preguntas adversariales",
+        "nota": "Las preguntas adversariales del conjunto dorado se bloquean, y las legítimas pasan (la prueba siguiente)."
+      },
+      {
+        "archivo": "backend/tests/test_privacidad_ia.py",
+        "patron": "def test_generar_envia_la_pregunta_depurada_y_restaura_el_sql",
+        "titulo": "Privacidad ante la IA",
+        "nota": "Con un proveedor falso verificamos que a la IA solo llega la pregunta con marcadores y que el SQL local recupera los valores reales."
+      },
+      {
+        "archivo": "backend/tests/test_conexion_cifrada.py",
+        "patron": "def test_la_cadena_siempre_pide_cifrado",
+        "titulo": "Conexión cifrada",
+        "nota": "La cadena de conexión siempre incluye `Encrypt=yes`, en cualquier entorno."
+      },
+      {
+        "archivo": "backend/tests/test_mlops.py",
+        "patron": "def test_origen_movil_entrena_solo_con_el_pasado",
+        "titulo": "Validación por periodo sin fuga",
+        "nota": "Comprobamos que en la validación con origen móvil cada periodo se evalúa con un modelo entrenado solo con periodos anteriores."
+      },
+      {
+        "archivo": "backend/tests/test_api.py",
+        "patron": "def test_institucion_no_asignada_se_rechaza",
+        "titulo": "Permisos en la API",
+        "nota": "Pedir una institución no asignada da 403; también probamos que la autoridad no administra cuentas ni registra seguimiento."
+      },
+      {
+        "archivo": "backend/tests/test_integracion_bd.py",
+        "patron": "def test_aislamiento_entre_instituciones",
+        "titulo": "Aislamiento contra SQL Server real",
+        "nota": "Pruebas de integración: cada institución solo ve sus filas, el lector no toca tablas físicas y la institución de la sesión no se puede cambiar."
+      },
+      {
+        "archivo": "frontend/src/pruebas/navegacion.test.ts",
+        "patron": "describe\\('navegación por rol'",
+        "titulo": "Pruebas de interfaz",
+        "nota": "Con vitest comprobamos que cada rol ve solo sus pantallas y que toda pantalla exige una capacidad."
+      },
+      {
+        "archivo": ".github/workflows/ci.yml",
+        "patron": "  backend:",
+        "titulo": "Integración continua",
+        "nota": "En cada push, GitHub Actions corre pytest del backend y vitest más la compilación del frontend. Las pruebas de integración se omiten sin SQL Server."
+      }
+    ]
+  }
+]

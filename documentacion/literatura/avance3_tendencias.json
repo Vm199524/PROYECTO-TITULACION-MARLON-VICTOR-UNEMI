@@ -1,0 +1,285 @@
+{
+  "fecha": "2026-10-25",
+  "fuentes": [
+    {
+      "tema": "1. MLOps y ciclo de vida",
+      "cita": "Kreuzberger et al. (2023)",
+      "referencia_apa": "Kreuzberger, D., Kühl, N., & Hirschl, S. (2023). Machine Learning Operations (MLOps): Overview, Definition, and Architecture. *IEEE Access*, 11, 31866-31879. https://doi.org/10.1109/ACCESS.2023.3262138",
+      "doi": "10.1109/ACCESS.2023.3262138",
+      "anio": 2023,
+      "hallazgo_clave": "Definen MLOps como paradigma de prácticas, conceptos y cultura para la conceptualización, implementación, monitoreo, despliegue y escalabilidad de productos de ML (p. 31876); ubican el almacén de metadatos/registro de modelos (con MLflow entre los ejemplos) y el monitoreo como componentes de la arquitectura (pp. 31871-31872). Método mixto: revisión de literatura, revisión de herramientas y 8 entrevistas a expertos (p. 31869).",
+      "aporte_a_la_seccion": "Marco conceptual de MLOps para justificar el registro de experimentos y modelos (MLflow) como tendencia.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Kre23_MLOps_Overview_Definition_Architecture.pdf (repositorio U. Bayreuth)"
+    },
+    {
+      "tema": "1. MLOps y ciclo de vida",
+      "cita": "Berberi et al. (2025)",
+      "referencia_apa": "Berberi, L., Kozlov, V., Nguyen, G., Sáinz-Pardo Díaz, J., Calatrava, A., Moltó, G., Tran, V., & López García, Á. (2025). Machine learning operations landscape: platforms and tools. *Artificial Intelligence Review*, 58(6), 167. https://doi.org/10.1007/s10462-025-11164-3",
+      "doi": "10.1007/s10462-025-11164-3",
+      "anio": 2025,
+      "hallazgo_clave": "Evalúan 16 plataformas MLOps; MLflow obtiene el mayor peso por crecimiento/adopción en GitHub (10.00) y queda tercero en puntaje ponderado (35.00) tras Kubeflow (62.21) y W&B (38.30) (pp. 16-17, tabla 4); recomiendan MLflow cuando solo se requiere seguimiento de experimentos, sin la complejidad de una plataforma completa (p. 32).",
+      "aporte_a_la_seccion": "Respalda con datos de adopción la elección de MLflow como herramienta ligera de seguimiento.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Ber25_MLOps_landscape_platforms_tools.pdf"
+    },
+    {
+      "tema": "1. MLOps y ciclo de vida",
+      "cita": "Sherpa et al. (2024)",
+      "referencia_apa": "Sherpa, L., Khaydarov, V., & Müller-Pfefferkorn, R. (2024). FAIRness Along the Machine Learning Lifecycle Using Dataverse in Combination with MLflow. *Data Science Journal*, 23, 55. https://doi.org/10.5334/dsj-2024-055",
+      "doi": "10.5334/dsj-2024-055",
+      "anio": 2024,
+      "hallazgo_clave": "Integran Dataverse con MLflow para compartir datos, experimentos y modelos según principios FAIR; concluyen que sin un seguimiento de experimentos que guarde los metadatos de cada corrida es difícil revisar y compartir modelos (p. 10).",
+      "aporte_a_la_seccion": "Evidencia del uso de MLflow para reproducibilidad y trazabilidad.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/She24_FAIR_ML_lifecycle_Dataverse_MLflow.pdf"
+    },
+    {
+      "tema": "2. Monitoreo de deriva",
+      "cita": "Bodor et al. (2023)",
+      "referencia_apa": "Bodor, A., Hnida, M., & Daoudi, N. (2023). Machine Learning Models Monitoring in MLOps Context: Metrics and Tools. *International Journal of Interactive Mobile Technologies (iJIM)*, 17(23), 125-139. https://doi.org/10.3991/ijim.v17i23.43479",
+      "doi": "10.3991/ijim.v17i23.43479",
+      "anio": 2023,
+      "hallazgo_clave": "Guía de métricas y herramientas de monitoreo en MLOps: vigilar la distribución de entradas y salidas, ligada a deriva de datos y de concepto, y menciona Great Expectations para verificar consistencia y distribución (p. 130); la herramienta de monitoreo debe integrar detección de deriva y alertas automáticas (p. 135).",
+      "aporte_a_la_seccion": "Justifica el monitoreo de deriva con alertas (Evidently/PSI) dentro del ciclo MLOps.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Bod23_ML_monitoring_MLOps_metrics_tools.pdf"
+    },
+    {
+      "tema": "2. Monitoreo de deriva",
+      "cita": "Kustitskaya et al. (2025)",
+      "referencia_apa": "Kustitskaya, T. A., Esin, R. V., & Noskov, M. V. (2025). Model Drift in Deployed Machine Learning Models for Predicting Learning Success. *Computers*, 14(9), 351. https://doi.org/10.3390/computers14090351",
+      "doi": "10.3390/computers14090351",
+      "anio": 2025,
+      "hallazgo_clave": "Analizan tres años académicos de modelos desplegados de éxito académico con PSI, detector basado en clasificador y deriva de SHAP loss; umbrales PSI < 0.1 despreciable, 0.1-0.25 moderado y >= 0.25 significativo (sec. 2.3); datos de perfil estables (PSI < 0.1) y datos de LMS con deriva y degradación notable; el reentrenamiento con datos recientes mitigó la degradación del modelo de perfil (sec. 5).",
+      "aporte_a_la_seccion": "Evidencia directa en analítica educativa para usar PSI y reentrenamiento periódico.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: Texto completo leído en HTML de MDPI (descarga del PDF bloqueada, HTTP 403); citar por sección"
+    },
+    {
+      "tema": "2. Monitoreo de deriva",
+      "cita": "Sonnleitner et al. (2025)",
+      "referencia_apa": "Sonnleitner, B., Madou, T., Deceuninck, M., Theodosiou, F., & Sagaert, Y. R. (2025). Evaluation of early student performance prediction given concept drift. *Computers and Education: Artificial Intelligence*, 8, 100369. https://doi.org/10.1016/j.caeai.2025.100369",
+      "doi": "10.1016/j.caeai.2025.100369",
+      "anio": 2025,
+      "hallazgo_clave": "Ante el cambio de comportamiento estudiantil entre periodos Covid y post-Covid, los modelos complejos con muchas variables de LMS dieron predicciones sesgadas; LASSO y una regresión con dos variables fueron más precisos (tabla 6, p. 8) y sirven como modelo de respaldo ante deriva (p. 9).",
+      "aporte_a_la_seccion": "Muestra el riesgo de deriva de concepto en predicción estudiantil y la utilidad de una línea base simple.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Son25_Early_prediction_concept_drift.pdf"
+    },
+    {
+      "tema": "2. Monitoreo de deriva",
+      "cita": "Becker y Becker (2021)",
+      "referencia_apa": "Becker, A., & Becker, J. (2021). Dataset shift assessment measures in monitoring predictive models. *Procedia Computer Science*, 192, 3391-3402. https://doi.org/10.1016/j.procs.2021.09.112",
+      "doi": "10.1016/j.procs.2021.09.112",
+      "anio": 2021,
+      "hallazgo_clave": "Comparan PSI y PAI en 78 desplazamientos controlados de 3 variables; PSI mide cualquier cambio en la distribución de las variables explicativas y PAI solo su efecto en la precisión, por lo que son complementarios (resumen).",
+      "aporte_a_la_seccion": "Fundamento metodológico del PSI como indicador de estabilidad.",
+      "texto_completo_leido": false,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: Solo resumen (OpenAlex/Scopus); PDF bloqueado (HTTP 403)"
+    },
+    {
+      "tema": "3. Calidad y validación de datos",
+      "cita": "Bayram et al. (2026)",
+      "referencia_apa": "Bayram, F., Ahmed, B. S., & Hallin, E. (2026). End-to-end data quality-driven framework for machine learning in production environment. *Heliyon*, 12(1), e44416. https://doi.org/10.1016/j.heliyon.2025.e44416",
+      "doi": "10.1016/j.heliyon.2025.e44416",
+      "anio": 2026,
+      "hallazgo_clave": "Marco que integra evaluación de calidad de datos, detección de deriva y MLOps en tiempo real; en un caso industrial mejora 12% el desempeño (R2 = 94%) y reduce cuatro veces la latencia de predicción (p. 2 del preprint).",
+      "aporte_a_la_seccion": "Respalda la validación de calidad de datos como compuerta del pipeline.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Bay25_Data_quality_driven_MLOps_preprint.pdf (versión enviada, ORBilu; páginas del preprint)"
+    },
+    {
+      "tema": "3. Calidad y validación de datos",
+      "cita": "Pancini et al. (2025)",
+      "referencia_apa": "Pancini, M., Camilli, M., Quattrocchi, G., & Andrew Tamburri, D. (2025). Engineering MLOps Pipelines With Data Quality: A Case Study on Tabular Datasets in Kaggle. *Journal of Software: Evolution and Process*, 37(9), e70044. https://doi.org/10.1002/smr.70044",
+      "doi": "10.1002/smr.70044",
+      "anio": 2025,
+      "hallazgo_clave": "Proponen controles de calidad de datos (semi)automatizados como compuertas de pipelines MLOps con datos tabulares, usando Deepchecks sobre conjuntos de Kaggle; señalan que muchos profesionales no aplican controles de calidad (resumen).",
+      "aporte_a_la_seccion": "Tendencia a validar datos tabulares de forma automática (equivalente a Great Expectations).",
+      "texto_completo_leido": false,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: Solo resumen (OpenAlex); PDF de Wiley bloqueado (HTTP 403)"
+    },
+    {
+      "tema": "4. Explicabilidad (SHAP/XAI)",
+      "cita": "Nagy y Molontay (2024)",
+      "referencia_apa": "Nagy, M., & Molontay, R. (2024). Interpretable Dropout Prediction: Towards XAI-Based Personalized Intervention. *International Journal of Artificial Intelligence in Education*, 34(2), 274-300. https://doi.org/10.1007/s40593-023-00331-8",
+      "doi": "10.1007/s40593-023-00331-8",
+      "anio": 2024,
+      "hallazgo_clave": "Con datos de una universidad pública húngara, CatBoost identifica estudiantes en riesgo solo con datos previos al ingreso; PI, PDP, LIME y SHAP explican las predicciones global y localmente, lo que habilita la intervención personalizada; un estudio con usuarios evalúa su utilidad (pp. 274, 277).",
+      "aporte_a_la_seccion": "Respalda SHAP para explicaciones individuales en la alerta temprana.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Nag24_Interpretable_dropout_XAI.pdf"
+    },
+    {
+      "tema": "4. Explicabilidad (SHAP/XAI)",
+      "cita": "Arévalo-Cordovilla y Peña (2025)",
+      "referencia_apa": "Arévalo-Cordovilla, F. E., & Peña, M. (2025). Evaluating ensemble models for fair and interpretable prediction in higher education using multimodal data. *Scientific Reports*, 15(1), 29420. https://doi.org/10.1038/s41598-025-15388-9",
+      "doi": "10.1038/s41598-025-15388-9",
+      "anio": 2025,
+      "hallazgo_clave": "Con 2225 estudiantes de carreras TI en línea de la Universidad Estatal de Milagro (p. 2), LightGBM fue el mejor modelo base (AUC = 0.953; F1 = 0.950) y el stacking no mejoró (AUC = 0.835); SHAP confirmó las notas tempranas como predictores principales y el modelo fue equitativo por género, etnia y nivel socioeconómico (consistencia = 0.907) (p. 1).",
+      "aporte_a_la_seccion": "Antecedente local (UNEMI) que respalda LightGBM + SHAP.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Are25_Fair_interpretable_ensembles_Ecuador.pdf"
+    },
+    {
+      "tema": "4. Explicabilidad (SHAP/XAI)",
+      "cita": "Tiukhova et al. (2024)",
+      "referencia_apa": "Tiukhova, E., Vemuri, P., López Flores, N. G., Islind, A. S., Óskarsdóttir, M., Poelmans, S., Baesens, B., & Snoeck, M. (2024). Explainable Learning Analytics: Assessing the stability of student success prediction models by means of explainable AI. *Decision Support Systems*, 182, 114229. https://doi.org/10.1016/j.dss.2024.114229",
+      "doi": "10.1016/j.dss.2024.114229",
+      "anio": 2024,
+      "hallazgo_clave": "Usan XAI para evaluar la estabilidad en el tiempo de modelos de predicción de éxito estudiantil (objetivo declarado en el título). Hallazgo cuantitativo pendiente de extraer del PDF.",
+      "aporte_a_la_seccion": "Une SHAP y deriva: las explicaciones como señal de estabilidad del modelo.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Tiu24_Explainable_learning_analytics_stability.pdf (versión enviada, Lirias; descargado pero no extraído a fondo)"
+    },
+    {
+      "tema": "5. Text-to-SQL con LLM y riesgos",
+      "cita": "Shi et al. (2025)",
+      "referencia_apa": "Shi, L., Tang, Z., Zhang, N., Zhang, X., & Yang, Z. (2025). A Survey on Employing Large Language Models for Text-to-SQL Tasks. *ACM Computing Surveys*, 58(2), 1-37. https://doi.org/10.1145/3737873",
+      "doi": "10.1145/3737873",
+      "anio": 2025,
+      "hallazgo_clave": "Revisión de métodos Text-to-SQL con LLM: benchmarks, métricas y taxonomía de ingeniería de prompts y ajuste fino; el ajuste fino también responde a preocupaciones de privacidad (p. 4 arXiv).",
+      "aporte_a_la_seccion": "Estado del arte de NL2SQL con LLM.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Shi25_Survey_LLM_Text-to-SQL_arXiv.pdf (versión arXiv; la paginación difiere de la revista)"
+    },
+    {
+      "tema": "5. Text-to-SQL con LLM y riesgos",
+      "cita": "Hong et al. (2025)",
+      "referencia_apa": "Hong, Z., Yuan, Z., Zhang, Q., Chen, H., Dong, J., Huang, F., & Huang, X. (2025). Next-Generation Database Interfaces: A Survey of LLM-Based Text-to-SQL. *IEEE Transactions on Knowledge and Data Engineering*, 37(12), 7328-7345. https://doi.org/10.1109/TKDE.2025.3609486",
+      "doi": "10.1109/TKDE.2025.3609486",
+      "anio": 2025,
+      "hallazgo_clave": "Revisión de Text-to-SQL basado en LLM: desafíos de comprensión de la pregunta, del esquema y de generación de SQL; plantea que consultar la base de datos puede mitigar alucinaciones al aportar contenido real (p. 1 arXiv).",
+      "aporte_a_la_seccion": "Estado del arte y desafíos abiertos de NL2SQL.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Hon25_Next-gen_DB_interfaces_LLM_Text-to-SQL_arXiv.pdf (versión arXiv)"
+    },
+    {
+      "tema": "5. Text-to-SQL con LLM y riesgos",
+      "cita": "Chafik et al. (2025)",
+      "referencia_apa": "Chafik, S., Ezzini, S., & Berrada, I. (2025). Enhancing security in text-to-SQL systems: A novel dataset and agent-based framework. *Natural Language Processing*, 31(6), 1399-1422. https://doi.org/10.1017/nlp.2025.10008",
+      "doi": "10.1017/nlp.2025.10008",
+      "anio": 2025,
+      "hallazgo_clave": "Las aplicaciones Text-to-SQL con LLM son vulnerables a prompts maliciosos y envenenamiento que pueden dar acceso no autorizado o destruir la BD; su arquitectura con clasificadores de prompts y de consultas mejora 70% la seguridad frente a un modelo convencional (pp. 1399, 1419).",
+      "aporte_a_la_seccion": "Justifica validar el SQL generado (solo lectura, lista blanca) en el prototipo.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Cha25_Security_text-to-SQL.pdf"
+    },
+    {
+      "tema": "5. Text-to-SQL con LLM y riesgos",
+      "cita": "Zhang et al. (2023)",
+      "referencia_apa": "Zhang, J., Zhou, Y., Hui, B., Liu, Y., Li, Z., & Hu, S. (2023). TrojanSQL: SQL Injection against Natural Language Interface to Database. En *Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing* (pp. 4344-4359). Association for Computational Linguistics. https://doi.org/10.18653/v1/2023.emnlp-main.264",
+      "doi": "10.18653/v1/2023.emnlp-main.264",
+      "anio": 2023,
+      "hallazgo_clave": "TrojanSQL: ataques de inyección SQL por puerta trasera alcanzan tasas de éxito de hasta 99% en modelos ajustados y 89% en parsers con LLM por prompting (p. 4344).",
+      "aporte_a_la_seccion": "Evidencia cuantitativa del riesgo de seguridad de NL2SQL.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Zha23_TrojanSQL.pdf"
+    },
+    {
+      "tema": "6. BI de autoservicio y lenguaje natural",
+      "cita": "Lennerholt et al. (2021)",
+      "referencia_apa": "Lennerholt, C., Van Laere, J., & Söderström, E. (2021). User-Related Challenges of Self-Service Business Intelligence. *Information Systems Management*, 38(4), 309-323. https://doi.org/10.1080/10580530.2020.1814458",
+      "doi": "10.1080/10580530.2020.1814458",
+      "anio": 2021,
+      "hallazgo_clave": "30 entrevistas en 2 proyectos de BI de autoservicio revelan desafíos ligados a los usuarios no técnicos que dificultan aprovechar el SSBI (resumen).",
+      "aporte_a_la_seccion": "Límites del BI de autoservicio tradicional para usuarios no técnicos.",
+      "texto_completo_leido": false,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: Solo resumen (OpenAlex); PDF de Taylor & Francis bloqueado (HTTP 403)"
+    },
+    {
+      "tema": "6. BI de autoservicio y lenguaje natural",
+      "cita": "Passlick et al. (2023)",
+      "referencia_apa": "Passlick, J., Grützner, L., Schulz, M., & Breitner, M. H. (2023). Self-service business intelligence and analytics application scenarios: A taxonomy for differentiation. *Information Systems and e-Business Management*, 21(1), 159-191. https://doi.org/10.1007/s10257-022-00574-3",
+      "doi": "10.1007/s10257-022-00574-3",
+      "anio": 2023,
+      "hallazgo_clave": "Taxonomía de escenarios de BI y analítica de autoservicio a partir de literatura, herramientas y un caso; el análisis de conglomerados identifica tres arquetipos de herramientas SSBIA (p. 159).",
+      "aporte_a_la_seccion": "Marco para ubicar Metabase/Superset frente a la consulta conversacional.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Pas23_SSBIA_taxonomy.pdf"
+    },
+    {
+      "tema": "6. BI de autoservicio y lenguaje natural",
+      "cita": "Ruoff et al. (2023)",
+      "referencia_apa": "Ruoff, M., Gnewuch, U., Maedche, A., & Scheibehenne, B. (2023). Designing Conversational Dashboards for Effective Use in Crisis Response. *Journal of the Association for Information Systems*, 24(6), 1500-1526. https://doi.org/10.17705/1jais.00801",
+      "doi": "10.17705/1jais.00801",
+      "anio": 2023,
+      "hallazgo_clave": "Un tablero conversacional con lenguaje natural mejora la interacción y aumenta la eficiencia y eficacia para encontrar información, sobre todo con onboarding y combinando lenguaje natural y ratón (resumen).",
+      "aporte_a_la_seccion": "Respalda complementar el tablero BI con consulta en lenguaje natural.",
+      "texto_completo_leido": false,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: Solo resumen (OpenAlex); PDF de AISeL bloqueado (HTTP 403)"
+    },
+    {
+      "tema": "7. Sistemas de alerta temprana",
+      "cita": "Bañeres et al. (2023)",
+      "referencia_apa": "Bañeres, D., Rodríguez-González, M. E., Guerrero-Roldán, A. E., & Cortadas, P. (2023). An early warning system to identify and intervene online dropout learners. *International Journal of Educational Technology in Higher Education*, 20(1), 3. https://doi.org/10.1186/s41239-022-00371-5",
+      "doi": "10.1186/s41239-022-00371-5",
+      "anio": 2023,
+      "hallazgo_clave": "Sistema de alerta temprana con intervención en un curso en línea de primer año de la UOC (581 participantes de 957 matriculados); las intervenciones de fijación de metas reducen significativamente el abandono y aumentan la participación (p. 1).",
+      "aporte_a_la_seccion": "La alerta debe acompañarse de intervención.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: documentacion/literatura/pdfs/avance3_tendencias/Ban23_EWS_online_dropout.pdf"
+    },
+    {
+      "tema": "7. Sistemas de alerta temprana",
+      "cita": "Plak et al. (2022)",
+      "referencia_apa": "Plak, S., Cornelisz, I., Meeter, M., & van Klaveren, C. (2022). Early warning systems for more effective student counselling in higher education: Evidence from a Dutch field experiment. *Higher Education Quarterly*, 76(1), 131-152. https://doi.org/10.1111/hequ.12298",
+      "doi": "10.1111/hequ.12298",
+      "anio": 2022,
+      "hallazgo_clave": "Experimento aleatorizado en una universidad neerlandesa: el EWS predice con precisión a los estudiantes en riesgo, pero la consejería asistida por el EWS no redujo el abandono ni mejoró el rendimiento (resumen).",
+      "aporte_a_la_seccion": "Advertencia: predecir no basta; hace falta retroalimentación accionable.",
+      "texto_completo_leido": false,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: Solo resumen (OpenAlex); PDF de Wiley bloqueado (HTTP 403)"
+    },
+    {
+      "tema": "7. Sistemas de alerta temprana",
+      "cita": "Carballo-Mendívil et al. (2025)",
+      "referencia_apa": "Carballo-Mendívil, B., Arellano-González, A., Ríos-Vázquez, N. J., & Lizardi-Duarte, M. del P. (2025). Predicting Student Dropout from Day One: XGBoost-Based Early Warning System Using Pre-Enrollment Data. *Applied Sciences*, 15(16), 9202. https://doi.org/10.3390/app15169202",
+      "doi": "10.3390/app15169202",
+      "anio": 2025,
+      "hallazgo_clave": "EWS con XGBoost y datos de ingreso de casi 40000 estudiantes de una universidad pública mexicana: AUC-ROC = 0.6902, recall 88%, precisión 57%, F1 = 0.69 (sec. 4); aplicado a 4682 nuevos ingresos marcó 59% como alto riesgo (sec. 4.3); usa CRISP-DM y pide actualizar el modelo con regularidad (sec. 5.1).",
+      "aporte_a_la_seccion": "Antecedente latinoamericano de EWS con CRISP-DM y boosting.",
+      "texto_completo_leido": true,
+      "fuente_verificacion": "Scopus (búsqueda 2026-10-25) + metadatos Crossref y OpenAlex por DOI; texto: Texto completo leído en HTML de MDPI (PDF bloqueado, HTTP 403); citar por sección"
+    }
+  ],
+  "documentacion_oficial": [
+    {
+      "herramienta": "MLflow",
+      "url": "https://mlflow.org/docs/latest/",
+      "version": "no verificada",
+      "fecha_consulta": "2026-10-25",
+      "uso": "documentación oficial; no usar para afirmar tendencias"
+    },
+    {
+      "herramienta": "Evidently AI",
+      "url": "https://docs.evidentlyai.com/",
+      "version": "no verificada",
+      "fecha_consulta": "2026-10-25",
+      "uso": "documentación oficial; no usar para afirmar tendencias"
+    },
+    {
+      "herramienta": "Great Expectations",
+      "url": "https://docs.greatexpectations.io/docs/",
+      "version": "no verificada",
+      "fecha_consulta": "2026-10-25",
+      "uso": "documentación oficial; no usar para afirmar tendencias"
+    },
+    {
+      "herramienta": "SHAP",
+      "url": "https://shap.readthedocs.io/en/latest/",
+      "version": "no verificada",
+      "fecha_consulta": "2026-10-25",
+      "uso": "documentación oficial; no usar para afirmar tendencias"
+    },
+    {
+      "herramienta": "Metabase",
+      "url": "https://www.metabase.com/docs/latest/",
+      "version": "no verificada",
+      "fecha_consulta": "2026-10-25",
+      "uso": "documentación oficial; no usar para afirmar tendencias"
+    }
+  ],
+  "nota_documentacion": "URLs de documentación oficial registradas sin abrirlas en esta sesión; confirmar versión (p. ej., en requirements del proyecto) antes de citarlas."
+}

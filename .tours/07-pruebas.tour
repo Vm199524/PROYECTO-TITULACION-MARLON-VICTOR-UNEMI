@@ -1,0 +1,80 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "7 · Pruebas e integración continua",
+  "description": "Las pruebas que respaldan cada decisión y la integración continua en GitHub Actions.",
+  "isPrimary": false,
+  "steps": [
+    {
+      "file": "backend/tests/test_caracteristicas.py",
+      "pattern": "def test_variables_no_usan_periodos_futuros",
+      "title": "Sin fuga de información",
+      "description": "Cortamos la historia después de un periodo y comprobamos que las variables de ese periodo no cambian: el modelo no puede ver el futuro."
+    },
+    {
+      "file": "backend/tests/test_modelo.py",
+      "pattern": "def test_particion_temporal_reserva_los_periodos_mas_recientes",
+      "title": "Partición temporal",
+      "description": "Verificamos que la prueba queda con los periodos más recientes."
+    },
+    {
+      "file": "backend/tests/test_modelo.py",
+      "pattern": "def test_umbrales_ordenados_y_con_el_recall_pedido",
+      "title": "Umbrales",
+      "description": "Comprobamos que el umbral ALTO es mayor o igual que el MEDIO y que el MEDIO detecta al menos el 80 % de los abandonos."
+    },
+    {
+      "file": "backend/tests/test_validador.py",
+      "pattern": "def test_rechaza_sql_peligroso",
+      "title": "SQL malicioso rechazado",
+      "description": "Probamos escrituras, tablas físicas, otras bases y funciones peligrosas: el validador las rechaza todas."
+    },
+    {
+      "file": "backend/tests/test_guardarrailes.py",
+      "pattern": "def test_bloquea_preguntas_adversariales",
+      "title": "Preguntas adversariales",
+      "description": "Las preguntas adversariales del conjunto dorado se bloquean, y las legítimas pasan (la prueba siguiente)."
+    },
+    {
+      "file": "backend/tests/test_privacidad_ia.py",
+      "pattern": "def test_generar_envia_la_pregunta_depurada_y_restaura_el_sql",
+      "title": "Privacidad ante la IA",
+      "description": "Con un proveedor falso verificamos que a la IA solo llega la pregunta con marcadores y que el SQL local recupera los valores reales."
+    },
+    {
+      "file": "backend/tests/test_conexion_cifrada.py",
+      "pattern": "def test_la_cadena_siempre_pide_cifrado",
+      "title": "Conexión cifrada",
+      "description": "La cadena de conexión siempre incluye `Encrypt=yes`, en cualquier entorno."
+    },
+    {
+      "file": "backend/tests/test_mlops.py",
+      "pattern": "def test_origen_movil_entrena_solo_con_el_pasado",
+      "title": "Validación por periodo sin fuga",
+      "description": "Comprobamos que en la validación con origen móvil cada periodo se evalúa con un modelo entrenado solo con periodos anteriores."
+    },
+    {
+      "file": "backend/tests/test_api.py",
+      "pattern": "def test_institucion_no_asignada_se_rechaza",
+      "title": "Permisos en la API",
+      "description": "Pedir una institución no asignada da 403; también probamos que la autoridad no administra cuentas ni registra seguimiento."
+    },
+    {
+      "file": "backend/tests/test_integracion_bd.py",
+      "pattern": "def test_aislamiento_entre_instituciones",
+      "title": "Aislamiento contra SQL Server real",
+      "description": "Pruebas de integración: cada institución solo ve sus filas, el lector no toca tablas físicas y la institución de la sesión no se puede cambiar."
+    },
+    {
+      "file": "frontend/src/pruebas/navegacion.test.ts",
+      "pattern": "describe\\('navegación por rol'",
+      "title": "Pruebas de interfaz",
+      "description": "Con vitest comprobamos que cada rol ve solo sus pantallas y que toda pantalla exige una capacidad."
+    },
+    {
+      "file": ".github/workflows/ci.yml",
+      "pattern": "  backend:",
+      "title": "Integración continua",
+      "description": "En cada push, GitHub Actions corre pytest del backend y vitest más la compilación del frontend. Las pruebas de integración se omiten sin SQL Server."
+    }
+  ]
+}

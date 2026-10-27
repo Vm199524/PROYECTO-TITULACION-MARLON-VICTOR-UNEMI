@@ -6,6 +6,9 @@ Los procesos por lotes (entrenar, calificar, segmentar) leen las tablas
 físicas con la cuenta de administración: no son consultas de un usuario y no
 pasan por las vistas gobernadas. Cada lectura filtra por la institución.
 
+Requerimientos que implementa: RF-03 (entrenamiento y validación), RF-17
+    (calificación por lotes y deriva), RF-18 (aislamiento por institución).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

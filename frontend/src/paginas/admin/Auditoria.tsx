@@ -3,6 +3,10 @@
  *
  * Quién ingresó, consultó, abrió una ficha, simuló, exportó o cambió una cuenta, y
  * cuándo. Los detalles nunca guardan cédulas completas ni el SQL (solo su huella).
+ *
+ * Ruta: /admin/auditoria · Rol: Administración de TI (capacidad `ver_auditoria`).
+ * API: GET /admin/auditoria?… (filtros de la bitácora).
+ * Requisitos: RF-16.
  */
 import { useState } from 'react'
 import { IconoAuditoria } from '../../componentes/iconos'

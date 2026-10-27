@@ -10,6 +10,9 @@ Uso:
     cd backend
     python -m scripts.ejecutar_sql ../base_de_datos/crear_almacen_academico.sql
 
+Requerimientos que implementa: RNF-02 (mínimo privilegio y aislamiento), RNF-10
+    (portabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -33,8 +36,8 @@ def dividir_en_lotes(texto: str) -> list[str]:
         else:
             actual.append(linea)
     lotes.append('\n'.join(actual))
-    return [l.strip() for l in lotes if l.strip() and not all(x.strip().startswith('--') or not x.strip()
-                                                                for x in l.splitlines())]
+    return [lote.strip() for lote in lotes if lote.strip() and not all(x.strip().startswith('--') or not x.strip()
+                                                                       for x in lote.splitlines())]
 
 
 def main() -> int:

@@ -3,6 +3,11 @@
  *
  * La escritura va por la cuenta app_seguimiento, que solo puede ejecutar los dos
  * procedimientos del registro; la IA nunca escribe aquí.
+ *
+ * Se muestra en: /estudiantes/:token y /seguimiento · Rol: Bienestar estudiantil y
+ * Administración de TI (capacidad `registrar_seguimiento`).
+ * API: POST /seguimiento, POST /seguimiento/{id}/cerrar.
+ * Requisitos: RF-09.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'

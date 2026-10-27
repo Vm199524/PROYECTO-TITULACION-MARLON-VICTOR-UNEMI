@@ -20,7 +20,7 @@ Sistema con cuatro piezas (modelo, segmentación, NL2SQL y panel) sobre un almac
 
 ### Monolito en capas (interfaz renderizada en el servidor) — 4,40 / 5
 - Incorporar una institución con solo un perfil de mapeo: **4**. El perfil de mapeo es posible, pero la interfaz y el ETL comparten despliegue. *Fuente:* Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)
-- Aislamiento de datos garantizado en el motor: **5**. El aislamiento reside en el motor (vistas con SESSION_CONTEXT y cuenta de solo lectura), independiente del estilo. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)
+- Aislamiento de datos garantizado en el motor: **5**. El aislamiento reside en el motor (vistas con SESSION_CONTEXT y cuenta de solo lectura), independiente del estilo. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)
 - Panel y chat con las mismas cifras: **5**. Una sola aplicación lee las mismas vistas. *Fuente:* Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)
 - Costo de operación para 2 personas en un equipo local: **5**. Un solo desplegable; los monolitos rinden mejor en una sola máquina y convienen a sistemas pequeños y medianos (Blinowski et al., 2022, citado en Hassan et al., 2025, p. 4). *Fuente:* Hassan et al. (2025), Big Data and Cognitive Computing, 9(10), 253, https://doi.org/10.3390/bdcc9100253
 - Evolución de la interfaz independiente del backend: **2**. La interfaz queda acoplada a la aplicación del servidor. *Fuente:* Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03
@@ -28,7 +28,7 @@ Sistema con cuatro piezas (modelo, segmentación, NL2SQL y panel) sobre un almac
 
 ### Cliente-servidor desacoplado (SPA + API REST) con backend en capas — 4,65 / 5
 - Incorporar una institución con solo un perfil de mapeo: **5**. OULAD_UK se incorporó solo con un perfil en etl/perfiles.py; el mismo ETL y modelo, sin cambios. *Fuente:* Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)
-- Aislamiento de datos garantizado en el motor: **5**. Aislamiento en el motor comprobado: ninguna fila de otra institución en las pruebas ni en la evaluación NL2SQL. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)
+- Aislamiento de datos garantizado en el motor: **5**. Aislamiento en el motor comprobado: ninguna fila de otra institución en las pruebas ni en la evaluación NL2SQL. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)
 - Panel y chat con las mismas cifras: **5**. Panel y chat consumen la misma API, que lee las mismas vistas VIS_*. *Fuente:* Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)
 - Costo de operación para 2 personas en un equipo local: **4**. Dos desplegables (frontend y backend) más la base de datos en Docker. *Fuente:* Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)
 - Evolución de la interfaz independiente del backend: **5**. La SPA consume la API REST y evoluciona aparte, como en la plantilla de referencia. *Fuente:* Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03
@@ -36,7 +36,7 @@ Sistema con cuatro piezas (modelo, segmentación, NL2SQL y panel) sobre un almac
 
 ### Microservicios (modelo, NL2SQL, ETL y panel por separado) — 3,30 / 5
 - Incorporar una institución con solo un perfil de mapeo: **5**. Un servicio de ETL por perfil también lo permite. *Fuente:* Repositorio del prototipo: codigo_fuente/ (suite pytest del backend y pruebas del frontend)
-- Aislamiento de datos garantizado en el motor: **5**. El aislamiento seguiría en el motor. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)
+- Aislamiento de datos garantizado en el motor: **5**. El aislamiento seguiría en el motor. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)
 - Panel y chat con las mismas cifras: **3**. Los patrones de base de datos por servicio y CQRS que describe Hassan et al. (2025, p. 16) separan los datos y obligan a sincronizarlos. *Fuente:* Hassan et al. (2025), Big Data and Cognitive Computing, 9(10), 253, https://doi.org/10.3390/bdcc9100253
 - Costo de operación para 2 personas en un equipo local: **1**. Migrar a microservicios exige un esfuerzo de desarrollo y recursos considerables y su éxito no está garantizado (Hassan et al., 2025, p. 1); serían al menos cuatro desplegables. *Fuente:* Hassan et al. (2025), Big Data and Cognitive Computing, 9(10), 253, https://doi.org/10.3390/bdcc9100253
 - Evolución de la interfaz independiente del backend: **5**. La interfaz sería un servicio más. *Fuente:* Repositorio oficial fastapi/full-stack-fastapi-template en GitHub (licencia, estrellas y última versión por la API), consultado 2026-10-03

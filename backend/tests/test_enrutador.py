@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Enrutador de métricas certificadas: las preguntas frecuentes no dependen de la IA."""
+"""Enrutador de métricas certificadas: las preguntas frecuentes no dependen de la IA.
+
+Verifica: RF-10 (consulta en español), RNF-05 (calidad de la consulta).
+"""
 import json
 from pathlib import Path
 

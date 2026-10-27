@@ -7,6 +7,7 @@ REM  Opciones (se pasan a scripts.pipeline): --rapido  --con-consulta
 REM           --desde PASO  --solo PASO1,PASO2  --sin-oulad  --reentrenar INSTITUCION
 REM  Las credenciales se leen de backend\.env; este archivo no
 REM  contiene ni muestra contraseñas.
+REM  Requerimiento: RNF-10 (portabilidad, instalación con un script).
 REM  Autores: Marlon David Perez Almachi, Victor Manuel Lluilema Pisco (UNEMI, 2026)
 REM ==========================================================================
 chcp 65001 >nul

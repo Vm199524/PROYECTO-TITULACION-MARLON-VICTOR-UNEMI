@@ -9,8 +9,18 @@ parecidos a la pregunta (aprendizaje con pocos ejemplos recuperados por
 similitud) y las dos últimas preguntas de la conversación. NUNCA recibe filas
 de datos para escribir el SQL.
 
+Antes del envío, la pregunta, las anteriores y los mensajes de corrección se
+depuran (core/privacidad.py): cédulas, correos, teléfonos y nombres de
+estudiantes de la institución activa se reemplazan por marcadores
+(CEDULA_1, NOMBRE_1…). El valor original solo se restaura en el SQL que se
+ejecuta localmente; la pregunta original que usan la ruta certificada y el
+filtro por carreras no cambia.
+
 La salida se valida con el árbol sintáctico (validador.py) y, si la base la
 rechaza, se intenta UNA corrección con el mensaje de error.
+
+Requerimientos que implementa: RF-10 (consulta en español), RNF-01 (protección
+    de datos).
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
@@ -21,6 +31,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from core.privacidad import IndiceNombres, depurar_texto, restaurar_en_sql
 from nl2sql.esquema import GLOSARIO, texto_esquema
 from nl2sql.proveedores import RespuestaIA, completar
 
@@ -50,8 +61,14 @@ Responde SOLO un objeto JSON, sin texto adicional:
 
 USUARIO = """Ejemplos verificados de preguntas parecidas y su SQL:
 {ejemplos}
-{historial}
+{historial}{marcadores}
 Pregunta: {pregunta}"""
+
+MARCADORES = """
+Por protección de datos, los datos personales de la pregunta se reemplazaron por marcadores ({lista}). Úsalos tal
+cual como valores literales entre comillas simples: CEDULA_n se compara con la columna cedula y NOMBRE_n con
+CONCAT(nombres, ' ', apellidos) o CONCAT(apellidos, ' ', nombres) usando LIKE '%NOMBRE_n%'.
+"""
 
 CORRECCION = """La consulta anterior falló.
 SQL: {sql}
@@ -69,6 +86,7 @@ class ResultadoGeneracion:
     modelo: str = ''
     intentos: list[dict] = field(default_factory=list)
     texto_crudo: str = ''
+    reemplazos: dict[str, str] = field(default_factory=dict, repr=False)   # marcador → valor; no sale del servidor
 
 
 def extraer_json(texto: str) -> dict | None:
@@ -100,17 +118,30 @@ def extraer_json(texto: str) -> dict | None:
     return {'sql': m.group(0).strip()} if m else None
 
 
-def _a_resultado(r: RespuestaIA, datos: dict | None) -> ResultadoGeneracion:
+def _texto_marcadores(reemplazos: dict[str, str]) -> str:
+    return MARCADORES.format(lista=', '.join(sorted(reemplazos))) if reemplazos else ''
+
+
+def _a_resultado(r: RespuestaIA, datos: dict | None, reemplazos: dict[str, str] | None = None) -> ResultadoGeneracion:
     datos = datos or {}
+    reemplazos = reemplazos or {}
     viz = str(datos.get('visualizacion') or 'tabla').lower()
-    return ResultadoGeneracion(sql=str(datos.get('sql') or '').strip(),
+    return ResultadoGeneracion(sql=restaurar_en_sql(str(datos.get('sql') or '').strip(), reemplazos), reemplazos=reemplazos,
                                visualizacion=viz if viz in ('valor', 'tabla', 'barras', 'lineas') else 'tabla',
                                titulo=str(datos.get('titulo') or '').strip()[:120], nota=str(datos.get('nota') or '')[:300],
                                proveedor=r.proveedor, modelo=r.modelo, intentos=r.intentos, texto_crudo=r.texto[:2000])
 
 
-def generar(pregunta: str, ejemplos: list[tuple[str, str]], historial: list[dict] | None = None) -> ResultadoGeneracion:
-    """Pide el SQL a la cascada de proveedores."""
+def generar(pregunta: str, ejemplos: list[tuple[str, str]], historial: list[dict] | None = None,
+            nombres: IndiceNombres | None = None) -> ResultadoGeneracion:
+    """Pide el SQL a la cascada de proveedores con la pregunta depurada de datos personales.
+
+    Args:
+        nombres: índice de nombres de estudiantes de la institución activa
+            (core.privacidad.indice_nombres) para reconocerlos en la pregunta.
+    """
+    reemplazos: dict[str, str] = {}
+    depurada, _ = depurar_texto(pregunta.strip(), nombres, reemplazos)
     sistema = SISTEMA.format(esquema=texto_esquema(), glosario='\n'.join(f'- {g}' for g in GLOSARIO))
     texto_ej = '\n'.join(f'P: {p}\nSQL: {s}' for p, s in ejemplos) or '(sin ejemplos)'
     texto_hist = ''
@@ -118,16 +149,25 @@ def generar(pregunta: str, ejemplos: list[tuple[str, str]], historial: list[dict
         ultimas = [h for h in historial if h.get('pregunta')][-2:]
         if ultimas:
             texto_hist = '\nPreguntas anteriores de la conversación (por si la actual hace referencia a ellas):\n' + \
-                         '\n'.join(f"- {h['pregunta']}" for h in ultimas) + '\n'
-    r = completar(sistema, USUARIO.format(ejemplos=texto_ej, historial=texto_hist, pregunta=pregunta.strip()))
-    return _a_resultado(r, extraer_json(r.texto))
+                         '\n'.join(f"- {depurar_texto(str(h['pregunta']), nombres, reemplazos)[0]}" for h in ultimas) + '\n'
+    r = completar(sistema, USUARIO.format(ejemplos=texto_ej, historial=texto_hist,
+                                          marcadores=_texto_marcadores(reemplazos), pregunta=depurada))
+    return _a_resultado(r, extraer_json(r.texto), reemplazos)
 
 
 def corregir(pregunta: str, anterior: ResultadoGeneracion, error: str, ejemplos: list[tuple[str, str]]) -> ResultadoGeneracion:
-    """Un intento de corrección con el mensaje de error de la validación o de la base."""
+    """Un intento de corrección con el mensaje de error de la validación o de la base.
+
+    El SQL anterior y el error viajan con los mismos marcadores de la pregunta:
+    los valores restaurados localmente no salen hacia el proveedor.
+    """
     sistema = SISTEMA.format(esquema=texto_esquema(), glosario='\n'.join(f'- {g}' for g in GLOSARIO))
     texto_ej = '\n'.join(f'P: {p}\nSQL: {s}' for p, s in ejemplos)
-    usuario = USUARIO.format(ejemplos=texto_ej, historial='', pregunta=pregunta) + '\n\n' + \
-        CORRECCION.format(sql=anterior.sql, error=error)
+    reemplazos = dict(anterior.reemplazos)
+    depurada, _ = depurar_texto(pregunta, None, reemplazos)
+    sql_previo, _ = depurar_texto(anterior.sql, None, reemplazos)
+    error_depurado, _ = depurar_texto(str(error or ''), None, reemplazos)
+    usuario = USUARIO.format(ejemplos=texto_ej, historial='', marcadores=_texto_marcadores(reemplazos),
+                             pregunta=depurada) + '\n\n' + CORRECCION.format(sql=sql_previo, error=error_depurado)
     r = completar(sistema, usuario)
-    return _a_resultado(r, extraer_json(r.texto))
+    return _a_resultado(r, extraer_json(r.texto), reemplazos)

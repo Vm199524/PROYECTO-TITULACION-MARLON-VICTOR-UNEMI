@@ -11,6 +11,9 @@ Si el almacén está vacío y existen ADMIN_INICIAL_USUARIO y
 ADMIN_INICIAL_CLAVE en backend/.env, se crea esa primera cuenta de
 administración; nunca hay credenciales escritas en el código.
 
+Requerimientos que implementa: RF-01 (autenticación y permisos por rol), RF-15
+    (administración de cuentas).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

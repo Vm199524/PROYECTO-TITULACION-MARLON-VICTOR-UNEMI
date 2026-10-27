@@ -6,12 +6,16 @@ Crea la base operativa UNEMI_PRUEBAS con dos tablas, tal como las tendría el
 sistema académico de una universidad: alumnos_prueba (padrón) e
 historial_matriculas (una fila por estudiante y semestre). Los archivos CSV
 están en base_de_datos/datos_de_prueba/; las cédulas y los
-nombres son ficticios (anonimizar_padron.py) y la trayectoria es sintética
+nombres son ficticios (generate_dataset.py y anonimizar_padron.py) y la
+trayectoria es sintética
 (generate_historial.py). Ningún dato personal real entra en la base.
 
 Uso:
     cd backend
     python -m scripts.cargar_unemi
+
+Requerimientos que implementa: RF-02 (carga y transformación por perfil),
+    RNF-01 (protección de datos).
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026

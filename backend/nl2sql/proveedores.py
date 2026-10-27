@@ -9,6 +9,8 @@ siguiente si uno falla, se demora, agota su cuota o devuelve una salida vacía
 o degenerada. Que un proveedor caiga no deja al sistema sin chat, y las
 métricas certificadas no dependen de ninguno.
 
+Requerimientos que implementa: RF-10 (consulta en español).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

@@ -21,6 +21,8 @@ Uso:
     cd backend
     python -m ml.segmentar --institucion UNEMI_PRUEBAS
 
+Requerimientos que implementa: RF-11 (segmentación de carreras).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

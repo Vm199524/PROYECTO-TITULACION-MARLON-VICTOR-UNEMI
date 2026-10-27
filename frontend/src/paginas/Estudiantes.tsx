@@ -4,6 +4,10 @@
  * Ordenada por probabilidad de abandono, con filtros por nivel de riesgo, carrera y
  * nombre. Cada estudiante se abre por un enlace cifrado (nunca por su cédula) y la
  * cédula se muestra enmascarada. En pantallas angostas la tabla pasa a tarjetas.
+ *
+ * Ruta: /estudiantes · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI (capacidad `ver_alumnos`).
+ * API: GET /estudiantes?… (filtros de riesgo, carrera, nombre y página).
+ * Requisitos: RF-06, RF-18.
  */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'

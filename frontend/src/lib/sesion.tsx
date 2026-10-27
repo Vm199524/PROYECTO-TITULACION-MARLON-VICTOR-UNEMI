@@ -4,6 +4,9 @@
  * Al cambiar de institución se vacía la caché de consultas: ninguna pantalla puede
  * mostrar por un instante cifras de la institución anterior (aislamiento por
  * institución, RNF de protección de datos).
+ *
+ * API: POST /auth/ingresar, GET /auth/yo, GET /instituciones.
+ * Requisitos: RF-01, RF-18.
  */
 import { useQueryClient } from '@tanstack/react-query'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'

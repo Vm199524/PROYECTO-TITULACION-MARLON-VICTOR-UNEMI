@@ -1,0 +1,69 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "1 · Arquitectura: cliente-servidor con backend en capas",
+  "description": "Cómo está organizado VicMar y cómo viaja una petición desde la web hasta la base de datos.",
+  "isPrimary": true,
+  "steps": [
+    {
+      "file": "ARQUITECTURA.md",
+      "pattern": "La arquitectura es \\*\\*cliente-servidor desacoplada\\*\\*",
+      "title": "Estilo de arquitectura",
+      "description": "Elegimos una arquitectura **cliente-servidor desacoplada**: una aplicación web de una sola página y una API REST con backend en capas. La capa de datos aísla a cada institución en el propio motor. La decisión está en DT-06."
+    },
+    {
+      "file": "ARQUITECTURA.md",
+      "pattern": "## Reglas de dependencia entre capas",
+      "title": "Reglas de dependencia",
+      "description": "El frontend solo habla con el backend por HTTP y `api/` usa `core/`, `ml/` y `nl2sql/`; ninguna capa de dominio importa las rutas. Así podemos probar la lógica sin levantar el servidor."
+    },
+    {
+      "file": "package.json",
+      "pattern": "\"start\": \"node scripts/iniciar.mjs\"",
+      "title": "Arranque único",
+      "description": "Con `npm start` levantamos a la vez la API (puerto 8090) y la aplicación web (puerto 3000)."
+    },
+    {
+      "file": "frontend/vite.config.ts",
+      "pattern": "'/api': \\{ target:",
+      "title": "El frontend solo conoce /api",
+      "description": "La web siempre llama a rutas relativas `/api/...`; en desarrollo Vite las reenvía al backend. El navegador nunca habla con la base de datos."
+    },
+    {
+      "file": "backend/main.py",
+      "pattern": "app = FastAPI\\(",
+      "title": "Punto de entrada de la API",
+      "description": "Aquí creamos la aplicación **FastAPI**. La documentación interactiva queda en `/docs`, útil para mostrar cada servicio."
+    },
+    {
+      "file": "backend/main.py",
+      "pattern": "async def cabeceras_y_registro",
+      "title": "Cabeceras de seguridad",
+      "description": "Un middleware agrega cabeceras de seguridad (`nosniff`, `DENY`, `no-store`) y registra la duración de cada petición."
+    },
+    {
+      "file": "backend/main.py",
+      "pattern": "for modulo in \\(sesion, panel",
+      "title": "Un router por proceso académico",
+      "description": "Montamos un router por proceso: sesión, panel, estudiantes, carreras, referentes, modelo, seguimiento, consulta, reportes y administración, todos bajo `/api`."
+    },
+    {
+      "file": "backend/api/consulta.py",
+      "pattern": "def consultar\\(datos: Pregunta",
+      "title": "Ejemplo de la capa de servicio",
+      "description": "Un endpoint típico: exige una capacidad con `requiere(...)`, delega la lógica a otra capa (`nl2sql.motor`) y deja rastro en la auditoría. El router no contiene reglas de negocio."
+    },
+    {
+      "file": "backend/core/db.py",
+      "pattern": "def leer\\(sql: str, institucion: str",
+      "title": "Acceso a datos centralizado",
+      "description": "Toda lectura pasa por esta función, con la cuenta de solo lectura y la institución activa. Ningún módulo abre conexiones por su cuenta."
+    },
+    {
+      "file": "backend/scripts/pipeline.py",
+      "pattern": "PASOS = \\['entorno'",
+      "title": "Procesos por lotes",
+      "description": "El entrenamiento y la calificación no ocurren en la petición web: este orquestador ejecuta en orden la carga, el ETL, el entrenamiento, la calificación, la segmentación y el monitoreo (calidad de datos, deriva y registro en MLflow)."
+    }
+  ],
+  "nextTour": "2 · Datos: ETL por perfiles y almacén en estrella"
+}

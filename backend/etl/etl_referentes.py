@@ -18,6 +18,8 @@ Uso:
     cd backend
     python -m etl.etl_referentes
 
+Requerimientos que implementa: RF-12 (referentes externos).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

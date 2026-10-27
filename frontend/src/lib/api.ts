@@ -5,6 +5,10 @@
  * valida ambos y fija la institución en SESSION_CONTEXT antes de leer. El token se
  * guarda en sessionStorage (se borra al cerrar la pestaña). Un 401 cierra la sesión
  * en todas las pantallas a la vez.
+ *
+ * API: todas las rutas pasan por el prefijo /api, que el servidor de Vite reenvía al backend
+ * (vite.config.ts, puerto 8090). `descargar` atiende las exportaciones en PDF y Excel.
+ * Requisitos: RF-01, RF-14, RF-18.
  */
 const CLAVE_TOKEN = 'vicmar.token'
 const CLAVE_INSTITUCION = 'vicmar.institucion'

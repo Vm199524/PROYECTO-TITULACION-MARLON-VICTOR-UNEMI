@@ -19,6 +19,9 @@ Uso:
     cd backend
     python -m etl.etl_academico --perfil UNEMI_PRUEBAS
 
+Requerimientos que implementa: RF-02 (carga y transformación por perfil), RF-18
+    (aislamiento por institución), RNF-08 (mantenibilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -45,7 +48,7 @@ def extraer(conn, perfil: PerfilInstitucion) -> list[dict]:
     cur.execute(perfil.sql_origen)
     columnas = [c[0] for c in cur.description]
     validar_columnas(columnas, perfil)
-    return [dict(zip(columnas, fila)) for fila in cur.fetchall()]
+    return [dict(zip(columnas, fila, strict=False)) for fila in cur.fetchall()]
 
 
 def _fecha(v) -> dt.date:

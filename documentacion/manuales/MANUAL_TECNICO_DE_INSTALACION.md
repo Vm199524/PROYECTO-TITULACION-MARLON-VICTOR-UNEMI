@@ -74,6 +74,7 @@ El archivo nunca se sube al repositorio. Cada variable está explicada dentro de
 |---|---|---|
 | `DB_HOST` | `localhost,1433`, o el puerto que use el contenedor | Sí |
 | `DB_USER` / `DB_PASSWORD` | `sa` y la contraseña con la que se crea el contenedor (paso 5) | Sí |
+| `DB_TRUST_SERVER_CERT` | `yes` con el contenedor local (certificado autofirmado); `no` en producción, con un certificado emitido por una autoridad de confianza. La conexión siempre va cifrada (`Encrypt=yes`) | No (sin ella: `yes` en `development`, `no` en `production`) |
 | `CHAT_READER_PASSWORD`, `APP_SEGUIMIENTO_PASSWORD`, `JWT_SECRET_KEY` | Si quedan vacías, el pipeline las genera al azar y las escribe en el `.env` sin mostrarlas | No |
 | `GEMINI_API_KEY`, `GROQ_API_KEY`, `NVIDIA_API_KEY`, `DEEPSEEK_API_KEY` | Al menos una clave para las preguntas fuera de las 40 métricas certificadas | Para la consulta generada con IA |
 | `APP_ENV` | `development`; en `production` la API no arranca con la llave JWT de desarrollo | No |
@@ -81,6 +82,8 @@ El archivo nunca se sube al repositorio. Cada variable está explicada dentro de
 > [!IMPORTANT]
 > La contraseña de `sa` debe cumplir la política de SQL Server: 8 o más caracteres con mayúsculas, minúsculas,
 > números y símbolos. Si no la cumple, el contenedor se detiene al arrancar.
+> Lo mismo vale para `CHAT_READER_PASSWORD` y `APP_SEGUIMIENTO_PASSWORD`: los logins se crean con
+> `CHECK_POLICY = ON` y SQL Server rechaza una contraseña que no cumpla la política.
 
 Sin ninguna clave de IA el sistema funciona completo: paneles, fichas, seguimiento, reportes y las 40 métricas
 certificadas de la consulta conversacional.

@@ -65,7 +65,6 @@ export const IconoInstitucion = crear('IconoInstitucion', <><path d="M3 20.5h18"
 export const IconoLlave = crear('IconoLlave', <><circle cx="8" cy="15" r="4" /><path d="m11 12 9-9" /><path d="m17 6 2.5 2.5" /><path d="m15 8 2 2" /></>)
 export const IconoTendencia = crear('IconoTendencia', <><path d="m3 17 6-6 4 4 8-8" /><path d="M15 7h6v6" /></>)
 export const IconoSimular = crear('IconoSimular', <><path d="M4 6h10" /><path d="M18 6h2" /><circle cx="16" cy="6" r="2" /><path d="M4 12h3" /><path d="M11 12h9" /><circle cx="9" cy="12" r="2" /><path d="M4 18h12" /><circle cx="18" cy="18" r="2" /></>)
-export const IconoLibro = crear('IconoLibro', <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z" /><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" /></>)
 export const IconoEnlace = crear('IconoEnlace', <><path d="M14 4h6v6" /><path d="M20 4 11 13" /><path d="M18 14v5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 19V7.5A1.5 1.5 0 0 1 5.5 6H10" /></>)
 export const IconoEditar = crear('IconoEditar', <><path d="M4 20h4L19 9l-4-4L4 16Z" /><path d="m13.5 6.5 4 4" /></>)
 export const IconoPapelera = crear('IconoPapelera', <><path d="M4 7h16" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M6 7l1 13h10l1-13" /><path d="M9 7V4h6v3" /></>)

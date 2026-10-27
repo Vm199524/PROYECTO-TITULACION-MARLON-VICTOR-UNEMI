@@ -6,6 +6,9 @@ Lee backend/.env una sola vez y expone valores tipados. Ningún secreto vive en
 el código: si falta una contraseña, el componente que la necesita se detiene
 con un mensaje claro (falla cerrada) en lugar de usar un valor por defecto.
 
+Requerimientos que implementa: RNF-02 (mínimo privilegio y aislamiento), RNF-10
+    (portabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -30,6 +33,16 @@ def _entero(nombre: str, defecto: int) -> int:
         return int(_texto(nombre, str(defecto)))
     except ValueError:
         return defecto
+
+
+def _booleano(nombre: str, defecto: bool) -> bool:
+    """Interpreta yes/no, true/false, si/no, 1/0; cualquier otro valor usa el defecto."""
+    valor = _texto(nombre).lower()
+    if valor in ('yes', 'true', 'si', 'sí', '1', 'on'):
+        return True
+    if valor in ('no', 'false', '0', 'off'):
+        return False
+    return defecto
 
 
 def _decimal(nombre: str, defecto: float) -> float:
@@ -64,6 +77,11 @@ class Configuracion:
     db_driver: str = field(default_factory=lambda: _texto('DB_DRIVER', 'ODBC Driver 18 for SQL Server'))
     db_usuario_admin: str = field(default_factory=lambda: _texto('DB_USER', 'sa'))
     db_clave_admin: str = field(default_factory=lambda: _texto('DB_PASSWORD'))
+    # La conexión siempre va cifrada (Encrypt=yes). Aceptar el certificado
+    # autofirmado del contenedor solo ocurre si DB_TRUST_SERVER_CERT lo permite;
+    # sin la variable se acepta en desarrollo y se rechaza en producción.
+    db_confiar_certificado: bool = field(default_factory=lambda: _booleano(
+        'DB_TRUST_SERVER_CERT', _texto('APP_ENV', 'development').lower() != 'production'))
     almacen: str = field(default_factory=lambda: _texto('ALMACEN_DB', 'ALMACEN_ACADEMICO'))
     lector_usuario: str = field(default_factory=lambda: _texto('CHAT_READER_USER', 'chat_reader'))
     lector_clave: str = field(default_factory=lambda: _texto('CHAT_READER_PASSWORD'))

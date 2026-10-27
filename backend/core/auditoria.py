@@ -9,6 +9,9 @@ simulaciones, registros de seguimiento, exportaciones y cambios de cuentas.
 Es un archivo JSON Lines de solo agregado; la administración lo consulta y
 lo exporta desde la interfaz.
 
+Requerimientos que implementa: RF-16 (auditoría y estado del sistema), RNF-03
+    (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

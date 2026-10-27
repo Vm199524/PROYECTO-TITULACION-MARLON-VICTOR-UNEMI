@@ -37,6 +37,8 @@ Uso:
     cd backend
     python -m scripts.cargar_oulad [--dir ../datos/externos/oulad] [--corte 3]
 
+Requerimientos que implementa: RF-02 (carga y transformación por perfil).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -182,7 +184,7 @@ def construir_historial(directorio: Path, corte_en_curso: int = 3) -> tuple[pd.D
 
     inicio = filas['code_presentation'].map(inicio_presentacion)
     filas['inicio_presentacion'] = inicio
-    filas['fecha_corte'] = [i + timedelta(days=(c - 1) * DIAS_CORTE) for i, c in zip(inicio, filas['corte'])]
+    filas['fecha_corte'] = [i + timedelta(days=(c - 1) * DIAS_CORTE) for i, c in zip(inicio, filas['corte'], strict=False)]
     filas['cedula'] = 'OU' + filas['id_student'].astype(str)
     filas['apellidos'] = 'Estudiante OU'
     filas['nombres'] = filas['id_student'].astype(str)

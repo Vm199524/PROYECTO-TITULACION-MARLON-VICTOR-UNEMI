@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Protección de datos estudiantiles (LOPDP) y control de acceso por rol."""
+"""Protección de datos estudiantiles (LOPDP) y control de acceso por rol.
+
+Verifica: RF-01 (autenticación y permisos por rol), RNF-01 (protección de
+    datos).
+"""
 import pytest
 
 from core.privacidad import (cedula_desde_token, enmascarar_cedula, enmascarar_para_pantalla, es_columna_personal,

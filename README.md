@@ -310,7 +310,7 @@ base_de_datos/        Script del almacén y datos de prueba (simulador UNEMI)
 scripts/              iniciar.mjs, reconstruir_sistema.bat, levantar_sistema.bat y demo_tesis.ps1
 datos/                Datos externos (OULAD, se descargan aparte)
 documentacion/
-├── avances/          AVANCE1, AVANCE2 y TRABAJO_FINAL (docx y pdf)
+├── avances/          AVANCE1, AVANCE2 y TRABAJO_FINAL (docx y pdf); Avance 3/ (lista de control, solicitud de datos y material del video)
 ├── generador_documentos/  Generación del trabajo final, la presentación y los guiones desde los resultados reales
 ├── gobierno_datos/   Documento de gobierno de datos (LOPDP)
 ├── presentacion/     Presentación del video, guion y guía de sustentación
@@ -323,6 +323,49 @@ documentacion/
 ├── literatura/       Trabajos previos y referencias (RIS)
 └── tecnica/          Diccionario de datos y notas técnicas
 ```
+
+## Mapa del repositorio
+
+Qué hay en cada carpeta y en qué parte del video técnico conviene abrirla.
+
+| Carpeta o archivo | Qué contiene | Cuándo mostrarlo en el video |
+|---|---|---|
+| `README.md` | Resumen del sistema, resultados, arquitectura e instalación | Apertura: problema, objetivo y resultado principal |
+| `ARQUITECTURA.md` | Capas del código y reglas de dependencia entre ellas | Arquitectura: estilo cliente-servidor con backend en capas |
+| `documentacion/diagramas/` | Arquitectura, despliegue, casos de uso, secuencias y esquema estrella (PNG y fuentes) | Arquitectura: diagrama general y secuencia de la consulta |
+| `documentacion/decisiones/` | Matrices de decisión DT-01 a DT-06, `Matriz_decisiones.xlsx` y ADR | Arquitectura y cierre: por qué cada tecnología, con su puntaje |
+| `package.json`, `iniciar.bat` | Arranque único de la API (8090) y la web (3000) | Arquitectura: cómo se levanta el sistema |
+| `scripts/`, `despliegue/metabase/` | `reconstruir_sistema.bat` (pipeline completo), `levantar_sistema.bat`, `demo_tesis.ps1`; Metabase en Docker | Arquitectura: SQL Server en Docker y procesos por lotes |
+| `base_de_datos/` | Almacén en esquema estrella, vistas `VIS_*` filtradas por institución, cuentas `chat_reader` y `app_seguimiento`; generador de datos de prueba | Arquitectura: capa de datos y aislamiento por institución |
+| `backend/main.py`, `backend/api/` | Punto de entrada y servicios REST por recurso | Backend: rutas y documentación `/docs` |
+| `backend/core/` | Configuración, conexiones con `SESSION_CONTEXT`, JWT, roles, auditoría y privacidad | Backend: seguridad |
+| `backend/etl/` | Perfiles de mapeo por institución, ETL al almacén, referentes y contrato de calidad | Backend: entrada de datos |
+| `backend/ml/` | Panel estudiante-periodo, entrenamiento y validación (global, por periodo, por carrera y con origen móvil), calibración, SHAP, PSI y segmentación; `modelos/<institución>/` guarda las métricas | Módulo clave: predicción del abandono |
+| `backend/mlops/` | Operación del modelo: registro en MLflow, calidad de datos con Great Expectations y deriva con Evidently | Módulo clave: monitoreo del modelo |
+| `backend/nl2sql/` | Consulta conversacional: guardarraíles, enrutador sobre métricas certificadas, proveedores, validador del árbol SQL y redactor | Módulo clave: consulta en lenguaje natural |
+| `frontend/src/paginas/`, `frontend/src/lib/` | Pantallas por rol y cliente de la API con sesión y permisos | Frontend: recorrido en vivo por rol |
+| `backend/tests/`, `frontend/src/pruebas/`, `.github/workflows/ci.yml` | Pruebas unitarias y de integración e integración continua | Pruebas y validación |
+| `backend/eval/` | Conjunto dorado y evaluador de la consulta conversacional | Pruebas y validación: exactitud de la consulta |
+| `documentacion/figuras/`, `documentacion/evidencias/` | Figuras de validación por institución y resultados de la consulta y la latencia | Pruebas y validación: cifras del modelo |
+| `documentacion/tecnica/`, `documentacion/gobierno_datos/` | Diccionario de datos, base de pruebas, Metabase, notas del modelo y gobierno de datos (LOPDP) | Backend o pruebas, si el tribunal pregunta por los datos |
+| `documentacion/manuales/` | Manual de usuario, manual técnico y guía de pruebas de aceptación | Cierre: documentación entregada |
+| `documentacion/avances/` | Avances 1 y 2 aprobados, trabajo final y carpeta de entrega del Avance 3 | No se muestra; es la entrega académica |
+| `documentacion/generador_documentos/`, `documentacion/literatura/` | Generador del trabajo final a partir de los resultados reales; referencias (RIS) y trabajos previos | No se muestra; respaldo de cifras y citas |
+| `datos/` | Instrucciones para descargar OULAD (no se redistribuye) | No se muestra |
+
+### Recorridos guiados
+
+Abra `VicMar.code-workspace` en VS Code, instale la extensión recomendada CodeTour y elija el recorrido en el panel **CodeTour**. Cada paso se ubica por patrón de texto, no por número de línea; la fuente de los recorridos es `.tours/fuente_recorridos.json`.
+
+| Recorrido | Qué muestra | Archivos |
+|---|---|---|
+| `01-arquitectura` | Estilo cliente-servidor con backend en capas, arranque, routers y procesos por lotes | `ARQUITECTURA.md`, `package.json`, `frontend/vite.config.ts`, `backend/main.py`, `backend/api/consulta.py`, `backend/core/db.py`, `backend/scripts/pipeline.py` |
+| `02-datos-etl-estrella` | Perfiles por institución, reglas de calidad, Great Expectations, esquema estrella, vistas `VIS_*` con `SESSION_CONTEXT` y cuentas de mínimo privilegio | `backend/etl/perfiles.py`, `backend/mlops/calidad_datos.py`, `backend/etl/etl_academico.py`, `base_de_datos/crear_almacen_academico.sql` |
+| `03-entrenamiento-modelo` | Panel sin fuga, partición temporal, candidatos, Optuna, validación agrupada, calibración, umbrales y MLflow | `backend/ml/caracteristicas.py`, `backend/ml/entrenar.py`, `backend/mlops/registro_mlflow.py` |
+| `04-evaluacion-metricas-sesgos` | Prueba temporal, equidad por subgrupo, métricas por periodo y carrera, origen móvil, SHAP, deriva (PSI y Evidently) y segmentación | `backend/ml/entrenar.py`, `backend/ml/evaluacion_grupos.py`, `backend/ml/explicacion.py`, `backend/ml/calificar.py`, `backend/mlops/deriva.py`, `backend/ml/segmentar.py` |
+| `05-consulta-y-seguridad` | JWT y capacidades, conexión cifrada, aislamiento, privacidad, auditoría y flujo de la consulta en lenguaje natural | `backend/api/sesion.py`, `backend/core/seguridad.py`, `backend/core/db.py`, `backend/core/privacidad.py`, `backend/core/auditoria.py`, `backend/nl2sql/*.py` |
+| `06-frontend` | Cliente de la API, sesión, rutas por capacidad y pantallas principales | `frontend/src/lib/api.ts`, `frontend/src/lib/sesion.tsx`, `frontend/src/App.tsx`, `frontend/src/paginas/` |
+| `07-pruebas` | Pruebas de fuga, modelo, validador, guardarraíles, privacidad, cifrado, validación por periodo, permisos, aislamiento e integración continua | `backend/tests/`, `frontend/src/pruebas/navegacion.test.ts`, `.github/workflows/ci.yml` |
 
 ## Documentación
 

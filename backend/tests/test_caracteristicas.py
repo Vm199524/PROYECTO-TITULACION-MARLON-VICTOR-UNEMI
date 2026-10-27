@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Panel alumno-periodo: etiqueta correcta y variables sin fuga de información futura (CRISP-DM, preparación)."""
+"""Panel alumno-periodo: etiqueta correcta y variables sin fuga de información futura (CRISP-DM, preparación).
+
+Verifica: RF-03 (entrenamiento y validación).
+"""
 import numpy as np
 import pandas as pd
 

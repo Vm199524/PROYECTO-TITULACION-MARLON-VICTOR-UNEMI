@@ -1,4 +1,9 @@
-/** src/paginas/panel/GraficoCarreras.tsx — barras horizontales apiladas: riesgo alto y medio por carrera. */
+/**
+ * src/paginas/panel/GraficoCarreras.tsx — barras horizontales apiladas: riesgo alto y medio por carrera.
+ *
+ * Se muestra en: /panel (Panel.tsx). API: ninguna; recibe los datos de la página.
+ * Requisitos: RF-05.
+ */
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Leyenda, TooltipGrafico } from '../../componentes/graficos/Tooltip'
 import { useColores } from '../../componentes/graficos/colores'

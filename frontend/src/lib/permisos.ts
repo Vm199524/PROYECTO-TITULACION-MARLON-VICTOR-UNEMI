@@ -3,8 +3,9 @@
  *
  * Decide qué se MUESTRA. La autorización real la aplica siempre el backend en cada
  * petición; esta matriz solo evita ofrecer opciones que fallarían.
+ *
+ * Requisitos: RF-01 (acceso por rol).
  */
-import type { Rol } from './tipos'
 
 export type Capacidad =
   | 'ver_panel'
@@ -22,12 +23,6 @@ export type Capacidad =
   | 'ver_auditoria'
   | 'ver_estado'
   | 'ver_sql'
-
-export const DESCRIPCION_ROL: Record<Rol, string> = {
-  AUTORIDAD: 'Autoridad académica',
-  BIENESTAR: 'Bienestar estudiantil',
-  ADMIN_TI: 'Administración de TI',
-}
 
 export function puede(capacidades: string[] | undefined, capacidad: Capacidad): boolean {
   return !!capacidades?.includes(capacidad)

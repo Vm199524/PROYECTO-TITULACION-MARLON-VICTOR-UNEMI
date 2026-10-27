@@ -22,6 +22,9 @@ modelo, la API ni la interfaz):
      modalidad).
   3. Ejecutar: python -m etl.etl_academico --perfil <NOMBRE>
 
+Requerimientos que implementa: RF-02 (carga y transformación por perfil),
+    RNF-08 (mantenibilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

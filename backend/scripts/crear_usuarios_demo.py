@@ -23,6 +23,9 @@ Uso:
     cd backend
     python -m scripts.crear_usuarios_demo [--restablecer] [--migrar-desde security_config.json]
 
+Requerimientos que implementa: RF-01 (autenticación y permisos por rol), RF-15
+    (administración de cuentas).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

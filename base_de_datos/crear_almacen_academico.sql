@@ -1,5 +1,5 @@
 /*
- * Almacén académico ALMACEN_ACADEMICO (versión 3 del prototipo).
+ * Almacén académico ALMACEN_ACADEMICO.
  *
  * Esquema estrella que consolida la trayectoria de los estudiantes de cada
  * institución, los resultados de los procesos por lotes (predicción,
@@ -18,6 +18,10 @@
  *   python -m scripts.ejecutar_sql ../base_de_datos/crear_almacen_academico.sql
  * Las contraseñas de las cuentas se leen de backend/.env (CHAT_READER_PASSWORD
  * y APP_SEGUIMIENTO_PASSWORD) y se sustituyen en $(...) al ejecutar.
+ *
+ * Requerimientos que implementa: RF-02 (almacén que recibe el ETL), RF-09
+ * (procedimientos del registro de acompañamientos), RF-18 (aislamiento por
+ * institución), RNF-01 (protección de datos) y RNF-02 (mínimo privilegio).
  *
  * Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
  * Proyecto de titulación · Universidad Estatal de Milagro · 2026
@@ -435,14 +439,14 @@ GO
 
 -- ── Cuentas de mínimo privilegio ────────────────────────────────────────
 IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = 'chat_reader')
-    EXEC('CREATE LOGIN chat_reader WITH PASSWORD = ''$(chat_reader_password)'', CHECK_POLICY = OFF');
+    EXEC('CREATE LOGIN chat_reader WITH PASSWORD = ''$(chat_reader_password)'', CHECK_POLICY = ON');
 ELSE
-    EXEC('ALTER LOGIN chat_reader WITH PASSWORD = ''$(chat_reader_password)''');
+    EXEC('ALTER LOGIN chat_reader WITH PASSWORD = ''$(chat_reader_password)'', CHECK_POLICY = ON');
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = 'app_seguimiento')
-    EXEC('CREATE LOGIN app_seguimiento WITH PASSWORD = ''$(app_seguimiento_password)'', CHECK_POLICY = OFF');
+    EXEC('CREATE LOGIN app_seguimiento WITH PASSWORD = ''$(app_seguimiento_password)'', CHECK_POLICY = ON');
 ELSE
-    EXEC('ALTER LOGIN app_seguimiento WITH PASSWORD = ''$(app_seguimiento_password)''');
+    EXEC('ALTER LOGIN app_seguimiento WITH PASSWORD = ''$(app_seguimiento_password)'', CHECK_POLICY = ON');
 GO
 
 USE ALMACEN_ACADEMICO;

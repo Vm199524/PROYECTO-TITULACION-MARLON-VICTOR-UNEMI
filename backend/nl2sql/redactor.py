@@ -5,12 +5,16 @@ Redacción de la respuesta y elección de la visualización.
   - Resumen determinista: toda respuesta trae una frase construida SOLO con
     los valores del resultado (nunca con cifras que el modelo imagine).
   - Interpretación con IA (opcional, cuando la autoridad la solicita): el proveedor
-    recibe las filas seudonimizadas y redacta una lectura breve. Antes de
+    recibe la pregunta depurada y las filas seudonimizadas, sin las columnas de
+    texto libre del seguimiento, y redacta una lectura breve. Antes de
     mostrarla, el verificador de cifras comprueba que cada número citado
     exista en el resultado; si encuentra uno que no, se descarta la
     interpretación y queda el resumen determinista.
   - Visualización: valor, tabla, barras o líneas según la forma del
     resultado (una cifra, categorías, serie temporal).
+
+Requerimientos que implementa: RF-10 (consulta en español), RNF-01 (protección
+    de datos).
 
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
@@ -20,7 +24,8 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 
-from core.privacidad import seudonimizar
+from core.auditoria import huella
+from core.privacidad import IndiceNombres, depurar_texto, filas_para_ia
 
 _NUMERO = re.compile(r'(?<![\w.])(\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)(?![\w])')
 _MARCADOR = re.compile(r'\[[A-Za-z_áéíóúñ]+\]|\{[A-Za-z_áéíóúñ]+\}')
@@ -63,7 +68,7 @@ def resumen(titulo: str, columnas: list[str], filas: list[list]) -> str:
     if not filas:
         return f'No se encontraron registros para «{titulo or "la consulta"}».'
     if len(filas) == 1:
-        partes = [f'{c}: **{formato_numero(v)}**' for c, v in zip(columnas, filas[0])]
+        partes = [f'{c}: **{formato_numero(v)}**' for c, v in zip(columnas, filas[0], strict=False)]
         return (f'{titulo}: ' if titulo else '') + '; '.join(partes) + '.'
     numericas = [i for i in range(1, len(columnas)) if all(_es_numero(f[i]) for f in filas)]
     texto = f'{titulo}: {formato_numero(len(filas))} registros.' if titulo else f'{len(filas)} registros.'
@@ -115,18 +120,27 @@ Reglas: cita solo cifras que estén en el resultado; no inventes causas; no nomb
 técnicas; no uses emojis ni muletillas. Si el resultado está vacío, dilo con claridad."""
 
 
-def interpretar(pregunta: str, columnas: list[str], filas: list[list]) -> dict:
-    """Interpretación con IA de un resultado, verificada contra sus cifras."""
+def interpretar(pregunta: str, columnas: list[str], filas: list[list], nombres: IndiceNombres | None = None) -> dict:
+    """Interpretación con IA de un resultado, verificada contra sus cifras.
+
+    La pregunta sale depurada (marcadores en lugar de cédulas, correos,
+    teléfonos y nombres) y las filas sin texto libre y seudonimizadas. Además
+    del texto devuelve `filas_enviadas` y `huella` (SHA-256 corto del mensaje
+    enviado) para la bitácora de auditoría; nunca el contenido.
+    """
     from nl2sql.proveedores import SinProveedores, completar
-    cols, seudo = seudonimizar(list(columnas), [list(f) for f in filas[:25]])
+    cols, seudo = filas_para_ia(list(columnas), [list(f) for f in filas[:25]])
     tabla = '\n'.join([' | '.join(cols)] + [' | '.join(formato_numero(v) for v in f) for f in seudo])
+    depurada, _ = depurar_texto(pregunta, nombres)
+    mensaje = f'Pregunta: {depurada}\nResultado ({len(filas)} filas):\n{tabla}'
+    rastro = {'filas_enviadas': len(seudo), 'huella': huella(mensaje)}
     try:
-        r = completar(INTERPRETAR_SISTEMA, f'Pregunta: {pregunta}\nResultado ({len(filas)} filas):\n{tabla}', max_tokens=500)
+        r = completar(INTERPRETAR_SISTEMA, mensaje, max_tokens=500)
     except SinProveedores as exc:
-        return {'texto': '', 'verificada': False, 'motivo': str(exc)}
+        return {'texto': '', 'verificada': False, 'motivo': str(exc), 'proveedor': None, **rastro, 'filas_enviadas': 0}
     texto = r.texto.strip()
     problemas = cifras_no_respaldadas(texto, filas)
     if problemas:
-        return {'texto': '', 'verificada': False, 'proveedor': r.proveedor,
+        return {'texto': '', 'verificada': False, 'proveedor': r.proveedor, **rastro,
                 'motivo': f'La interpretación citaba cifras que no están en el resultado ({", ".join(problemas[:3])}) y se descartó.'}
-    return {'texto': texto, 'verificada': True, 'proveedor': r.proveedor, 'modelo': r.modelo}
+    return {'texto': texto, 'verificada': True, 'proveedor': r.proveedor, 'modelo': r.modelo, **rastro}

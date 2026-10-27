@@ -25,6 +25,9 @@ entrenamiento no debería ejecutarse: el pipeline lo informa.
 Si Great Expectations no está instalado, las mismas reglas se evalúan con
 pandas (motor = "pandas") para no dejar el control sin hacer.
 
+Requerimientos que implementa: RF-02 (carga y transformación por perfil), RF-17
+    (calificación por lotes y deriva), RNF-04 (calidad predictiva).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

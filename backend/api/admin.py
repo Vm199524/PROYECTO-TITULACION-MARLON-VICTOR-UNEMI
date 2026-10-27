@@ -2,6 +2,9 @@
 """
 Administración: cuentas y roles, bitácora de auditoría y estado del sistema.
 
+Requerimientos que implementa: RF-15 (administración de cuentas), RF-16
+    (auditoría y estado del sistema), RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -49,7 +52,7 @@ def crear_usuario(datos: NuevaCuenta, sesion: Sesion = Depends(requiere('adminis
     try:
         cuenta = usuarios.crear(datos.usuario, datos.nombre, datos.correo, datos.rol, datos.instituciones, datos.clave)
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, str(exc)) from exc
     auditoria.registrar('CUENTA_ALTA', sesion.usuario, detalle={'cuenta': cuenta['usuario'], 'rol': cuenta['rol']})
     return cuenta
 
@@ -62,7 +65,7 @@ def cambiar_usuario(usuario: str, datos: CambioCuenta,
     try:
         cuenta = usuarios.actualizar(usuario, **datos.model_dump(exclude_none=True))
     except (KeyError, ValueError) as exc:
-        raise HTTPException(400, str(exc).strip("'"))
+        raise HTTPException(400, str(exc).strip("'")) from exc
     auditoria.registrar('CUENTA_CAMBIO', sesion.usuario,
                         detalle={'cuenta': usuario, 'campos': sorted(k for k in datos.model_dump(exclude_none=True) if k != 'clave')})
     return cuenta
@@ -75,7 +78,7 @@ def eliminar_usuario(usuario: str, sesion: Sesion = Depends(requiere('administra
     try:
         usuarios.eliminar(usuario)
     except (KeyError, ValueError) as exc:
-        raise HTTPException(400, str(exc).strip("'"))
+        raise HTTPException(400, str(exc).strip("'")) from exc
     auditoria.registrar('CUENTA_BAJA', sesion.usuario, detalle={'cuenta': usuario})
     return {'ok': True}
 

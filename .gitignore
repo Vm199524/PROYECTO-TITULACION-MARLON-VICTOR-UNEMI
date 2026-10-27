@@ -79,11 +79,27 @@ desktop.ini
 
 # ── IDE ───────────────────────────────────────────────────────────────────
 .idea/
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 
-# Archivos locales del prototipo anterior (no se versionan)
+# Cuentas de prueba guardadas fuera de backend/datos_locales/: tampoco se versionan
 backend/usuarios_prueba.local.json
 backend/usuarios_demo.local.json
 
 # Informe interactivo de Evidently (se regenera en cada monitoreo; pesa varios MB)
 backend/ml/modelos/*/deriva_evidently.html
+
+# ── Avance 3: carpetas solo para el Drive del grupo (datos personales y anexo de IA) ──
+documentacion/avances/Avance 3/06_ANEXO_INTERACCION_IA/
+documentacion/avances/Avance 3/07_ANEXO_INTERACCION_DOCENTES/
+documentacion/avances/Avance 3/08_CEDULAS/
+documentacion/avances/Avance 3/09_FOTOGRAFIAS/
+documentacion/avances/Avance 3/05_DECLARACION_AUTORIA/
+documentacion/avances/Avance 3/03_VIDEO_EXPLICACION_PRACTICA/
+
+# Informes internos de auditoría del video técnico
+documentacion/avances/Avance 3/14_VIDEO_TECNICO/auditoria_*.md
+
+# Enlace o carpeta de dependencias y caché de compilación de TypeScript
+frontend/node_modules
+*.tsbuildinfo

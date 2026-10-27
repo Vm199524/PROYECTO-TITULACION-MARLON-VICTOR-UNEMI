@@ -4,6 +4,10 @@
  * El Excel y el PDF llevan la misma identidad de la aplicación, las mismas cifras del
  * panel y una lectura del periodo generada con reglas (nunca inventada). Las cédulas
  * salen enmascaradas y cada descarga queda en la bitácora.
+ *
+ * Ruta: /reportes · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI (capacidad `exportar`).
+ * API: GET /reportes/ejecutivo.pdf, GET /reportes/ejecutivo.xlsx.
+ * Requisitos: RF-14.
  */
 import { useState } from 'react'
 import { IconoCheck, IconoDescargar, IconoReportes } from '../componentes/iconos'

@@ -13,6 +13,9 @@ estudiante en riesgo trae las razones del modelo en lenguaje natural:
   - Recomendaciones por reglas, derivadas de las variables que más pesan.
     Son sugerencias para bienestar estudiantil, no decisiones automáticas.
 
+Requerimientos que implementa: RF-07 (explicación de cada predicción), RNF-09
+    (explicabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

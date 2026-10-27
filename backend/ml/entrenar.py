@@ -43,6 +43,10 @@ Uso:
     python -m ml.entrenar --institucion UNEMI_PRUEBAS
     python -m ml.entrenar --institucion OULAD_UK --pruebas-optuna 20
 
+Requerimientos que implementa: RF-03 (entrenamiento y validación), RF-04
+    (calibración y umbrales), RF-13 (calidad del modelo), RNF-04 (calidad
+    predictiva).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -215,7 +219,7 @@ def evaluar_cv(modelo, X, y, grupos) -> tuple[dict, np.ndarray]:
 def umbral_para_recall(y, p, recall_objetivo: float) -> float:
     """El mayor umbral cuyo recall sigue siendo >= recall_objetivo (mejor precisión posible)."""
     precision, recall, umbrales = precision_recall_curve(y, p)
-    validos = [u for u, r in zip(umbrales, recall[:-1]) if r >= recall_objetivo]
+    validos = [u for u, r in zip(umbrales, recall[:-1], strict=False) if r >= recall_objetivo]
     return float(max(validos)) if validos else float(np.min(umbrales))
 
 
@@ -377,7 +381,7 @@ def entrenar_panel(panel: pd.DataFrame, institucion: str, grupos: list[str], int
     perm = permutation_importance(modelo_temporal, X_te.iloc[muestra], y_te.iloc[muestra],
                                   scoring='average_precision', n_repeats=3, random_state=SEMILLA, n_jobs=1)
     importancia = sorted(({'variable': c, 'media': _r(m), 'desviacion': _r(s)}
-                          for c, m, s in zip(columnas, perm.importances_mean, perm.importances_std)),
+                          for c, m, s in zip(columnas, perm.importances_mean, perm.importances_std, strict=False)),
                          key=lambda d: -(d['media'] or 0))
 
     X_todo = matriz(etiquetado, columnas)

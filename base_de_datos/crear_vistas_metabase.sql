@@ -64,9 +64,9 @@ GO
 USE master;
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = 'metabase_lector')
-    EXEC('CREATE LOGIN metabase_lector WITH PASSWORD = ''$(metabase_password)'', CHECK_POLICY = OFF, DEFAULT_DATABASE = ALMACEN_ACADEMICO');
+    EXEC('CREATE LOGIN metabase_lector WITH PASSWORD = ''$(metabase_password)'', CHECK_POLICY = ON, DEFAULT_DATABASE = ALMACEN_ACADEMICO');
 ELSE
-    EXEC('ALTER LOGIN metabase_lector WITH PASSWORD = ''$(metabase_password)''');
+    EXEC('ALTER LOGIN metabase_lector WITH PASSWORD = ''$(metabase_password)'', CHECK_POLICY = ON');
 GO
 USE ALMACEN_ACADEMICO;
 GO

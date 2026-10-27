@@ -20,6 +20,9 @@ preguntas de ejemplo de cada métrica certificada:
 Las mismas preguntas de ejemplo sirven de ejemplos guiados (few-shot) para el
 modelo de lenguaje cuando la pregunta no es certificada.
 
+Requerimientos que implementa: RF-10 (consulta en español), RNF-05 (calidad de
+    la consulta), RNF-06 (rendimiento).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

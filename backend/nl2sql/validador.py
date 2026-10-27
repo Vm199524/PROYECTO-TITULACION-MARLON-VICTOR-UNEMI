@@ -19,6 +19,9 @@ Aunque este filtro fallara, la cuenta chat_reader no tiene permiso para
 escribir ni para leer otra cosa que las vistas: la garantía real está en el
 motor de base de datos.
 
+Requerimientos que implementa: RF-10 (consulta en español), RNF-02 (mínimo
+    privilegio y aislamiento), RNF-05 (calidad de la consulta).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

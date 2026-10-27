@@ -20,6 +20,9 @@ Uso:
     cd backend
     python -m ml.reporte_validacion --institucion OULAD_UK
 
+Requerimientos que implementa: RF-13 (calidad del modelo), RNF-04 (calidad
+    predictiva).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
@@ -136,10 +139,10 @@ def figura_calibracion(inst: str, metricas: dict, te: pd.DataFrame) -> None:
 def figura_comparacion(inst: str, metricas: dict) -> None:
     comp = metricas['comparacion_cv']
     fig, axes = plt.subplots(1, 2, figsize=(15 * PULG, 8 * PULG))
-    for ax, clave, titulo in zip(axes, ('roc_auc', 'pr_auc'), ('ROC-AUC por pliegue', 'PR-AUC por pliegue')):
+    for ax, clave, titulo in zip(axes, ('roc_auc', 'pr_auc'), ('ROC-AUC por pliegue', 'PR-AUC por pliegue'), strict=False):
         datos = [comp[n][clave]['pliegues'] for n in comp]
         caja = ax.boxplot(datos, tick_labels=[NOMBRES.get(n, n) for n in comp], patch_artist=True, widths=0.55)
-        for parche, nombre in zip(caja['boxes'], comp):
+        for parche, nombre in zip(caja['boxes'], comp, strict=False):
             parche.set(facecolor=NARANJA if nombre == metricas['modelo_final'] else '#E2E8F0', edgecolor=AZUL)
         ax.set_title(titulo)
         ax.tick_params(axis='x', rotation=30)

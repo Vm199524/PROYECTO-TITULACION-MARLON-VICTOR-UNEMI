@@ -42,6 +42,10 @@ Uso:
     python -m scripts.pipeline --rapido            # menos búsquedas de hiperparámetros
     python -m scripts.pipeline --reentrenar UNEMI_PRUEBAS   # no reentrena OULAD (horas de cómputo)
 
+Requerimientos que implementa: RF-02 (carga y transformación por perfil), RF-03
+    (entrenamiento y validación), RF-17 (calificación por lotes y deriva),
+    RNF-10 (portabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

@@ -5,6 +5,12 @@
  * la probabilidad calibrada y su posición frente a los umbrales, las razones (aporte
  * de cada variable al riesgo, SHAP), las acciones sugeridas, un simulador «¿qué pasaría
  * si…?», la trayectoria periodo a periodo y el historial de seguimiento.
+ *
+ * Ruta: /estudiantes/:token · Rol: Autoridad académica, Bienestar estudiantil y Administración de TI (capacidad `ver_ficha`);
+ * el simulador exige `simular` y el registro `registrar_seguimiento` (Bienestar y Administración de TI).
+ * API: GET /estudiantes/{token}, POST /estudiantes/{token}/simulacion; POST /seguimiento y
+ * POST /seguimiento/{id}/cerrar a través de componentes/seguimiento/Dialogos.tsx.
+ * Requisitos: RF-04, RF-07, RF-08, RF-09.
  */
 import { useMutation } from '@tanstack/react-query'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'

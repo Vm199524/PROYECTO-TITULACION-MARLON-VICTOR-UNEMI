@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""API web: autenticación, autorización por rol, aislamiento por institución y reportes."""
+"""API web: autenticación, autorización por rol, aislamiento por institución y reportes.
+
+Verifica: RF-01 (autenticación y permisos por rol), RF-14 (exportación e
+    informe ejecutivo), RF-18 (aislamiento por institución).
+"""
 import pytest
 from fastapi.testclient import TestClient
 

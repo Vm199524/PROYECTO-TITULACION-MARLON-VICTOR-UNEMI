@@ -6,6 +6,10 @@ Cada estudiante se identifica en la API con un token cifrado, nunca con su
 cédula; en pantalla la cédula aparece enmascarada. Consultar una ficha o
 simular un escenario queda en la bitácora de auditoría.
 
+Requerimientos que implementa: RF-06 (estudiantes priorizados), RF-07
+    (explicación de cada predicción), RF-08 (simulador de escenarios), RNF-01
+    (protección de datos), RNF-03 (trazabilidad).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """

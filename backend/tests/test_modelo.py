@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Entrenamiento, calibración, umbrales, explicación y simulador (CRISP-DM: modelado y evaluación)."""
+"""Entrenamiento, calibración, umbrales, explicación y simulador (CRISP-DM: modelado y evaluación).
+
+Verifica: RF-03 (entrenamiento y validación), RF-04 (calibración y umbrales),
+    RF-07 (explicación de cada predicción), RF-08 (simulador de escenarios).
+"""
 import numpy as np
 import pandas as pd
 import pytest
 
 from ml.calibracion import CalibradorPlatt
 from ml.calificar import calificar_panel, categoria, psi
-from ml.caracteristicas import construir_panel, grupos_disponibles, matriz
+from ml.caracteristicas import construir_panel, grupos_disponibles
 from ml.entrenar import entrenar_panel, particion_temporal, referencia_psi, umbral_para_recall
 from ml.explicacion import recomendaciones
 from ml.simulacion import recalcular, simulables

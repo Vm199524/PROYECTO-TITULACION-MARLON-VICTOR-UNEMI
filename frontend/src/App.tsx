@@ -1,6 +1,9 @@
 /**
  * src/App.tsx — rutas de la aplicación. Cada ruta protegida declara la capacidad que
  * exige (la misma que valida el backend); las pantallas se cargan bajo demanda.
+ *
+ * Rutas protegidas por capacidad (lib/permisos.ts); /ingresar es la única ruta pública.
+ * Requisitos: RF-01 (acceso por rol).
  */
 import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'

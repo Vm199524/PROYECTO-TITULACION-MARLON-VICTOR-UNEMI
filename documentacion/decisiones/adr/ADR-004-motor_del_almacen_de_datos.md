@@ -17,10 +17,10 @@ El almacén en esquema estrella guarda la trayectoria de varias instituciones. E
 ## Opciones evaluadas
 
 ### SQL Server — 4,30 / 5
-- Aislamiento por institución en el motor: **5**. SESSION_CONTEXT con valores de solo lectura y seguridad por filas en todas las ediciones; el aislamiento se comprobó con pruebas de integración. *Fuente:* Microsoft Learn, «SESSION_CONTEXT (Transact-SQL)», consultado 2026-10-03; Microsoft Learn, «Editions and supported features of SQL Server 2022», consultado 2026-10-03; Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)
+- Aislamiento por institución en el motor: **5**. SESSION_CONTEXT con valores de solo lectura y seguridad por filas en todas las ediciones; el aislamiento se comprobó con pruebas de integración. *Fuente:* Microsoft Learn, «SESSION_CONTEXT (Transact-SQL)», consultado 2026-10-03; Microsoft Learn, «Editions and supported features of SQL Server 2022», consultado 2026-10-03; Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)
 - Costo de licencia en producción: **3**. La edición Express es gratuita, pero limita la base a 10 GB y a 1 socket o 4 núcleos; la Developer no se puede usar en producción. *Fuente:* Microsoft Learn, «Editions and supported features of SQL Server 2022», consultado 2026-10-03
 - Evidencia en trabajos previos: **3**. Aparece en las implementaciones de BI que reúne la revisión de Sequeira et al.; 9 de 11 trabajos no declaran motor. *Fuente:* Sequeira et al. (2024), Information, 15(4), 208, pp. 7, 15, https://doi.org/10.3390/info15040208
-- Costo de cambio sobre el prototipo validado: **5**. Es el motor implementado: vistas VIS_*, cuenta chat_reader y 22 pruebas de seguridad. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)
+- Costo de cambio sobre el prototipo validado: **5**. Es el motor implementado: vistas VIS_*, cuenta chat_reader y 22 pruebas de seguridad. *Fuente:* Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)
 
 ### PostgreSQL — 3,90 / 5
 - Aislamiento por institución en el motor: **5**. Políticas de seguridad por fila nativas, con denegación por defecto si no hay política. *Fuente:* PostgreSQL 18 Documentation, «Row Security Policies», consultado 2026-10-03

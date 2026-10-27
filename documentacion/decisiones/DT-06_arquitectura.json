@@ -60,7 +60,7 @@
         "E2": {
           "valor": 5,
           "justificacion": "El aislamiento reside en el motor (vistas con SESSION_CONTEXT y cuenta de solo lectura), independiente del estilo.",
-          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)"
         },
         "E3": {
           "valor": 5,
@@ -96,7 +96,7 @@
         "E2": {
           "valor": 5,
           "justificacion": "Aislamiento en el motor comprobado: ninguna fila de otra institución en las pruebas ni en la evaluación NL2SQL.",
-          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)"
         },
         "E3": {
           "valor": 5,
@@ -132,7 +132,7 @@
         "E2": {
           "valor": 5,
           "justificacion": "El aislamiento seguiría en el motor.",
-          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_capa_seguridad_bd.py (22 pruebas de integración contra SQL Server)"
+          "fuente": "Prueba propia: codigo_fuente/backend/tests/test_integracion_bd.py (22 pruebas de integración contra SQL Server)"
         },
         "E3": {
           "valor": 3,

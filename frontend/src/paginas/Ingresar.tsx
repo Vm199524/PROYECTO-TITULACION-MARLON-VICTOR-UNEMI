@@ -12,6 +12,10 @@
  *     sistema, unidos a la tarjeta por trazas en degradado por las que viajan datos.
  * La secuencia de apertura ocurre una sola vez y se apaga con movimiento reducido.
  * Un solo envío por clic y el error se muestra una vez.
+ *
+ * Ruta: /ingresar (pública) · Rol: cualquier usuario sin sesión.
+ * API: POST /auth/ingresar, luego GET /auth/yo y GET /instituciones (lib/sesion.tsx).
+ * Requisitos: RF-01.
  */
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'

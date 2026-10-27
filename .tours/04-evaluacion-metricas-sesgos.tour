@@ -1,0 +1,75 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "4 · Evaluación: métricas, sesgos, explicación y deriva",
+  "description": "Cómo medimos la calidad del modelo, su equidad, sus explicaciones y su estabilidad en el tiempo.",
+  "isPrimary": false,
+  "steps": [
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "def evaluar_prueba\\(",
+      "title": "Prueba temporal, una sola vez",
+      "description": "Sobre los periodos reservados calculamos ROC-AUC, PR-AUC, Brier, recall y precisión en cada umbral, captura del 10 % de mayor riesgo y curva de calibración."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "def equidad\\(",
+      "title": "Equidad por subgrupo",
+      "description": "Revisamos el desempeño por género, modalidad y sede. Si un grupo recibe muchas más falsas alarmas o menos detección, lo reportamos como sesgo."
+    },
+    {
+      "file": "backend/ml/entrenar.py",
+      "pattern": "perm = permutation_importance\\(",
+      "title": "Importancia por permutación",
+      "description": "Medimos cuánto empeora la PR-AUC al desordenar cada variable en la prueba temporal: qué variables pesan de verdad en el modelo."
+    },
+    {
+      "file": "backend/ml/evaluacion_grupos.py",
+      "pattern": "def metricas_por_grupo\\(",
+      "title": "Métricas por periodo y por carrera",
+      "description": "Desglosamos la prueba temporal por periodo y por carrera: una sola cifra global puede ocultar que el modelo falla en un semestre o en una carrera."
+    },
+    {
+      "file": "backend/ml/evaluacion_grupos.py",
+      "pattern": "def validacion_origen_movil\\(",
+      "title": "Validación con origen móvil",
+      "description": "Para cada uno de los periodos más recientes entrenamos solo con el pasado, calibramos y fijamos umbrales con ese pasado, y evaluamos una sola vez en el periodo: como si el sistema se hubiera puesto en marcha en esa fecha."
+    },
+    {
+      "file": "backend/ml/explicacion.py",
+      "pattern": "def contribuciones\\(",
+      "title": "Explicación con SHAP",
+      "description": "Calculamos la contribución de cada variable a la predicción de cada estudiante: SHAP para los árboles y coeficiente por valor estandarizado para la logística."
+    },
+    {
+      "file": "backend/ml/explicacion.py",
+      "pattern": "def recomendaciones\\(",
+      "title": "De la explicación a la acción",
+      "description": "Las variables que más elevan el riesgo se traducen en sugerencias de acompañamiento para Bienestar: tutoría, consejería o apoyo económico."
+    },
+    {
+      "file": "backend/ml/calificar.py",
+      "pattern": "def psi\\(",
+      "title": "Vigilancia de la deriva (PSI)",
+      "description": "Al calificar comparamos la distribución actual con la del entrenamiento mediante el índice de estabilidad poblacional. Un PSI alto avisa que conviene reentrenar."
+    },
+    {
+      "file": "backend/mlops/deriva.py",
+      "pattern": "def informe_deriva\\(",
+      "title": "Deriva con Evidently",
+      "description": "Comparamos variable por variable la referencia de entrenamiento con los estudiantes que se califican usando **Evidently AI**; el resumen queda en `deriva.json` y el PSI propio se mantiene como segunda medida."
+    },
+    {
+      "file": "backend/ml/segmentar.py",
+      "pattern": "def asignar\\(",
+      "title": "Segmentación de carreras",
+      "description": "Agrupamos las carreras con K-Means en Atención prioritaria, Estable y Bajo riesgo, ordenadas por un índice de riesgo y no por el número arbitrario del clúster."
+    },
+    {
+      "file": "backend/ml/segmentar.py",
+      "pattern": "def validar\\(df: pd.DataFrame, k: int\\)",
+      "title": "Validación de la segmentación",
+      "description": "Validamos con silhouette, Davies-Bouldin y Calinski-Harabasz, estabilidad por remuestreo, comparación con Ward y HDBSCAN, Kruskal-Wallis y una variante sin el riesgo del modelo."
+    }
+  ],
+  "nextTour": "5 · Seguridad y consulta en lenguaje natural"
+}

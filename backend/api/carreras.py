@@ -2,6 +2,9 @@
 """
 Segmentación de carreras por perfil de riesgo y su validación.
 
+Requerimientos que implementa: RF-11 (segmentación de carreras), RF-18
+    (aislamiento por institución).
+
 Autores: Marlon David Pérez Almachi, Víctor Manuel Lluilema Pisco
 Proyecto de titulación · Universidad Estatal de Milagro · 2026
 """
