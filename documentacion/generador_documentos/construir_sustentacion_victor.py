@@ -1,9 +1,10 @@
-"""Sustentación individual de Víctor Manuel Lluilema Pisco: carátula + 5 diapositivas.
+"""Sustentación individual de Víctor Manuel Lluilema Pisco: carátula + 5 diapositivas para 3 minutos.
 
 Sigue los puntos que fijó la docente para el tribunal (introducción, objetivo, diagramas de la propuesta
-práctica, arquitectura frontend/backend, hipervínculo del proyecto y conclusiones) con la base visual de la
-presentación del equipo (BaseSustentacion.pptx), pero con diagramas dibujados en la propia lámina, un código QR
-al repositorio y la gráfica de resultados por periodo.
+práctica, arquitectura frontend/backend, hipervínculo del proyecto y conclusiones) y la rúbrica de la
+sustentación (síntesis, ajuste al tiempo, calidad técnica, viabilidad, aporte diferenciador). Usa la base visual
+del equipo (BaseSustentacion.pptx), con diagramas dibujados en la propia lámina, un código QR al repositorio y la
+gráfica de resultados por periodo. El resto del tiempo (unos 5 minutos) es la demostración en vivo del sistema.
 """
 import copy
 import sys
@@ -142,6 +143,34 @@ def notas(slide, texto_):
 X0, ANCHO = 2.115, 29.64          # márgenes de la plantilla
 Y0, Y1 = 3.1, 16.9
 
+# Guion hablado (≈140 palabras por minuto). Total de las notas: unos 3 minutos.
+N_PORTADA = ('Buenos días, miembros del tribunal. Soy Víctor Lluilema y, con Marlon Pérez, presento un sistema web que '
+             'predice el abandono universitario y permite consultarlo en español. Les doy el contexto en tres '
+             'minutos y luego lo mostramos funcionando.')
+N_INTRO = ('En una universidad ecuatoriana abandonó el 44,90 % de cinco cohortes, y hoy se mide cuando ya ocurrió. '
+           'Comparamos catorce estudios: ninguno reúne predicción, roles, consulta en español y protección de datos; '
+           'solo uno explora la consulta, en laboratorio. Ese es el vacío. Nuestro objetivo: desarrollar un prototipo '
+           'web que prediga el abandono y permita consultarlo en español, con un modelo explicado y datos aislados por '
+           'institución, para que la autoridad actúe antes de que el estudiante se retire. Lo logramos en cuatro '
+           'pasos: analizar, construir y validar el modelo, implementar y evaluar.')
+N_DIAG = ('La propuesta en tres diagramas. Arriba, el flujo de trabajo: los datos entran por un ETL, pasan a un '
+          'almacén en estrella, el modelo calcula el riesgo, la consulta lo expone y el panel lo muestra según el '
+          'rol. Abajo a la izquierda, el modelo de datos: una tabla de hechos con seis dimensiones. A la derecha, la '
+          'secuencia de una consulta: la autoridad pregunta en español, la API valida rol e institución, una métrica '
+          'certificada genera el SQL y la base devuelve solo cifras agregadas.')
+N_ARQ = ('La arquitectura es cliente-servidor. El frontend, en React, solo presenta la información según el rol. El '
+         'backend, en FastAPI, expone veintisiete servicios en capas. Detrás, SQL Server con vistas por institución. '
+         'Es seguro y viable: el frontend nunca toca la base, todo SQL de la IA corre con una cuenta de solo lectura y '
+         'las claves no están en el código. Funciona en un computador de 16 gigas, sin tarjeta gráfica, y lo '
+         'respaldan 189 pruebas.')
+N_ENLACE = ('Todo está publicado: el QR y el enlace abren el repositorio. Cierro con las conclusiones y enseguida lo '
+            'mostramos funcionando: panel, ficha, consulta, una orden maliciosa bloqueada y la calidad del modelo.')
+N_CONCL = ('Concluyo. El modelo se sostiene en periodos que no vio: AUC de 0,829 con datos de prueba y 0,768 con datos '
+           'reales. La consulta fue exacta en las 33 preguntas certificadas, contuvo las 8 maliciosas y no tuvo fugas '
+           'entre instituciones. Nuestro aporte es una predicción explicada en español, dentro de un sistema por roles. '
+           'Con honestidad: los datos de la UNEMI son de prueba; el siguiente paso es validar con una carrera real, con '
+           'autorización y evaluación de impacto. Muchas gracias; ahora lo vemos funcionando.')
+
 
 def portada(s):
     for sh in s.shapes:
@@ -151,186 +180,188 @@ def portada(s):
                 for i, r in enumerate(rs):
                     if r.text.startswith('MARLON DAVID PÉREZ ALMACHI') and i > 0 and rs[i - 1].text.startswith('EXPONE'):
                         r.text = 'VÍCTOR MANUEL LLUILEMA PISCO'
-    notas(s, 'Buenos días, miembros del tribunal. Soy Víctor Manuel Lluilema Pisco y, junto con Marlon Pérez Almachi, '
-             'presento el prototipo de un sistema web para predecir el abandono universitario con aprendizaje automático '
-             'y consulta conversacional. Mi exposición cubre cinco puntos: introducción y objetivo, diagramas de la '
-             'propuesta, arquitectura, el enlace del proyecto y conclusiones.')
+    notas(s, N_PORTADA)
 
 
 def s_introduccion(s):
     limpiar(s); titulo(s, 'Introducción y objetivo')
-    # fila superior: de dónde partimos → qué proponemos
-    tarjeta(s, X0, Y0, 9.3, 6.4, [
-        {'t': 'Punto de partida', 'sz': 14, 'b': True, 'c': NAR, 'sa': 6},
-        {'t': '44,90 %', 'sz': 30, 'b': True, 'c': NAR, 'sa': 2},
-        {'t': 'abandono en cinco cohortes de una universidad ecuatoriana (Núñez-Naranjo, 2024)', 'sz': 12.5, 'sa': 8},
-        {'t': 'Hoy el abandono se mide cuando ya ocurrió.', 'sz': 12.5, 'b': True}], margen=0.4)
-    tarjeta(s, X0 + 9.6, Y0, 10.2, 6.4, [
-        {'t': 'El problema', 'sz': 14, 'b': True, 'c': NAR, 'sa': 6},
-        {'t': 'Señales dispersas en varios sistemas', 'vineta': True, 'sz': 13.5, 'sa': 6},
-        {'t': 'La autoridad depende de TI para consultar los datos', 'vineta': True, 'sz': 13.5, 'sa': 6},
-        {'t': 'Datos personales que exigen protección (LOPDP)', 'vineta': True, 'sz': 13.5}], margen=0.4)
-    tarjeta(s, X0 + 20.1, Y0, 9.54, 6.4, [
-        {'t': 'Objetivo general', 'sz': 14, 'b': True, 'c': NAR, 'sa': 6},
-        {'t': 'Desarrollar un prototipo web que prediga el abandono con aprendizaje automático y permita '
-              'consultar los resultados en español, para actuar antes de que el estudiante se retire.',
-         'sz': 13.5, 'c': BLANCO}], relleno=NAVY, margen=0.4)
-    # pregunta de investigación
-    tarjeta(s, X0, Y0 + 6.8, ANCHO, 3.3, [
-        {'t': 'Pregunta de investigación', 'sz': 13, 'b': True, 'c': NAR, 'sa': 3},
-        {'t': '¿Cómo puede un sistema web con aprendizaje automático y consulta en lenguaje natural anticipar el '
-              'abandono universitario y apoyar la priorización del acompañamiento, protegiendo los datos del estudiante?',
-         'sz': 15, 'b': True}], relleno=NAR_L, margen=0.45, anclaje='m')
-    # objetivos específicos
+    # fila 1: punto de partida y brecha frente a los 14 estudios comparados
+    tarjeta(s, X0, Y0, 8.6, 5.6, [
+        {'t': 'Punto de partida', 'sz': 14, 'b': True, 'c': NAR, 'sa': 4},
+        {'t': '44,90 %', 'sz': 36, 'b': True, 'c': NAR, 'sa': 2},
+        {'t': 'abandono en cinco cohortes de una universidad ecuatoriana (Núñez-Naranjo, 2024)', 'sz': 12.5, 'sa': 6},
+        {'t': 'Hoy se mide cuando ya ocurrió', 'sz': 13, 'b': True}], margen=0.4)
+    xb, wb = X0 + 9.0, ANCHO - 9.0
+    caja(s, xb, Y0, wb, 5.6, HIELO)
+    texto(s, xb + 0.3, Y0 + 0.15, wb - 0.6, 1.0, [{'t': 'Brecha frente a los 14 estudios comparados', 'sz': 14, 'b': True, 'c': NAR}])
+    stats = [('0', 'integran predicción, roles, consulta en español y protección de datos'),
+             ('1', 'explora la consulta en lenguaje natural, solo en laboratorio'),
+             ('3', 'integran el modelo de forma parcial en un sistema')]
+    sw = (wb - 0.6 - 2 * 0.3) / 3
+    for i, (n, t) in enumerate(stats):
+        x = xb + 0.3 + i * (sw + 0.3)
+        caja(s, x, Y0 + 1.3, sw, 4.0, BLANCO)
+        texto(s, x + 0.1, Y0 + 1.35, 2.6, 2.2, [{'t': n, 'sz': 40, 'b': True, 'c': NAR}], al='c', anclaje='m', margen=0.05)
+        texto(s, x + 2.6, Y0 + 1.4, sw - 2.7, 3.8, [{'t': t, 'sz': 12.5, 'b': True}], anclaje='m', margen=0.1)
+    # fila 2: objetivo general en tres enunciados (qué, cómo, para qué)
+    yo = Y0 + 6.0
+    caja(s, X0, yo, ANCHO, 4.2, NAVY)
+    texto(s, X0 + 0.4, yo + 0.15, 6.0, 0.8, [{'t': 'Objetivo general', 'sz': 14, 'b': True, 'c': NAR}], margen=0.05)
+    cols = [('¿Qué?', 'Desarrollar un prototipo web que prediga el abandono estudiantil y permita consultar los resultados en español.'),
+            ('¿Cómo?', 'Con un modelo LightGBM explicado con SHAP, consulta NL2SQL validada y datos aislados por institución.'),
+            ('¿Para qué?', 'Para que la autoridad priorice el acompañamiento antes de que el estudiante se retire.')]
+    cw = (ANCHO - 0.8 - 2 * 0.4) / 3
+    for i, (a, b) in enumerate(cols):
+        texto(s, X0 + 0.4 + i * (cw + 0.4), yo + 1.0, cw, 3.1, [
+            {'t': a, 'sz': 13, 'b': True, 'c': NAR, 'sa': 2}, {'t': b, 'sz': 13.5, 'c': BLANCO}], margen=0.05)
+    # fila 3: objetivos específicos
     objs = [('1', 'Analizar', 'procesos y variables'), ('2', 'Construir y validar', 'el modelo predictivo'),
             ('3', 'Implementar', 'el sistema web y la consulta'), ('4', 'Evaluar', 'el prototipo')]
     w = (ANCHO - 3 * 0.4) / 4
+    yy = Y0 + 10.7
     for i, (n, v, r) in enumerate(objs):
         x = X0 + i * (w + 0.4)
-        caja(s, x, Y0 + 10.5, w, 3.3, NAVY if i % 2 == 0 else HIELO2)
-        c = caja(s, x + 0.35, Y0 + 11.0, 1.3, 1.3, NAR, MSO_SHAPE.OVAL)
+        caja(s, x, yy, w, 3.1, HIELO2)
+        c = caja(s, x + 0.35, yy + 0.9, 1.3, 1.3, NAR, MSO_SHAPE.OVAL)
         escribir(c, [{'t': n, 'sz': 16, 'b': True, 'c': BLANCO}], al='c', anclaje='m', margen=0)
-        texto(s, x + 1.8, Y0 + 10.7, w - 2.0, 2.9, [
-            {'t': v, 'sz': 14, 'b': True, 'c': BLANCO if i % 2 == 0 else NAVY, 'sa': 1},
-            {'t': r, 'sz': 12.5, 'c': 'DCE7F2' if i % 2 == 0 else TXT}], anclaje='m')
-    notas(s, 'Parto de un dato: en una universidad ecuatoriana abandonó el 44,90 % de cinco cohortes. Las señales están '
-             'en los sistemas, pero dispersas, y hoy el abandono se mide cuando ya ocurrió; además la autoridad depende '
-             'de TI para consultar. Nuestra pregunta es cómo anticiparlo con un sistema web protegiendo los datos. '
-             'El objetivo general es un prototipo que prediga y permita consultar en español; lo cumplimos con cuatro '
-             'objetivos: analizar, construir y validar el modelo, implementar el sistema y evaluarlo.')
+        texto(s, x + 1.8, yy + 0.1, w - 2.0, 2.9, [
+            {'t': v, 'sz': 14, 'b': True, 'sa': 1}, {'t': r, 'sz': 12.5}], anclaje='m')
+    notas(s, N_INTRO)
 
 
-def _hilera(s, x, y, w, h, titulo_, color=NAVY):
+def _hilera(s, x, y, w, h, titulo_, color=NAVY, sz=11.5):
     c = caja(s, x, y, w, h, color)
-    escribir(c, [{'t': titulo_, 'sz': 11.5, 'b': True, 'c': BLANCO}], al='c', anclaje='m', margen=0.1)
+    escribir(c, [{'t': titulo_, 'sz': sz, 'b': True, 'c': BLANCO}], al='c', anclaje='m', margen=0.1)
     return c
 
 
 def s_diagramas(s):
     limpiar(s); titulo(s, 'Diagramas de la propuesta práctica')
-    W = 14.6
+    # ---------- banda superior: flujo de trabajo y solución tecnológica
+    pasos = [('1  Datos y ETL', 'perfiles de mapeo · Great Expectations'), ('2  Almacén', 'SQL Server 2022 en estrella'),
+             ('3  Modelo', 'LightGBM · Platt · SHAP · K-means'), ('4  Consulta', 'NL2SQL con validador sqlglot'),
+             ('5  Panel por roles', 'React · JWT · 3 roles')]
+    g = 0.55
+    pw = (ANCHO - 4 * g) / 5
+    for i, (a, b) in enumerate(pasos):
+        x = X0 + i * (pw + g)
+        c = caja(s, x, Y0, pw, 3.2, NAVY if i != 2 else NAR)
+        escribir(c, [{'t': a, 'sz': 13, 'b': True, 'c': BLANCO, 'sa': 3}, {'t': b, 'sz': 10.5, 'c': BLANCO}],
+                 al='c', anclaje='m', margen=0.2)
+        if i < 4:
+            flecha(s, x + pw + 0.05, Y0 + 1.6, x + pw + g - 0.05, Y0 + 1.6, color=NAR, ancho=2.25)
     # ---------- panel izquierdo: modelo de datos en estrella
-    caja(s, X0, Y0, W, 13.8, HIELO)
-    texto(s, X0 + 0.2, Y0 + 0.15, W - 0.4, 0.9, [{'t': 'Modelo de datos en estrella (SQL Server)', 'sz': 14, 'b': True, 'c': NAR}])
-    fx, fy, fw, fh = X0 + 4.75, Y0 + 4.0, 5.1, 4.3
-    dims_izq = ['dim_institucion', 'dim_alumno', 'dim_carrera']
-    dims_der = ['dim_periodo', 'dim_sede', 'dim_estado']
-    dw, dh = 3.9, 1.35
-    ys = [Y0 + 1.6, Y0 + 4.5, Y0 + 7.4]
-    for yy, d in zip(ys, dims_izq):
+    PY, PH, W = Y0 + 3.6, 10.2, 14.6
+    caja(s, X0, PY, W, PH, HIELO)
+    texto(s, X0 + 0.2, PY + 0.1, W - 0.4, 0.8, [{'t': 'Modelo de datos en estrella', 'sz': 13.5, 'b': True, 'c': NAR}])
+    fx, fw, fh = X0 + 4.75, 5.1, 3.1
+    fy = PY + 3.2
+    dw, dh = 3.9, 1.1
+    ys = [PY + 1.2, PY + 3.2, PY + 5.2]
+    for yy, d in zip(ys, ['dim_institucion', 'dim_alumno', 'dim_carrera']):
         flecha(s, X0 + 0.35 + dw, yy + dh / 2, fx, fy + fh / 2 + (yy + dh / 2 - (fy + fh / 2)) * 0.25, color=SEC, ancho=1.25, punta=False)
-        _hilera(s, X0 + 0.35, yy, dw, dh, d)
-    for yy, d in zip(ys, dims_der):
+        _hilera(s, X0 + 0.35, yy, dw, dh, d, sz=11)
+    for yy, d in zip(ys, ['dim_periodo', 'dim_sede', 'dim_estado']):
         flecha(s, fx + fw, fy + fh / 2 + (yy + dh / 2 - (fy + fh / 2)) * 0.25, X0 + W - 0.35 - dw, yy + dh / 2, color=SEC, ancho=1.25, punta=False)
-        _hilera(s, X0 + W - 0.35 - dw, yy, dw, dh, d)
+        _hilera(s, X0 + W - 0.35 - dw, yy, dw, dh, d, sz=11)
     f = caja(s, fx, fy, fw, fh, NAR)
-    escribir(f, [{'t': 'fact_matriculas', 'sz': 13, 'b': True, 'c': BLANCO, 'sa': 4},
-                 {'t': 'estudiante por periodo: promedio, asistencia, nivel, créditos, estado y retiro del siguiente corte', 'sz': 11, 'c': BLANCO}],
-             al='c', anclaje='m', margen=0.25)
-    texto(s, X0 + 0.3, Y0 + 9.1, W - 0.6, 0.8, [{'t': 'Hechos de procesos por lotes y de seguimiento', 'sz': 12.5, 'b': True, 'c': NAVY}])
-    hechos = ['prediccion_abandono', 'segmento_carrera', 'intervencion', 'evaluacion_modelo']
+    escribir(f, [{'t': 'fact_matriculas', 'sz': 13, 'b': True, 'c': BLANCO, 'sa': 3},
+                 {'t': 'estudiante por periodo: promedio, asistencia, créditos, estado', 'sz': 10.5, 'c': BLANCO}],
+             al='c', anclaje='m', margen=0.2)
+    texto(s, X0 + 0.3, PY + 6.7, W - 0.6, 0.7, [{'t': 'Hechos de procesos por lotes y de seguimiento', 'sz': 11.5, 'b': True}])
     hw = (W - 0.6 - 3 * 0.25) / 4
-    for i, hch in enumerate(hechos):
-        c = caja(s, X0 + 0.3 + i * (hw + 0.25), Y0 + 10.0, hw, 1.7, NAR_L)
-        escribir(c, [{'t': hch.replace('_', '_​'), 'sz': 10.5, 'b': True}], al='c', anclaje='m', margen=0.1)
-    texto(s, X0 + 0.3, Y0 + 12.0, W - 0.6, 1.6, [
-        {'t': 'Toda tabla lleva institucion_codigo; las vistas VIS_* filtran por institución con SESSION_CONTEXT.', 'sz': 11.5, 'i': True}])
+    for i, hch in enumerate(['prediccion_abandono', 'segmento_carrera', 'intervencion', 'evaluacion_modelo']):
+        c = caja(s, X0 + 0.3 + i * (hw + 0.25), PY + 7.45, hw, 1.2, NAR_L)
+        escribir(c, [{'t': hch.replace('_', '_​'), 'sz': 10, 'b': True}], al='c', anclaje='m', margen=0.08)
+    texto(s, X0 + 0.3, PY + 8.75, W - 0.6, 1.3, [
+        {'t': 'Toda tabla lleva institucion_codigo; las vistas VIS_* filtran con SESSION_CONTEXT.', 'sz': 10.5, 'i': True}])
     # ---------- panel derecho: secuencia de la consulta en lenguaje natural
     X = X0 + W + 0.44
-    caja(s, X, Y0, W, 13.8, HIELO)
-    texto(s, X + 0.2, Y0 + 0.15, W - 0.4, 0.9, [{'t': 'Secuencia: consulta en lenguaje natural', 'sz': 14, 'b': True, 'c': NAR}])
+    caja(s, X, PY, W, PH, HIELO)
+    texto(s, X + 0.2, PY + 0.1, W - 0.4, 0.8, [{'t': 'Secuencia de una consulta en lenguaje natural', 'sz': 13.5, 'b': True, 'c': NAR}])
     nombres = ['Autoridad', 'Interfaz web', 'API FastAPI', 'Barreras y enrutador', 'SQL Server']
     paso = (W - 1.0) / 5
     cx = [X + 0.5 + paso * (i + 0.5) for i in range(5)]
     for i, n in enumerate(nombres):
-        c = caja(s, cx[i] - paso / 2 + 0.1, Y0 + 1.2, paso - 0.2, 1.3, NAVY if i != 4 else NAR)
+        c = caja(s, cx[i] - paso / 2 + 0.1, PY + 1.1, paso - 0.2, 1.2, NAVY if i != 4 else NAR)
         escribir(c, [{'t': n, 'sz': 10.5, 'b': True, 'c': BLANCO}], al='c', anclaje='m', margen=0.05)
-        flecha(s, cx[i], Y0 + 2.5, cx[i], Y0 + 11.0, color=SEC, ancho=1, punteada=True, punta=False)
+        flecha(s, cx[i], PY + 2.3, cx[i], PY + 9.6, color=SEC, ancho=1, punteada=True, punta=False)
     msgs = [(0, 1, '1  pregunta en español', False), (1, 2, '2  POST + token JWT', False),
             (2, 3, '3  rol, institución, SELECT', False), (3, 4, '4  métrica certificada', False),
             (4, 2, '5  cifras de vistas VIS_*', True), (2, 0, '6  resumen, tabla y gráfico', True)]
     for k, (a, b, t, ret) in enumerate(msgs):
-        yy = Y0 + 4.0 + k * 1.4
+        yy = PY + 3.7 + k * 1.1
         flecha(s, cx[a] + (0.08 if b > a else -0.08), yy, cx[b] + (-0.08 if b > a else 0.08), yy, color=NAR if not ret else NAVY, ancho=1.75, punteada=ret)
         lx = min(cx[a], cx[b]); lw = abs(cx[b] - cx[a])
-        et = texto(s, lx + 0.12, yy - 1.0, lw - 0.24, 0.9, [{'t': t, 'sz': 9.5, 'b': True, 'c': NAVY}], margen=0.03, al='c', anclaje='b')
+        et = texto(s, lx + 0.12, yy - 0.78, lw - 0.24, 0.72, [{'t': t, 'sz': 9.5, 'b': True, 'c': NAVY}], margen=0.02, al='c', anclaje='b')
         et.fill.solid(); et.fill.fore_color.rgb = rgb(HIELO)
-    tarjeta(s, X + 0.35, Y0 + 11.4, W - 0.7, 2.2, [
-        {'t': 'Sin métrica certificada', 'sz': 12, 'b': True, 'c': NAR, 'sa': 2},
-        {'t': 'La IA genera el SQL con solo el esquema (sin datos personales) y sqlglot lo valida antes de ejecutarlo.', 'sz': 11.5}],
-            relleno=NAR_L, margen=0.3, anclaje='m')
-    notas(s, 'Los diagramas de la propuesta son dos. A la izquierda, el modelo de datos en estrella: una tabla de hechos '
-             'de matrículas por periodo rodeada de dimensiones, más los hechos de las predicciones, los segmentos, las '
-             'intervenciones y la evaluación del modelo. Toda tabla lleva el código de institución y las vistas filtran '
-             'con SESSION_CONTEXT. A la derecha, la secuencia de una consulta: la autoridad pregunta en español, la '
-             'API valida rol e institución, las barreras eligen una métrica certificada y SQL Server devuelve solo '
-             'cifras de las vistas. Si no hay métrica, la IA genera el SQL sin ver datos personales y se valida.')
+    texto(s, X + 0.3, PY + 9.45, W - 0.6, 0.7, [
+        {'t': 'Sin métrica certificada: la IA genera el SQL solo con el esquema y sqlglot lo valida.', 'sz': 10, 'i': True}], al='c', anclaje='m')
+    notas(s, N_DIAG)
 
 
 def s_arquitectura(s):
     limpiar(s); titulo(s, 'Arquitectura del software: frontend y backend')
-    y, h = Y0, 9.6
+    y, h = Y0, 8.0
     w1, w2, w3, g = 8.4, 9.6, 7.8, 1.92
     x1 = X0; x2 = x1 + w1 + g; x3 = x2 + w2 + g
     # frontend
     caja(s, x1, y, w1, h, HIELO)
-    _hilera(s, x1, y, w1, 1.5, 'FRONTEND')
-    texto(s, x1 + 0.2, y + 1.6, w1 - 0.4, 1.2, [{'t': 'React 18 · TypeScript · Vite · Tailwind', 'sz': 12, 'b': True, 'c': NAR}], al='c')
-    for i, t in enumerate(['Panel ejecutivo', 'Estudiantes en riesgo y ficha', 'Consulta conversacional', 'Seguimiento y calidad del modelo']):
-        c = caja(s, x1 + 0.4, y + 2.9 + i * 1.5, w1 - 0.8, 1.25, BLANCO)
+    _hilera(s, x1, y, w1, 1.3, 'FRONTEND')
+    texto(s, x1 + 0.2, y + 1.4, w1 - 0.4, 0.9, [{'t': 'React 18 · TypeScript · Vite · Tailwind', 'sz': 11.5, 'b': True, 'c': NAR}], al='c')
+    for i, t in enumerate(['Panel ejecutivo', 'Riesgo y ficha del estudiante', 'Consulta conversacional', 'Seguimiento y calidad del modelo']):
+        c = caja(s, x1 + 0.4, y + 2.4 + i * 1.4, w1 - 0.8, 1.15, BLANCO)
         escribir(c, [{'t': t, 'sz': 12, 'b': True}], al='c', anclaje='m', margen=0.1)
-    texto(s, x1 + 0.2, y + 8.95, w1 - 0.4, 0.6, [{'t': 'No es la frontera de seguridad', 'sz': 10.5, 'i': True}], al='c')
     # backend
     caja(s, x2, y, w2, h, HIELO)
-    _hilera(s, x2, y, w2, 1.5, 'BACKEND')
-    texto(s, x2 + 0.2, y + 1.6, w2 - 0.4, 1.2, [{'t': 'FastAPI · API REST de 27 servicios', 'sz': 12, 'b': True, 'c': NAR}], al='c')
+    _hilera(s, x2, y, w2, 1.3, 'BACKEND')
+    texto(s, x2 + 0.2, y + 1.4, w2 - 0.4, 0.9, [{'t': 'FastAPI · API REST de 27 servicios', 'sz': 11.5, 'b': True, 'c': NAR}], al='c')
     mods = [('api/', 'rutas por módulo'), ('core/', 'JWT, roles, auditoría'), ('ml/', 'LightGBM, SHAP'),
             ('nl2sql/', '40 métricas, validador'), ('etl/', 'perfiles de mapeo'), ('scripts/', 'procesos por lotes')]
-    mw, mh = (w2 - 0.8 - 0.3) / 2, 1.75
+    mw, mh = (w2 - 0.8 - 0.3) / 2, 1.3
     for i, (a, b) in enumerate(mods):
-        c = caja(s, x2 + 0.4 + (i % 2) * (mw + 0.3), y + 2.9 + (i // 2) * (mh + 0.25), mw, mh, BLANCO)
-        escribir(c, [{'t': a, 'sz': 12.5, 'b': True, 'c': NAR, 'sa': 0}, {'t': b, 'sz': 11}], al='c', anclaje='m', margen=0.1)
+        c = caja(s, x2 + 0.4 + (i % 2) * (mw + 0.3), y + 2.4 + (i // 2) * (mh + 0.2), mw, mh, BLANCO)
+        escribir(c, [{'t': a, 'sz': 12.5, 'b': True, 'c': NAR, 'sa': 0}, {'t': b, 'sz': 10.5}], al='c', anclaje='m', margen=0.08)
     # datos
     caja(s, x3, y, w3, h, HIELO)
-    _hilera(s, x3, y, w3, 1.5, 'BASE DE DATOS', NAR)
-    texto(s, x3 + 0.2, y + 1.6, w3 - 0.4, 1.2, [{'t': 'SQL Server 2022', 'sz': 12, 'b': True, 'c': NAR}], al='c')
+    _hilera(s, x3, y, w3, 1.3, 'BASE DE DATOS', NAR)
+    texto(s, x3 + 0.2, y + 1.4, w3 - 0.4, 0.9, [{'t': 'SQL Server 2022', 'sz': 11.5, 'b': True, 'c': NAR}], al='c')
     for i, t in enumerate(['Almacén en estrella', 'Vistas VIS_* por institución', 'SESSION_CONTEXT', 'Cuentas de mínimo privilegio']):
-        c = caja(s, x3 + 0.4, y + 2.9 + i * 1.5, w3 - 0.8, 1.25, BLANCO)
+        c = caja(s, x3 + 0.4, y + 2.4 + i * 1.4, w3 - 0.8, 1.15, BLANCO)
         escribir(c, [{'t': t, 'sz': 12, 'b': True}], al='c', anclaje='m', margen=0.1)
     # conexiones
-    ym = y + 4.5
+    ym = y + 4.0
     flecha(s, x1 + w1 + 0.1, ym, x2 - 0.1, ym, color=NAR, ancho=2.25)
-    flecha(s, x2 - 0.1, ym + 1.0, x1 + w1 + 0.1, ym + 1.0, color=NAVY, ancho=2.25, punteada=True)
+    flecha(s, x2 - 0.1, ym + 0.9, x1 + w1 + 0.1, ym + 0.9, color=NAVY, ancho=2.25, punteada=True)
     texto(s, x1 + w1 - 0.1, ym - 1.9, g + 0.2, 1.7, [{'t': 'HTTPS · JWT', 'sz': 10, 'b': True, 'c': NAVY}], al='c', margen=0.02, anclaje='b')
     flecha(s, x2 + w2 + 0.1, ym, x3 - 0.1, ym, color=NAR, ancho=2.25)
-    flecha(s, x3 - 0.1, ym + 1.0, x2 + w2 + 0.1, ym + 1.0, color=NAVY, ancho=2.25, punteada=True)
+    flecha(s, x3 - 0.1, ym + 0.9, x2 + w2 + 0.1, ym + 0.9, color=NAVY, ancho=2.25, punteada=True)
     texto(s, x2 + w2 - 0.1, ym - 1.9, g + 0.2, 1.7, [{'t': 'solo lectura', 'sz': 10, 'b': True, 'c': NAVY}], al='c', margen=0.02, anclaje='b')
-    # reglas
-    reglas = [('El frontend solo habla HTTP', 'nunca accede a la base de datos'),
-              ('Todo SQL de la IA corre con chat_reader', 'solo lee las vistas VIS_* de su institución'),
-              ('Credenciales fuera del código', 'se leen de .env, que no se versiona'),
-              ('189 pruebas automatizadas', '178 del backend y 11 de la interfaz')]
+    # franja inferior: seguridad, tendencias, recursos y pruebas
+    tarj = [('Seguridad por diseño', 'El frontend nunca toca la base. La IA corre con chat_reader, solo sobre vistas de su institución. '
+                                     'Claves en .env, fuera del código.', NAVY),
+            ('Tendencias vigentes', 'LightGBM y SHAP (explicabilidad), NL2SQL con validación, MLflow, Great Expectations y '
+                                    'Evidently (MLOps).', NAVY),
+            ('Implementable hoy', 'Un computador de 4 núcleos y 16 GB, Docker y planes gratuitos de IA. Sin GPU. '
+                                  'Un perfil de mapeo incorpora otra institución.', NAVY),
+            ('189 pruebas', '178 del backend y 11 de la interfaz; calidad de datos 23 de 23 reglas.', NAR)]
     rw = (ANCHO - 3 * 0.3) / 4
-    for i, (a, b) in enumerate(reglas):
-        c = caja(s, X0 + i * (rw + 0.3), Y0 + 10.1, rw, 3.7, NAVY if i < 3 else NAR)
-        escribir(c, [{'t': a, 'sz': 12.5, 'b': True, 'c': BLANCO, 'sa': 4}, {'t': b, 'sz': 11.5, 'c': BLANCO}], anclaje='m', margen=0.4)
-    notas(s, 'La arquitectura es cliente-servidor desacoplada. El frontend, en React con TypeScript, solo muestra la '
-             'información según el rol. El backend, en FastAPI, expone veintisiete servicios y se organiza en capas: '
-             'api, core con seguridad y auditoría, ml con el modelo, nl2sql con la consulta, etl y procesos por lotes. '
-             'Detrás está SQL Server con el almacén en estrella. Tres reglas: el frontend nunca toca la base de datos, '
-             'todo SQL de la IA corre con una cuenta de solo lectura sobre vistas de la institución, y las credenciales '
-             'no están en el código. Lo respaldan 189 pruebas automatizadas.')
+    for i, (a, b, col) in enumerate(tarj):
+        c = caja(s, X0 + i * (rw + 0.3), Y0 + 8.4, rw, 5.4, col)
+        escribir(c, [{'t': a, 'sz': 13, 'b': True, 'c': NAR if col == NAVY else BLANCO, 'sa': 5},
+                     {'t': b, 'sz': 12, 'c': BLANCO}], anclaje='m', margen=0.4)
+    notas(s, N_ARQ)
 
 
 def s_enlace(s, qr_png):
-    limpiar(s); titulo(s, 'Hipervínculo del proyecto')
+    limpiar(s); titulo(s, 'Hipervínculo del proyecto y demostración')
     # QR
     caja(s, X0, Y0, 9.2, 13.8, HIELO)
-    c = caja(s, X0 + 0.7, Y0 + 0.7, 7.8, 7.8, BLANCO)
+    caja(s, X0 + 0.7, Y0 + 0.7, 7.8, 7.8, BLANCO)
     imagen(s, qr_png, X0 + 0.95, Y0 + 0.95, w=7.3).click_action.hyperlink.address = REPO
-    texto(s, X0 + 0.3, Y0 + 8.8, 8.6, 1.4, [{'t': 'Escanee para abrir el repositorio', 'sz': 13, 'b': True, 'c': NAR}], al='c')
-    texto(s, X0 + 0.3, Y0 + 10.1, 8.6, 3.4, [
-        {'t': 'Contiene el código, los manuales y la documentación del proyecto.', 'sz': 11.5, 'sa': 6},
+    texto(s, X0 + 0.3, Y0 + 8.8, 8.6, 1.2, [{'t': 'Escanee para abrir el repositorio', 'sz': 13, 'b': True, 'c': NAR}], al='c')
+    texto(s, X0 + 0.3, Y0 + 10.0, 8.6, 3.6, [
+        {'t': 'Código, manuales y documentación del proyecto.', 'sz': 11.5, 'sa': 8},
         {'t': 'Recorrido de la demostración', 'sz': 11.5, 'b': True, 'c': NAVY, 'sa': 2},
         {'t': 'panel → ficha → consulta → bloqueo → calidad del modelo', 'sz': 11}], al='c')
     # enlaces
@@ -344,42 +375,40 @@ def s_enlace(s, qr_png):
                   {'t': 'http://localhost:3000', 'sz': 13.5, 'b': True, 'c': BLANCO}], anclaje='m', margen=0.5)
     b2.click_action.hyperlink.address = 'http://localhost:3000'
     # capturas
+    from PIL import Image
     cw = (wr - 0.4) / 2
     for i, (ruta, pie) in enumerate([(CAPT / 'av2_cap_ficha.png', 'Ficha con las razones del riesgo'),
                                       (CAPT / 'av2_cap_consulta.png', 'Consulta en lenguaje natural')]):
         x = xr + i * (cw + 0.4)
         caja(s, x, Y0 + 4.5, cw, 9.3, HIELO)
-        from PIL import Image
         iw, ih = Image.open(ruta).size
         w_ = cw - 0.5; h_ = w_ * ih / iw
         if h_ > 7.3: h_ = 7.3; w_ = h_ * iw / ih
         imagen(s, ruta, x + (cw - w_) / 2, Y0 + 4.75, w=w_)
         texto(s, x + 0.2, Y0 + 12.4, cw - 0.4, 1.3, [{'t': pie, 'sz': 12, 'b': True, 'c': NAVY}], al='c', anclaje='m')
-    notas(s, 'El proyecto está publicado en GitHub; el código QR y el enlace abren el repositorio con el código, los '
-             'manuales técnico y de usuario y la documentación. El sistema se levanta con un script y se abre en '
-             'localhost:3000. A la derecha están dos pantallas reales: la ficha de un estudiante con las tres razones '
-             'principales de su riesgo y la consulta en lenguaje natural con una métrica certificada. En la demostración '
-             'recorro panel, ficha, consulta, una pregunta maliciosa bloqueada y la calidad del modelo.')
+    notas(s, N_ENLACE)
 
 
 def s_conclusiones(s):
-    limpiar(s); titulo(s, 'Conclusiones')
-    caja(s, X0, Y0, 17.4, 10.6, HIELO)
-    texto(s, X0 + 0.3, Y0 + 0.2, 16.8, 0.9, [{'t': 'Desempeño en periodos que el modelo no había visto', 'sz': 13.5, 'b': True, 'c': NAR}])
     from PIL import Image
+    limpiar(s); titulo(s, 'Conclusiones y continuidad')
+    caja(s, X0, Y0, 16.6, 10.2, HIELO)
+    texto(s, X0 + 0.3, Y0 + 0.2, 16.0, 0.9, [{'t': 'Desempeño en periodos que el modelo no había visto', 'sz': 13.5, 'b': True, 'c': NAR}])
     iw, ih = Image.open(FIG / 'tf_desempeno_periodo.png').size
-    w_ = 16.8; h_ = w_ * ih / iw
-    imagen(s, FIG / 'tf_desempeno_periodo.png', X0 + 0.3, Y0 + 1.4, w=w_)
-    texto(s, X0 + 0.3, Y0 + 1.5 + h_, 16.8, 0.9, [{'t': 'Mínimo exigido por periodo: 0,70. ROC-AUC global: 0,829 (UNEMI, datos de prueba) y 0,768 (OULAD, datos reales).', 'sz': 11}])
-    tarjeta(s, X0, Y0 + 11.0, 17.4, 2.8, [
-        {'t': 'Aporte', 'sz': 12.5, 'b': True, 'c': NAR, 'sa': 2},
-        {'t': 'Predicción explicada en español dentro de un sistema por roles, con consulta certificada y aislamiento por institución en la base de datos.', 'sz': 12.5}],
+    w_ = 16.0; h_ = w_ * ih / iw
+    if h_ > 7.2: h_ = 7.2; w_ = h_ * iw / ih
+    imagen(s, FIG / 'tf_desempeno_periodo.png', X0 + 0.3 + (16.0 - w_) / 2, Y0 + 1.3, w=w_)
+    texto(s, X0 + 0.3, Y0 + 1.4 + h_, 16.0, 1.4, [{'t': 'Mínimo exigido por periodo: 0,70. Global: 0,829 (UNEMI, datos de prueba) y 0,768 (OULAD, datos reales).', 'sz': 11}])
+    tarjeta(s, X0, Y0 + 10.6, 16.6, 3.2, [
+        {'t': 'Con honestidad', 'sz': 12.5, 'b': True, 'c': NAR, 'sa': 2},
+        {'t': 'Los datos de la UNEMI son de prueba; OULAD aporta la validación con datos reales. Por eso el paso '
+              'siguiente es validar con una carrera real.', 'sz': 12.5}],
             relleno=NAR_L, margen=0.4, anclaje='m')
-    concl = [('El modelo se sostiene', 'con datos reales en periodos no vistos y supera a la regresión logística y a Random Forest.'),
-             ('Detecta 78 %', 'de los abandonos con el umbral medio en la institución de prueba.'),
-             ('La consulta es confiable:', '100 % de exactitud, 8 de 8 preguntas maliciosas contenidas y 0 fugas entre instituciones.'),
-             ('Siguiente paso:', 'validar con una carrera real de la UNEMI, con autorización y evaluación de impacto (LOPDP).')]
-    xr, wr = X0 + 17.8, ANCHO - 17.8
+    concl = [('El modelo se sostiene', 'en periodos no vistos y supera a la regresión logística y a Random Forest.'),
+             ('La consulta es confiable:', '100 % de exactitud en 33 preguntas certificadas, 8 de 8 maliciosas contenidas, 0 fugas.'),
+             ('Aporte diferenciador:', 'predicción explicada en español, en un sistema por roles con aislamiento en la base.'),
+             ('Continuidad:', 'carrera real de la UNEMI con autorización y evaluación de impacto (LOPDP); prueba de usabilidad con autoridades.')]
+    xr, wr = X0 + 17.0, ANCHO - 17.0
     hh = (13.8 - 3 * 0.3) / 4
     for i, (a, b) in enumerate(concl):
         yy = Y0 + i * (hh + 0.3)
@@ -387,13 +416,7 @@ def s_conclusiones(s):
         o = caja(s, xr + 0.3, yy + (hh - 1.2) / 2, 1.2, 1.2, BLANCO if i < 3 else NAVY, MSO_SHAPE.OVAL)
         escribir(o, [{'t': str(i + 1), 'sz': 14, 'b': True, 'c': NAR if i < 3 else BLANCO}], al='c', anclaje='m', margen=0)
         texto(s, xr + 1.7, yy, wr - 1.9, hh, [{'t': [{'t': a + ' ', 'b': True, 'sz': 12.5, 'c': BLANCO}, {'t': b, 'sz': 12, 'c': BLANCO}]}], anclaje='m', margen=0.1)
-    notas(s, 'Cierro con las conclusiones. Primero, el modelo se sostiene con datos reales en periodos que no vio: '
-             'cero coma ochocientos veintinueve en la UNEMI con datos de prueba y cero coma setecientos sesenta y ocho en '
-             'OULAD, y supera a la regresión logística y a Random Forest. Segundo, detecta el 78 % de los abandonos con '
-             'el umbral medio. Tercero, la consulta en español fue exacta, contuvo las ocho preguntas maliciosas y no '
-             'tuvo fugas entre instituciones. El aporte es una predicción explicada, dentro de un sistema por roles. '
-             'Como siguiente paso, validar con una carrera real de la UNEMI con autorización y evaluación de impacto. '
-             'Muchas gracias; quedamos atentos a sus preguntas.')
+    notas(s, N_CONCL)
 
 
 def main():
@@ -407,6 +430,8 @@ def main():
     prs.core_properties.last_modified_by = 'Víctor Manuel Lluilema Pisco'
     prs.core_properties.title = 'Sustentación: Prototipo de un sistema web para predecir el abandono en estudiantes universitarios'
     prs.save(str(SALIDA)); print('ok', SALIDA)
+    palabras = [len(n.split()) for n in (N_PORTADA, N_INTRO, N_DIAG, N_ARQ, N_ENLACE, N_CONCL)]
+    print('palabras por diapositiva', palabras, 'total', sum(palabras), '→ min a 140 ppm', round(sum(palabras) / 140, 2))
 
 
 if __name__ == '__main__':
